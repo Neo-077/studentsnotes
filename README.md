@@ -142,5 +142,3 @@ bajo la licencia MIT. Puedes modificarlo y adaptarlo libremente.
 ## 🛰️ Repositorio
 
 📦 [https://github.com/Neo-077/studentsnotes](https://github.com/Neo-077/studentsnotes)
-
-```
