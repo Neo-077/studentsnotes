@@ -1,27 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-import express from 'express'
-import cors from 'cors'
-import 'dotenv/config'
-import { studentsRouter } from './routes/students.js'
-import { logsRouter } from './routes/logs.js'
-import { exportRouter } from './routes/export.js'
-
-const app = express()
-app.use(cors())
-app.use(express.json())
-
-app.get('/', (_req, res)=> res.json({ ok:true, name: 'StudentsNotes API' }))
-app.use('/api/students', studentsRouter)
-app.use('/api/logs', logsRouter)
-app.use('/api/export', exportRouter)
-
-const port = process.env.PORT || 4000
-app.listen(port, ()=> console.log(`API on http://localhost:${port}`))
-=======
-=======
->>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
 import express from 'express'
 import cors from 'cors'
 import morgan from 'morgan'
@@ -68,7 +44,3 @@ app.get('/me', (req, res) => {
 app.listen(env.PORT, () => {
   console.log(`backend listening on http://localhost:${env.PORT}`)
 })
-<<<<<<< HEAD
->>>>>>> d2eb161 (Proyecto StudentsNotes: frontend y backend iniciales)
-=======
->>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
