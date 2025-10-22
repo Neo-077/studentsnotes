@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-<<<<<<< HEAD
     "target": "ES2020",
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -13,17 +12,3 @@
     "src"
   ]
 }
-=======
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "dist",
-    "rootDir": "src",
-    "esModuleInterop": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["src"]
-}
->>>>>>> d2eb161 (Proyecto StudentsNotes: frontend y backend iniciales)
