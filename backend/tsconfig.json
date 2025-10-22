@@ -1,18 +1,5 @@
 {
   "compilerOptions": {
-<<<<<<< HEAD
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "outDir": "dist",
-    "esModuleInterop": true,
-    "strict": true,
-    "skipLibCheck": true
-  },
-  "include": [
-    "src"
-  ]
-=======
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -24,5 +11,4 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src"]
->>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
 }

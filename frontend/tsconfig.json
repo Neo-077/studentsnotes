@@ -2,21 +2,10 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-<<<<<<< HEAD
-    "lib": [
-      "ES2020",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-=======
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "Bundler",
->>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
