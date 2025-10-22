@@ -142,3 +142,9 @@ bajo la licencia MIT. Puedes modificarlo y adaptarlo libremente.
 ## 🛰️ Repositorio
 
 📦 [https://github.com/Neo-077/studentsnotes](https://github.com/Neo-077/studentsnotes)
+
+
+## 🏠 Base de datos
+
+<img width="1522" height="866" alt="supabase-schema-tlijmmcrmqorqsprslpi" src="https://github.com/user-attachments/assets/b8da5b2a-fa9a-45ff-a920-34197f34c77d" />
+
