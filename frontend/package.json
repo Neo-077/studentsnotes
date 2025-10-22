@@ -1,5 +1,6 @@
 {
   "name": "studentsnotes-frontend",
+<<<<<<< HEAD
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -24,6 +25,8 @@
     "tailwindcss": "^4.1.15",
     "typescript": "5.6.3",
     "vite": "^6.4.1"
+=======
+>>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
   "version": "1.0.0",
   "private": true,
   "type": "module",

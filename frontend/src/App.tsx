@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { useSession, supabase } from './lib/supabase'
@@ -27,6 +28,8 @@ export default function App(){
     <main className="mx-auto max-w-7xl px-6 py-6"><Outlet /></main>
   </div>)
 =======
+=======
+>>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
 import { Routes, Route, Navigate, Link, Outlet } from 'react-router-dom'
 import Dashboard from './routes/Dashboard'
 import Pareto from './routes/Pareto'
@@ -90,5 +93,8 @@ export default function App() {
       <Route path="*" element={<NotFound />} />
     </Routes>
   )
+<<<<<<< HEAD
 >>>>>>> d2eb161 (Proyecto StudentsNotes: frontend y backend iniciales)
+=======
+>>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
 }

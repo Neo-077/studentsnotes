@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # ------------------------------------------------------------
 # 🧠 Gitignore — StudentsNotes / Encoreum Dashboard
 # Stack: Vite + React + TypeScript + TailwindCSS + Supabase
@@ -6,6 +7,8 @@
 
 # Node dependencies
 =======
+=======
+>>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
 # --- General ---
 .DS_Store
 Thumbs.db
@@ -21,13 +24,17 @@ Thumbs.db
 !.env.example
 
 # --- Node / npm / pnpm / yarn ---
+<<<<<<< HEAD
 >>>>>>> d2eb161 (Proyecto StudentsNotes: frontend y backend iniciales)
+=======
+>>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 # Build output
 dist/
@@ -90,6 +97,8 @@ public/mock-data/
 # End of .gitignore
 # ------------------------------------------------------------
 =======
+=======
+>>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
 # --- TypeScript ---
 *.tsbuildinfo
 tsconfig.tsbuildinfo
@@ -194,4 +203,7 @@ docs/*.zip
 # --- Ignore compiled assets ---
 *.min.js
 *.min.css
+<<<<<<< HEAD
 >>>>>>> d2eb161 (Proyecto StudentsNotes: frontend y backend iniciales)
+=======
+>>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9

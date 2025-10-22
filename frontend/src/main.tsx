@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -16,6 +17,8 @@ import { SessionProvider } from './lib/supabase'
 const router = createBrowserRouter([{ path:'/', element:<Landing/> }, { path:'/app', element:<App/>, children:[{ index:true, element:<Dashboard/> }, { path:'students', element:<Students/> }, { path:'pareto', element:<ParetoChart/> }, { path:'dispersion', element:<ScatterChartPage/> }, { path:'control', element:<ControlChart/> }, { path:'pastel', element:<PieChartPage/> }]}])
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><SessionProvider><RouterProvider router={router} /></SessionProvider></React.StrictMode>)
 =======
+=======
+>>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
@@ -33,4 +36,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </React.StrictMode>
 )
+<<<<<<< HEAD
 >>>>>>> d2eb161 (Proyecto StudentsNotes: frontend y backend iniciales)
+=======
+>>>>>>> 7a5cda402fc9c7f54b00e0ee45b0d0f9c64dbff9
