@@ -4,7 +4,6 @@ import morgan from 'morgan'
 import helmet from 'helmet'
 import { env } from './config/env.js'
 import { requireAuth } from './middleware/auth.js'
-    
 import authRoutes from './routes/auth.routes.js'
 import catalogosRoutes from './routes/catalogos.routes.js'
 import gruposRoutes from './routes/grupos.routes.js'
