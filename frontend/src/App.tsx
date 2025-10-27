@@ -10,6 +10,7 @@ import Grupos from './routes/Grupos'
 import Login from './routes/Login'
 import NotFound from './routes/NotFound'
 import useAuth from './store/useAuth'
+import Estudiantes from './routes/Estudiantes'
 
 function Shell() {
   const { user, logout } = useAuth()
@@ -39,6 +40,7 @@ function Shell() {
             { to: '/pastel', label: 'Pastel' },
             { to: '/inscripciones', label: 'Inscripciones' },
             { to: '/grupos', label: 'Grupos' },
+            { to: '/estudiantes', label: 'Estudiantes' },
           ].map(item => (
             <NavLink
               key={item.to}
@@ -156,6 +158,7 @@ export default function App() {
           <Route path="/pastel" element={<Pastel />} />
           <Route path="/inscripciones" element={<Inscripciones />} />
           <Route path="/grupos" element={<Grupos />} />
+          <Route path="/estudiantes" element={<Estudiantes />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />

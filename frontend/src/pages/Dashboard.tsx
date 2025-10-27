@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase } from '../lib/supabaseClient'
 
 // Ajusta estos strings si tus valores en BD son distintos
 const ESTADO_APROBADO = "Aprobado";

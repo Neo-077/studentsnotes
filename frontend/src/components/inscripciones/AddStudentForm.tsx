@@ -200,7 +200,7 @@ export default function AddStudentForm({ defaultCarreraId }: { defaultCarreraId?
 
         <div className="grid gap-1 col-span-2">
           <label htmlFor="fecha_nacimiento" className="text-xs text-slate-500">
-            Fecha de nacimiento <span className="text-slate-400">({supportsDateInput() ? "aaaa-mm-dd" : "dd/mm/aaaa"})</span>
+            Fecha de nacimiento <span className="text-slate-400">({supportsDateInput() ? "mm-dd-yyyy" : "dd/mm/aaaa"})</span>
           </label>
 
           <div className="relative">

@@ -1,51 +1,58 @@
-import express from "express"
-import cors from "cors"
-import morgan from "morgan"
-import helmet from "helmet"
-import { env } from "./config/env.js"
-import { requireAuth } from "./middleware/auth.js"
+// src/server.ts
+import express from 'express'
+import cors from 'cors'
+import morgan from 'morgan'
+import { env } from './config/env.js'
+import 'dotenv/config'            
+import './server.js'
 
-import authRoutes from "./routes/auth.routes.js"
-import catalogosRoutes from "./routes/catalogos.routes.js"
-import gruposRoutes from "./routes/grupos.routes.js"
-import estudiantesRoutes from "./routes/estudiantes.routes.js"
-import inscripcionesRoutes from "./routes/inscripciones.routes.js"
-import analiticaRoutes from "./routes/analitica.routes.js"
-import importRoutes from "./routes/import.routes.js"
-import { errorHandler } from "./middleware/error.js"
+// Routers (los que sí exportan default)
+import analiticaRouter from './routes/analitica.routes.js'
+import authRouter from './routes/auth.routes.js'
+import catalogosRouter from './routes/catalogos.routes.js'
+import estudiantesRouter from './routes/estudiantes.routes.js'
+import gruposRouter from './routes/grupos.routes.js'
+import importRouter from './routes/import.routes.js'
+import inscripcionesRouter from './routes/inscripciones.routes.js'
 
-export const app = express()
+// Routers con **export nombrado**
+import { exportRouter } from './routes/export.js'
+import { logsRouter } from './routes/logs.js'
 
-app.use(cors())
-app.use(helmet())
-app.use(morgan("dev"))
-app.use(express.json())
+// Error middleware
+import { errorHandler } from './middleware/error.js'
 
-// Rutas públicas
-app.use("/auth", authRoutes)
+const app = express()
 
-// Middleware de autenticación
-app.use(requireAuth)
-
-// Rutas protegidas
-app.use("/catalogos", catalogosRoutes)
-app.use("/grupos", gruposRoutes)
-app.use("/estudiantes", estudiantesRoutes)
-app.use("/inscripciones", inscripcionesRoutes)
-app.use("/analitica", analiticaRoutes)
-app.use("/import", importRoutes)
-
-// Endpoint de prueba
-app.get("/me", (req, res) => {
-  res.json({
-    supabase_user: req.authUser,
-    app_usuario: req.appUsuario,
+app.use(
+  cors({
+    origin: [/localhost:\d+$/, /\.vercel\.app$/], // ajusta tus orígenes permitidos
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   })
-})
+)
 
-// Manejo global de errores JSON
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true }))
+app.use(morgan('dev'))
+
+app.get('/health', (_req, res) => res.json({ ok: true }))
+
+app.use('/analitica', analiticaRouter)
+app.use('/auth', authRouter)
+app.use('/catalogos', catalogosRouter)
+app.use('/estudiantes', estudiantesRouter)
+app.use('/export', exportRouter)          // ← ahora sí, export nombrado
+app.use('/grupos', gruposRouter)
+app.use('/import', importRouter)
+app.use('/inscripciones', inscripcionesRouter)
+app.use('/logs', logsRouter)              // ← export nombrado
+
+app.use((_req, res) => res.status(404).json({ error: { message: 'Not Found' } }))
 app.use(errorHandler)
 
-app.listen(env.PORT, () => {
-  console.log(`✅ Backend escuchando en http://localhost:${env.PORT}`)
+const port = Number(env.PORT ?? 4000)
+app.listen(port, () => {
+  console.log(`API listening on http://localhost:${port}`)
 })

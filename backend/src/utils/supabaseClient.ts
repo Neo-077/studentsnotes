@@ -1,5 +1,6 @@
 // src/utils/supabaseClient.ts
 import { createClient } from '@supabase/supabase-js'
+
 import 'dotenv/config'
 // Si generaste tipos con `supabase gen types ...`, descomenta la línea siguiente:
 // import type { Database } from '../types/supabase'  // ← ajusta la ruta

@@ -1,4 +1,3 @@
-
 import { Router } from 'express'
 import { listLogs } from '../controllers/logsController.js'
 import { verifyAuth } from '../middleware/authMiddleware.js'

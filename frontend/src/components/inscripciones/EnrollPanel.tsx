@@ -20,6 +20,7 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
   }, [groupId])
 
   // Búsqueda de estudiantes
+  // Búsqueda de estudiantes
   useEffect(() => {
     if (q.length < 2) {
       setResults([])
@@ -27,10 +28,10 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
     }
     const id = setTimeout(async () => {
       try {
-        const data = await api.get(`/estudiantes?q=${encodeURIComponent(q)}`)
-        setResults(data)
+        const data = await api.get(`/estudiantes?q=${encodeURIComponent(q)}&page=1&pageSize=10`)
+        setResults(data?.rows ?? []) // 👈 la API devuelve { rows, total }
       } catch {
-        /* noop */
+        setResults([])
       }
     }, 300)
     return () => clearTimeout(id)
@@ -82,11 +83,10 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
             <button
               key={s.id_estudiante}
               onClick={() => setSelectedStudent(s)}
-              className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${
-                selectedStudent?.id_estudiante === s.id_estudiante
+              className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${selectedStudent?.id_estudiante === s.id_estudiante
                   ? "bg-gray-100"
                   : ""
-              }`}
+                }`}
             >
               {s.no_control} — {s.nombre} {s.ap_paterno}
             </button>

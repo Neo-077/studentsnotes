@@ -1,39 +1,48 @@
+// src/lib/api.ts
 import { supabase } from './supabaseClient'
 
-const BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
+const RAW_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
+const BASE = RAW_BASE.replace(/\/+$/, '') // sin trailing slash
+
+function joinURL(base: string, path: string) {
+  return `${base}/${String(path || '').replace(/^\/+/, '')}`
+}
 
 async function request(path: string, opts: RequestInit = {}) {
-  // Obtener el token actual de la sesión de Supabase
   const { data } = await supabase.auth.getSession()
   const accessToken = data.session?.access_token
 
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(opts.headers || {}),
-    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+  const isFormData = opts.body instanceof FormData
+  const headers: Record<string, string> = {
+    Accept: 'application/json',                           // 👈 fuerza JSON en la respuesta
+    ...(opts.headers as Record<string, string>),
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
   }
+  if (!isFormData) headers['Content-Type'] = headers['Content-Type'] ?? 'application/json'
 
-  const res = await fetch(`${BASE}${path}`, { ...opts, headers })
+  const res = await fetch(joinURL(BASE, path), { ...opts, headers, mode: 'cors' })
+
+  // Intenta parsear JSON; si no, deja texto
+  const raw = await res.text()
+  let payload: any = null
+  try { payload = raw ? JSON.parse(raw) : null } catch { payload = raw }
 
   if (!res.ok) {
-    let msg = await res.text()
-    try {
-      const j = JSON.parse(msg)
-      msg = j?.error?.message || msg
-    } catch {}
+    const msg =
+      payload?.error?.message ||
+      payload?.message ||
+      (typeof payload === 'string' ? payload : res.statusText)
     throw new Error(msg)
   }
 
-  // Si el backend responde sin contenido (204 No Content), no parsear JSON
-  return res.status === 204 ? null : res.json()
+  return res.status === 204 ? null : payload
 }
 
 export default {
   get: (path: string) => request(path),
-  post: (path: string, body: any, p0: { headers: { Accept: string; "Content-Type": string } }) =>
-    request(path, { method: 'POST', body: JSON.stringify(body) }),
-  put: (path: string, body: any) =>
-    request(path, { method: 'PUT', body: JSON.stringify(body) }),
-  delete: (path: string) =>
-    request(path, { method: 'DELETE' })
+  post: (path: string, body?: any, opts?: RequestInit) =>
+    request(path, { method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body), ...opts }),
+  put: (path: string, body?: any, opts?: RequestInit) =>
+    request(path, { method: 'PUT', body: body instanceof FormData ? body : JSON.stringify(body), ...opts }),
+  delete: (path: string, opts?: RequestInit) => request(path, { method: 'DELETE', ...opts }),
 }

@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabaseClient'
 import { ResponsiveContainer, PieChart, Pie, Tooltip } from 'recharts'
 
 export default function PieChartPage(){
