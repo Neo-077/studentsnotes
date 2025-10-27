@@ -1,42 +1,51 @@
-import { supabase } from '../config/supabase.js'
+import { supabaseAdmin } from "../utils/supabaseClient.js"
 
-export async function searchEstudiantes(params: { carrera_id?: number, q?: string }) {
-  let query = supabase.from('estudiante').select('*').limit(50)
-  if (params.carrera_id) query = query.eq('id_carrera', params.carrera_id)
-  if (params.q) {
-    const like = `%${params.q}%`
-    query = query.or(
-      `no_control.ilike.${like},nombre.ilike.${like},ap_paterno.ilike.${like},ap_materno.ilike.${like}`
-    )
-  }
-  const { data, error } = await query
-  if (error) throw error
-  return data
-}
-
-export async function createEstudiante(input: {
-  no_control: string
+// Tipos alineados a la tabla 'estudiante'
+export type CreateEstudianteInput = {
   nombre: string
   ap_paterno: string
   ap_materno?: string
   id_genero: number
   id_carrera: number
-  fecha_nacimiento?: string
-}) {
-  const { data, error } = await supabase
-    .from('estudiante')
-    .insert({
-      no_control: input.no_control,
-      nombre: input.nombre,
-      ap_paterno: input.ap_paterno,
-      ap_materno: input.ap_materno ?? null,
-      id_genero: input.id_genero,
-      id_carrera: input.id_carrera,
-      fecha_nacimiento: input.fecha_nacimiento ?? null,
-      activo: true
-    })
-    .select('*')
-    .single()
-  if (error) throw error
-  return data
+  fecha_nacimiento?: string // 'YYYY-MM-DD'
+}
+
+export type Estudiante = {
+  id_estudiante: number
+  no_control: string
+  nombre: string
+  ap_paterno: string | null
+  ap_materno: string | null
+  id_genero: number
+  id_carrera: number
+  fecha_nacimiento: string | null
+  fecha_alta: string
+  activo: boolean
+}
+
+// ✅ Inserta un nuevo estudiante en la tabla real 'estudiante'
+export async function createEstudiante(input: CreateEstudianteInput) {
+  const payload = {
+    nombre: input.nombre.trim(),
+    ap_paterno: input.ap_paterno.trim(),
+    ap_materno: input.ap_materno?.trim() ?? null,
+    id_genero: input.id_genero,
+    id_carrera: input.id_carrera,
+    fecha_nacimiento: input.fecha_nacimiento ?? null,
+    activo: true,
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("estudiante") // ✅ tabla real según tu esquema
+    .insert(payload)
+    .select('id_estudiante,no_control,nombre,ap_paterno,ap_materno,id_carrera,id_genero,fecha_nacimiento,activo').single()
+
+  if (error) {
+    const e: any = new Error(error.message)
+    e.status = 400
+    e.details = error.details ?? error.hint ?? error.code
+    throw e
+  }
+
+  return data as Estudiante
 }

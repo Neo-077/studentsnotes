@@ -17,93 +17,73 @@ function Shell() {
   const displayName =
     (user?.user_metadata?.full_name as string) ||
     (user?.user_metadata?.name as string) ||
-    user?.email ||
-    'Docente'
+    user?.email || 'Docente'
 
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(w => w[0]?.toUpperCase())
-    .join('')
+  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
 
   return (
-    <div className="min-h-screen grid grid-cols-[248px_1fr] bg-slate-50">
-      {/* Sidebar refinado */}
-      <aside className="text-white bg-[#0f172a] border-r border-white/10">
-        <div className="px-4 py-5 flex items-center gap-3 border-b border-white/10">
-          <div className="h-9 w-9 rounded-xl bg-white/10 grid place-items-center text-sm font-bold">
-            SN
-          </div>
-          <div>
-            <h1 className="text-[15px] font-semibold tracking-tight">StudentsNotes</h1>
-            <p className="text-[11px] text-white/60 -mt-0.5">TecNM</p>
-          </div>
+    <div className="min-h-screen-fix grid grid-cols-1 lg:grid-cols-[280px_1fr]">
+      {/* Sidebar */}
+      <aside className="bg-[#0f172a] text-white p-5 lg:min-h-screen-fix">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="size-8 rounded bg-white/10 grid place-items-center font-semibold">SN</div>
+          <h1 className="text-[clamp(1rem,2vw,1.25rem)] font-semibold">StudentsNotes</h1>
         </div>
 
-        {/* Navegación */}
-        <nav className="px-3 py-4 space-y-1">
+        <nav className="grid gap-1">
           {[
-            { to: '/dashboard', label: 'Dashboard', icon: IconHome },
-            { to: '/pareto', label: 'Pareto', icon: IconBars },
-            { to: '/dispersion', label: 'Dispersión', icon: IconScatter },
-            { to: '/control', label: 'Control', icon: IconControl },
-            { to: '/pastel', label: 'Pastel', icon: IconPie },
-            { to: '/inscripciones', label: 'Inscripciones', icon: IconUsers },
-            { to: '/grupos', label: 'Grupos', icon: IconUsers },
+            { to: '/dashboard', label: 'Dashboard' },
+            { to: '/pareto', label: 'Pareto' },
+            { to: '/dispersion', label: 'Dispersión' },
+            { to: '/control', label: 'Control' },
+            { to: '/pastel', label: 'Pastel' },
+            { to: '/inscripciones', label: 'Inscripciones' },
+            { to: '/grupos', label: 'Grupos' },
           ].map(item => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 [
-                  'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] transition',
-                  isActive
-                    ? 'bg-white/10 text-white ring-1 ring-white/10'
-                    : 'text-white/80 hover:text-white hover:bg-white/5'
-                ].join(' ')
+                  "rounded-xl px-3 py-2 text-sm",
+                  "hover:bg-white/10 transition",
+                  isActive ? "bg-white/10 ring-1 ring-white/10" : ""
+                ].join(" ")
               }
             >
-              <item.icon className="h-4.5 w-4.5 opacity-90 group-hover:opacity-100" />
-              <span>{item.label}</span>
+              {item.label}
             </NavLink>
           ))}
         </nav>
 
-        {/* Perfil + logout */}
-        <div className="mt-auto px-3 py-4 border-t border-white/10">
+        <div className="mt-6 grid gap-3">
           <div className="flex items-center gap-3">
-            <div className="size-9 rounded-full bg-white/15 grid place-items-center text-[13px] font-semibold">
-              {initials || 'D'}
-            </div>
+            <div className="size-10 rounded-full bg-white/10 grid place-items-center font-semibold">{initials || 'D'}</div>
             <div className="min-w-0">
-              <div className="text-[13px] font-medium truncate">{displayName}</div>
-              {user?.email && <div className="text-[11px] text-white/60 truncate">{user.email}</div>}
+              <div className="text-sm font-medium truncate">{displayName}</div>
+              {user?.email && <div className="text-xs text-white/70 truncate">{user.email}</div>}
             </div>
           </div>
           <button
             onClick={logout}
-            className="mt-3 w-full rounded-lg bg-white/10 hover:bg-white/15 active:bg-white/20 transition px-3 py-2 text-[13px]"
+            className="rounded-lg bg-white/10 hover:bg-white/20 transition px-4 py-2 text-sm"
             title="Cerrar sesión"
-            aria-label="Cerrar sesión"
           >
             Cerrar sesión
           </button>
         </div>
       </aside>
 
-      {/* Columna principal con contenedor */}
-      <div className="min-h-screen">
-        <main className="mx-auto max-w-7xl px-6 py-6">
-          {/* Card de marco suave para que todas las vistas luzcan mejor sin tocarlas */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            <Outlet />
-          </div>
+      {/* Columna principal */}
+      <div className="bg-slate-50">
+        <main className="safe-areas mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-6">
+          <Outlet />
         </main>
       </div>
     </div>
   )
 }
+
 
 /* ====== Iconos SVG simples (sin dependencias) ====== */
 function IconHome(props: any) {

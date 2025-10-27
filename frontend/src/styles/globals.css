@@ -1,6 +1,29 @@
 @import "tailwindcss";
 
-@layer base{
-  *{ box-sizing: border-box; }
-  body{ font-family: ui-sans-serif, system-ui; }
+/* ===== Responsive / Cross-browser base ===== */
+:root {
+  color-scheme: light dark;           /* respeta preferencia del SO */
 }
+
+html { -webkit-text-size-adjust: 100%; }
+body { @apply antialiased text-slate-900 bg-slate-50; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* Focus visible accesible */
+:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, .5);
+  outline-offset: 2px;
+}
+
+/* Safe areas (iOS notches) */
+.safe-areas {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Alturas fiables en móviles */
+.min-h-screen-fix { min-height: 100dvh; }
