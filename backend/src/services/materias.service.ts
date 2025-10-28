@@ -82,15 +82,16 @@ export async function bulkMaterias(fileBuffer: Buffer) {
   }
 
   const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n))
-  const ok: Array<{ clave: string; nombre: string; unidades: number; creditos: number }> = []
+  const ok: Array<{ nombre: string; unidades: number; creditos: number; _carrera?: string; _semestre?: number | null }> = []
   const errs: Array<{ row: number; error: string }> = []
 
   rows.forEach((r, i) => {
     const row = i + 2 // header +1
     const nombre = up(r.nombre)
-    const claveInput = up(r.clave)
     let unidades = Number(r.unidades || 5)
     let creditos = Number(r.creditos || 5)
+    const carreraText = clean(r.carrera)
+    const semestreVal = r.semestre != null && r.semestre !== '' ? Number(r.semestre) : null
 
     if (!nombre) {
       errs.push({ row, error: "Falta nombre" })
@@ -102,29 +103,55 @@ export async function bulkMaterias(fileBuffer: Buffer) {
     unidades = clamp(unidades, 1, 10)
     creditos = clamp(creditos, 1, 30)
 
-    ok.push({ clave: claveInput || "", nombre, unidades, creditos })
+    ok.push({ nombre, unidades, creditos, _carrera: carreraText, _semestre: semestreVal })
   })
 
   if (!ok.length) {
     return { summary: { received, valid: 0, inserted: 0, errors: errs.length }, errors: errs }
   }
 
-  // Genera claves faltantes y hace upsert por 'clave'
-  for (const item of ok) {
-    if (!item.clave) item.clave = await generarClaveUnica(item.nombre)
+  // Cargar catálogo de carreras para resolver por id/clave/nombre
+  const { data: cars } = await supabaseAdmin.from('carrera').select('id_carrera, clave, nombre')
+  const findCarrera = (v: string): number | null => {
+    if (!v) return null
+    const s = up(v)
+    // si es número
+    const idNum = Number(s)
+    if (Number.isFinite(idNum)) {
+      const f = (cars ?? []).find(x => x.id_carrera === idNum)
+      if (f) return f.id_carrera
+    }
+    const f2 = (cars ?? []).find(x => up(x.nombre) === s || up(x.clave || '') === s)
+    return f2 ? f2.id_carrera : null
   }
-  const { data, error } = await supabaseAdmin
-    .from("materia")
-    .upsert(ok, { onConflict: "clave", ignoreDuplicates: true })
-    .select("id_materia")
 
-  if (error) errs.push({ row: 0, error: error.message })
+  let insertedCount = 0
+  for (const item of ok) {
+    try {
+      // crear materia siempre con clave generada
+      const mat = await createMateria({ nombre: item.nombre, unidades: item.unidades, creditos: item.creditos })
+      insertedCount++
+
+      // vincular si hay carrera
+      if (item._carrera) {
+        const id_carrera = findCarrera(item._carrera)
+        const semestre = item._semestre != null && Number.isFinite(item._semestre) ? Number(item._semestre) : null
+        if (id_carrera) {
+          await supabaseAdmin
+            .from('materia_carrera')
+            .upsert({ id_materia: mat.id_materia, id_carrera, semestre }, { onConflict: 'id_carrera,id_materia' })
+        }
+      }
+    } catch (e: any) {
+      errs.push({ row: 0, error: e.message || 'Error insertando materia' })
+    }
+  }
 
   return {
     summary: {
       received,
       valid: ok.length,
-      inserted: data?.length ?? 0,
+      inserted: insertedCount,
       errors: errs.length,
     },
     errors: errs,

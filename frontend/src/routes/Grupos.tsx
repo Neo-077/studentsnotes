@@ -16,19 +16,12 @@ type Grupo = {
   modalidad?: { nombre: string }
 }
 
-const HORARIOS = [
-  "LUN-VIE 7:00-8:00",
-  "LUN-VIE 8:00-9:00",
-  "LUN-VIE 9:00-10:00",
-  "LUN-VIE 10:00-11:00",
-  "LUN-VIE 11:00-12:00",
-  "LUN-VIE 12:00-13:00",
-  "LUN-VIE 13:00-14:00",
-  "MAR-JUE 8:00-10:00",
-  "MAR-JUE 10:00-12:00",
-  "LUN-MIE 09:00-10:30",
-  "MIE-VIE 12:00-13:30",
-]
+const HORARIOS = Array.from({ length: 15 }, (_, i) => {
+  const start = 7 + i
+  const end = start + 1
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `LUN-VIE ${pad(start)}:00-${pad(end)}:00`
+})
 
 export default function Grupos() {
   // ===== filtros superiores =====
@@ -47,6 +40,10 @@ export default function Grupos() {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [importErrors, setImportErrors] = useState<Array<{ row: number; error: string }>>([])
+  // paginación
+  const [page, setPage] = useState(1)
+  const pageSize = 15
 
   // ===== formulario =====
   const [form, setForm] = useState({
@@ -71,8 +68,10 @@ export default function Grupos() {
       setDocentes(d ?? [])
       setModalidades(m ?? [])
       if (t?.length) {
-        setTerminoId(t[0].id_termino)
-        setForm(f => ({ ...f, id_termino: t[0].id_termino }))
+        const saved = Number(localStorage.getItem('grupos.terminoId') || '')
+        const chosen = t.find((x: any) => x.id_termino === saved) || t[0]
+        setTerminoId(chosen.id_termino)
+        setForm(f => ({ ...f, id_termino: chosen.id_termino }))
       }
     }
     boot()
@@ -95,11 +94,10 @@ export default function Grupos() {
 
   // cargar grupos
   async function load() {
-    if (!terminoId) return
     setLoading(true); setErr(null)
     try {
       const q = new URLSearchParams()
-      q.set("termino_id", String(terminoId))
+      if (terminoId) q.set("termino_id", String(terminoId))
       if (carreraId) q.set("carrera_id", String(carreraId))
       if (materiaId) q.set("materia_id", String(materiaId))
       const data = await api.get(`/grupos?${q.toString()}`)
@@ -110,9 +108,19 @@ export default function Grupos() {
       setLoading(false)
     }
   }
-  useEffect(() => { load() }, [terminoId, carreraId, materiaId])
+  useEffect(() => { setPage(1); load() }, [terminoId, carreraId, materiaId])
+
+  // Persistir selecciones
+  useEffect(() => {
+    if (terminoId) localStorage.setItem('grupos.terminoId', String(terminoId))
+  }, [terminoId])
 
   const lista = useMemo(() => grupos, [grupos])
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(lista.length / pageSize)), [lista.length])
+  const pageSafe = Math.min(page, totalPages)
+  const start = (pageSafe - 1) * pageSize
+  const end = start + pageSize
+  const paged = useMemo(() => lista.slice(start, end), [lista, start, end])
 
   // (el código del grupo lo asigna el backend)
 
@@ -150,7 +158,7 @@ export default function Grupos() {
       await api.post("/grupos", payload)
       setMsg("✅ Grupo creado correctamente")
       setForm(f => ({ ...f, horario: "", cupo: "" })) // limpia, mantiene ids
-      await load()
+      await load(); setPage(1)
     } catch (e: any) {
       setMsg("❌ " + (e.message || "Error al crear grupo"))
     } finally {
@@ -161,32 +169,110 @@ export default function Grupos() {
   // ===== importar por Excel/CSV =====
   async function onUpload(file: File) {
     setMsg(null)
+    setImportErrors([])
     try {
-      const buf = await file.arrayBuffer()
-      const wb = XLSX.read(buf, { type: "array" })
-      const ws = wb.Sheets[wb.SheetNames[0]]
-      if (!ws) throw new Error("Archivo vacío")
-      const csv = XLSX.utils.sheet_to_csv(ws)
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+      // Lee rápido el archivo para detectar el término y ajustar filtros tras la importación
+      let detectedTerminoId: number | null = null
+      try {
+        const buf = await file.arrayBuffer()
+        const wb = XLSX.read(buf, { type: "array", cellDates: true })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        if (ws) {
+          const rows = XLSX.utils.sheet_to_json(ws, { defval: "", raw: true }) as Record<string, any>[]
+          const terms = new Set<string>()
+          for (const r of rows) {
+            // buscar columna 'termino' sin importar mayúsculas/acentos
+            const kv = Object.entries(r)
+            const entry = kv.find(([k]) => String(k).toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'') === 'termino')
+            if (entry && entry[1]) terms.add(String(entry[1]))
+          }
+          if (terms.size === 1) {
+            const label = Array.from(terms)[0]
+            const m = String(label).toUpperCase().match(/^(\d{4})\s+([A-ZÁÉÍÓÚ\-]+)/)
+            if (m) {
+              const anio = Number(m[1])
+              const periodo = m[2].replace(/\s+/g, '-')
+              const t = (terminos ?? []).find((x:any) => x.anio === anio && String(x.periodo).toUpperCase() === periodo)
+              if (t) detectedTerminoId = t.id_termino
+            }
+          }
+        }
+      } catch {}
+
+      // Sube el archivo tal cual (.xlsx/.xls/.csv). El backend lo procesa con SheetJS.
       const fd = new FormData()
-      fd.append("file", blob, file.name)
+      fd.append("file", file, file.name)
       const res = await api.post("/grupos/bulk", fd as any)
-      setMsg(`✅ Importados: ${res.summary.inserted} / Errores: ${res.summary.errors}`)
+      const dup = res?.summary?.duplicatesSkipped ? ` / Duplicados omitidos: ${res.summary.duplicatesSkipped}` : ''
+      setMsg(`✅ Importados: ${res.summary.inserted} / Errores: ${res.summary.errors}${dup}`)
+      if (Array.isArray(res.errors)) setImportErrors(res.errors)
+      // Ajusta filtros para mostrar los nuevos registros
+      if (detectedTerminoId) {
+        setTerminoId(detectedTerminoId)
+        localStorage.setItem('grupos.terminoId', String(detectedTerminoId))
+      }
+      setCarreraId(null); setMateriaId(null)
       await load()
     } catch (e: any) {
       setMsg("❌ " + (e.message || "Error importando"))
+      // si la API devolvió reporte, muéstralo
+      const rep = e?.response?.data
+      if (rep?.errors && Array.isArray(rep.errors)) setImportErrors(rep.errors)
     }
   }
 
-  // plantilla CSV
-  function downloadTemplate() {
-    const headers = ["materia", "docente", "termino", "modalidad", "horario", "cupo"]
-    const blob = new Blob([headers.join(",") + "\n"], { type: "text/csv;charset=utf-8" })
-    const a = document.createElement("a")
-    a.href = URL.createObjectURL(blob)
-    a.download = "plantilla_grupos.csv"
-    a.click()
-    URL.revokeObjectURL(a.href)
+  // Descargar plantilla en Excel con listas de referencia en una hoja aparte
+  async function downloadTemplateXLSX() {
+    const headers = ["carrera", "materia", "docente", "termino", "modalidad", "horario", "cupo"]
+
+    // Hoja 1: Estructura vacía para capturar
+    const wsMain = XLSX.utils.aoa_to_sheet([headers])
+
+    // Cargar catálogos para listas de ayuda
+    // Ya tenemos: terminos, docentes, modalidades, materias (según carrera). Para carrera, consultamos.
+    const carreras = await Catalogos.carreras().catch(() => [])
+
+    const listaMaterias = (materias ?? []).map((m: any) => [m.nombre, m.clave ?? "", m.id_materia])
+    const listaCarreras = (Array.isArray(carreras) ? carreras : (carreras?.data ?? carreras ?? [])).map((c: any) => [c.nombre, c.clave ?? "", c.id_carrera])
+    const listaDocentes = (docentes ?? []).map((d: any) => [`${d.nombre} ${d.ap_paterno ?? ""} ${d.ap_materno ?? ""}`.trim(), d.id_docente])
+    const listaModalidades = (modalidades ?? []).map((m: any) => [m.nombre, m.id_modalidad])
+    const listaTerminos = (terminos ?? []).map((t: any) => [`${t.anio} ${String(t.periodo).toUpperCase()}`, t.id_termino])
+    const listaHorarios = HORARIOS.map((h) => [h])
+
+    // Hoja 2: Listas de apoyo
+    const ayudaAOA = [
+      ["LISTAS DE REFERENCIA (no editar encabezados)"],
+      [],
+      ["Materias: nombre", "clave", "id"],
+      ...listaMaterias,
+      [],
+      ["Carreras: nombre", "clave", "id"],
+      ...listaCarreras,
+      [],
+      ["Docentes: nombre completo", "id"],
+      ...listaDocentes,
+      [],
+      ["Modalidades: nombre", "id"],
+      ...listaModalidades,
+      [],
+      ["Términos: etiqueta", "id"],
+      ...listaTerminos,
+      [],
+      ["Horarios (LUN-VIE):"],
+      ...listaHorarios,
+      [],
+      ["Instrucciones"],
+      [
+        "Rellena la hoja GRUPOS usando exactamente los textos de nombre/clave mostrados aquí. Campos: carrera (nombre o clave), materia (nombre o clave), docente (nombre completo), modalidad (nombre), termino (AAAA PERIODO), horario (LUN-VIE HH:00-HH:00), cupo. Si indicas carrera, la materia debe pertenecer a esa carrera."
+      ],
+    ]
+    const wsHelp = XLSX.utils.aoa_to_sheet(ayudaAOA)
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, wsMain, "GRUPOS")
+    XLSX.utils.book_append_sheet(wb, wsHelp, "LISTAS")
+
+    XLSX.writeFile(wb, "plantilla_grupos.xlsx")
   }
 
   // ===== eliminar grupo =====
@@ -209,8 +295,13 @@ export default function Grupos() {
           <select
             className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             value={terminoId ?? ""}
-            onChange={(e) => setTerminoId(Number(e.target.value))}
+            onChange={(e) => {
+              const v = e.target.value
+              if (!v) { setTerminoId(null); localStorage.removeItem('grupos.terminoId') }
+              else { const n = Number(v); setTerminoId(n); localStorage.setItem('grupos.terminoId', String(n)) }
+            }}
           >
+            <option value="">Todos</option>
             {terminos.map((t) => (
               <option key={t.id_termino} value={t.id_termino}>
                 {t.anio} {t.periodo}
@@ -236,11 +327,12 @@ export default function Grupos() {
             onChange={setMateriaId}
             terminoId={terminoId ?? undefined}
             carreraId={carreraId ?? undefined}
+            disabled={!carreraId}
           />
         </div>
 
-        <button onClick={downloadTemplate} className="rounded-lg border px-3 py-2 text-sm shadow-sm hover:bg-slate-50">
-          Descargar plantilla (CSV)
+        <button onClick={downloadTemplateXLSX} className="rounded-lg border px-3 py-2 text-sm shadow-sm hover:bg-slate-50">
+          Descargar plantilla (XLSX)
         </button>
 
         <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
@@ -335,12 +427,22 @@ export default function Grupos() {
         <button
           type="submit"
           className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
-          disabled={saving}
+          disabled={saving || !carreraId || !form.id_materia}
         >
-          {saving ? "Guardando…" : "Guardar grupo"}
+          {saving ? "Guardando…" : (!carreraId ? "Selecciona carrera" : !form.id_materia ? "Selecciona materia" : "Guardar grupo")}
         </button>
 
         {(msg || err) && <div className="text-sm mt-2">{msg || err}</div>}
+        {importErrors.length > 0 && (
+          <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+            <div className="font-medium mb-1">Detalles de errores (primeros {Math.min(5, importErrors.length)}):</div>
+            <ul className="list-disc pl-5 space-y-0.5">
+              {importErrors.slice(0,5).map((e,i)=> (
+                <li key={i}>Fila {e.row}: {e.error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </form>
 
       {/* ===== Lista ===== */}
@@ -365,7 +467,7 @@ export default function Grupos() {
               ) : lista.length === 0 ? (
                 <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
               ) : (
-                lista.map((g) => (
+                paged.map((g) => (
                   <tr key={g.id_grupo} className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60">
                     <td>{g.materia?.nombre ?? "—"}</td>
                     <td>{(g as any)?.materia?.carrera?.nombre || (g as any)?.materia?.carrera_nombre || "—"}</td>
@@ -387,6 +489,25 @@ export default function Grupos() {
               )}
             </tbody>
           </table>
+        </div>
+        {/* Controles de paginación */}
+        <div className="flex items-center justify-between p-3 text-sm">
+          <div className="text-slate-600">Mostrando {lista.length === 0 ? 0 : (start + 1)}–{Math.min(end, lista.length)} de {lista.length}</div>
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded-md border px-3 py-1 disabled:opacity-50"
+              onClick={()=> setPage(p => Math.max(1, p-1))}
+              disabled={pageSafe <= 1}
+              type="button"
+            >Anterior</button>
+            <div className="px-1">Página {pageSafe} / {totalPages}</div>
+            <button
+              className="rounded-md border px-3 py-1 disabled:opacity-50"
+              onClick={()=> setPage(p => Math.min(totalPages, p+1))}
+              disabled={pageSafe >= totalPages}
+              type="button"
+            >Siguiente</button>
+          </div>
         </div>
       </div>
     </div>

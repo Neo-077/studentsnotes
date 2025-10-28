@@ -81,7 +81,7 @@ export async function listMaterias(params?: { carrera_id?: number; termino_id?: 
       const ids = Array.from(new Set(list.map(m => m.id_materia)))
       const { data: rels, error: er } = await supabase
         .from('materia_carrera')
-        .select('id_materia, carrera:carrera_id(nombre, clave)')
+        .select('id_materia, carrera:id_carrera(nombre, clave)')
         .in('id_materia', ids)
       if (!er) {
         const map = new Map<number, any>()

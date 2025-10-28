@@ -112,104 +112,8 @@ export default function Estudiantes() {
   async function onUpload(file: File) {
     setMsg(null)
     try {
-      const buf = await file.arrayBuffer()
-      const wb = XLSX.read(buf, { type: 'array', cellDates: true })
-      const ws = wb.Sheets[wb.SheetNames[0]]
-      if (!ws) throw new Error('El archivo no tiene hojas')
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true }) as Record<string, any>[]
-      if (rows.length === 0) throw new Error('El archivo está vacío')
-
-      const [generos, carreras] = await Promise.all([
-        Catalogos.generos(),
-        Catalogos.carreras()
-      ])
-
-      const generoByText = new Map<string, number>()
-      for (const g of generos ?? []) {
-        generoByText.set(norm(g.descripcion), g.id_genero)
-        if (g.clave) generoByText.set(norm(g.clave), g.id_genero)
-        if (norm(g.descripcion).startsWith('m')) generoByText.set('m', g.id_genero)
-        if (norm(g.descripcion).startsWith('f')) generoByText.set('f', g.id_genero)
-      }
-
-      const carreraByClave = new Map<string, number>()
-      const carreraByNombre = new Map<string, number>()
-      for (const c of carreras ?? []) {
-        if (c.clave) carreraByClave.set(norm(c.clave), c.id_carrera)
-        carreraByNombre.set(norm(c.nombre), c.id_carrera)
-      }
-
-      const HEADER_MAP: Record<string, string> = {
-        'nombre': 'nombre',
-        'ap_paterno': 'ap_paterno',
-        'ap_materno': 'ap_materno',
-        'genero': 'genero',
-        'carrera': 'carrera',
-        'fecha_nacimiento': 'fecha_nacimiento'
-      }
-
-      const mapped = rows.map((r) => {
-        const out: any = {}
-        for (const [k, v] of Object.entries(r)) {
-          const key = HEADER_MAP[norm(k)]
-          if (key) out[key] = v
-        }
-        return out
-      })
-
-      const normalized = mapped.map((r, i) => {
-        const rowNum = i + 2
-        const nombre = String(r.nombre ?? '').trim()
-        const ap_paterno = String(r.ap_paterno ?? '').trim()
-        const ap_materno = r.ap_materno ? String(r.ap_materno).trim() : null
-
-        if (!nombre || !ap_paterno) {
-          throw new Error(`Fila ${rowNum}: faltan campos obligatorios (nombre o ap_paterno)`)
-        }
-
-        let id_genero: number | null = null
-        if (r.genero) {
-          const gkey = norm(r.genero)
-          if (/^\d+$/.test(gkey)) id_genero = Number(gkey)
-          else id_genero = generoByText.get(gkey) ?? null
-        }
-        if (!id_genero) throw new Error(`Fila ${rowNum}: Género no válido (${r.genero})`)
-
-        let id_carrera: number | null = null
-        if (r.carrera) {
-          const ckey = norm(r.carrera)
-          if (carreraByClave.has(ckey)) id_carrera = carreraByClave.get(ckey)!
-          else if (carreraByNombre.has(ckey)) id_carrera = carreraByNombre.get(ckey)!
-          else if (/^\d+$/.test(ckey)) id_carrera = Number(ckey)
-        }
-        if (!id_carrera) throw new Error(`Fila ${rowNum}: Carrera no válida (${r.carrera})`)
-
-        return {
-          nombre,
-          ap_paterno,
-          ap_materno,
-          id_genero,
-          id_carrera,
-          fecha_nacimiento: toISOAny(r.fecha_nacimiento ?? null),
-        }
-      })
-
-      const headers = ['nombre','ap_paterno','ap_materno','id_genero','id_carrera','fecha_nacimiento']
-      const lines = [headers.join(',')]
-      for (const r of normalized) {
-        const vals = headers.map(h => {
-          const v = (r as any)[h]
-          const s = v == null ? '' : String(v)
-          return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-        })
-        lines.push(vals.join(','))
-      }
-      const csv = lines.join('\n')
-
-      const newFile = new File([csv], 'estudiantes_convertido.csv', { type: 'text/csv;charset=utf-8' })
       const fd = new FormData()
-      fd.append('file', newFile)
-
+      fd.append('file', file, file.name)
       const report = await api.post('/estudiantes/bulk', fd as any)
       setMsg(`✅ Importación completada: ${report.summary.inserted} insertados, ${report.summary.errors} errores`)
       await load()
@@ -221,14 +125,35 @@ export default function Estudiantes() {
     }
   }
 
-  function downloadTemplate() {
-    const headers = ['nombre','ap_paterno','ap_materno','genero','carrera','fecha_nacimiento'].join(',')
-    const blob = new Blob([headers + '\n'], { type: 'text/csv;charset=utf-8' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = 'plantilla_estudiantes.csv'
-    a.click()
-    URL.revokeObjectURL(a.href)
+  async function downloadTemplateXLSX() {
+    const headers = ['nombre','ap_paterno','ap_materno','genero','carrera','fecha_nacimiento']
+    const wsMain = XLSX.utils.aoa_to_sheet([headers])
+
+    // Listas de referencia: carreras y géneros
+    const [gen, car] = await Promise.all([
+      Catalogos.generos(),
+      Catalogos.carreras()
+    ])
+    const listaGeneros = (gen ?? []).map((g: any) => [g.descripcion, g.clave ?? '', g.id_genero])
+    const listaCarreras = (car ?? []).map((c: any) => [c.nombre, c.clave ?? '', c.id_carrera])
+
+    const wsHelp = XLSX.utils.aoa_to_sheet([
+      ['LISTAS DE REFERENCIA'],
+      [],
+      ['Géneros: descripcion', 'clave', 'id'],
+      ...listaGeneros,
+      [],
+      ['Carreras: nombre', 'clave', 'id'],
+      ...listaCarreras,
+      [],
+      ['Instrucciones'],
+      ['Usa los textos de descripcion/clave exactamente como aparecen. También puedes usar IDs. Fecha en YYYY-MM-DD.']
+    ])
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, wsMain, 'ESTUDIANTES')
+    XLSX.utils.book_append_sheet(wb, wsHelp, 'LISTAS')
+    XLSX.writeFile(wb, 'plantilla_estudiantes.xlsx')
   }
 
   /** ========= Render ========= **/
@@ -241,8 +166,8 @@ export default function Estudiantes() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button onClick={downloadTemplate} className="rounded-lg border px-3 py-2 text-sm">
-            Descargar plantilla (CSV)
+          <button onClick={downloadTemplateXLSX} className="rounded-lg border px-3 py-2 text-sm">
+            Descargar plantilla (XLSX)
           </button>
           <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
             Importar (.xlsx/.xls/.csv)

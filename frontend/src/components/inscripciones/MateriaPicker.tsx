@@ -59,17 +59,42 @@ export default function MateriaPicker({
       disabled={disabled || loading}
     >
       <option value="">Todas</option>
-      {items.map(m => {
-        const carreraLabel = m.carrera?.nombre || m.carrera_nombre || m.carrera_clave
-        const label = (!carreraId && carreraLabel)
-          ? `${m.clave ? `${m.clave} — ` : ''}${m.nombre} — ${carreraLabel}`
-          : `${m.clave ? `${m.clave} — ` : ''}${m.nombre}`
-        return (
-          <option key={m.id_materia} value={m.id_materia}>
-            {label}
-          </option>
-        )
-      })}
+      {(() => {
+        const byName = (a: string, b: string) => a.localeCompare(b, 'es', { sensitivity: 'base' })
+        const labelFor = (m: Materia) => `${m.clave ? `${m.clave} — ` : ''}${m.nombre}`
+
+        // Si hay carrera seleccionada, lista plana ordenada por nombre/clave
+        if (carreraId) {
+          const list = [...items].sort((a, b) => byName(labelFor(a), labelFor(b)))
+          return list.map(m => (
+            <option key={`${m.id_materia}`} value={m.id_materia}>
+              {labelFor(m)}
+            </option>
+          ))
+        }
+
+        // Sin carrera: agrupar por carrera y ordenar
+        const groups = new Map<string, Materia[]>()
+        for (const m of items) {
+          const carreraLabel = m.carrera?.nombre || m.carrera_nombre || m.carrera_clave || '— Sin carrera'
+          const arr = groups.get(carreraLabel) || []
+          arr.push(m)
+          groups.set(carreraLabel, arr)
+        }
+        const carreraNames = Array.from(groups.keys()).sort(byName)
+        return carreraNames.map((car) => {
+          const list = (groups.get(car) || []).sort((a, b) => byName(labelFor(a), labelFor(b)))
+          return (
+            <optgroup key={car} label={car}>
+              {list.map(m => (
+                <option key={`${car}:${m.id_materia}`} value={m.id_materia}>
+                  {labelFor(m)}
+                </option>
+              ))}
+            </optgroup>
+          )
+        })
+      })()}
     </select>
   )
 }

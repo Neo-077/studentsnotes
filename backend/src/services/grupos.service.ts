@@ -14,6 +14,7 @@ type CreateGrupoInput = {
 
 /** ========== Helpers ========== **/
 const clean = (v: unknown) => String(v ?? '').trim()
+const norm = (s: string) => clean(s).normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase()
 
 function siglasMateria(nombre: string) {
   const up = (nombre || 'MATERIA').toUpperCase()
@@ -85,7 +86,7 @@ export async function listGrupos(params: {
     if (matIds.length) {
       const { data: rels, error: er } = await supabase
         .from('materia_carrera')
-        .select('id_materia, id_carrera, carrera:carrera_id(nombre, clave)')
+        .select('id_materia, id_carrera, carrera:id_carrera(nombre, clave)')
         .in('id_materia', matIds as number[])
       if (!er) {
         // grupo por materia
@@ -212,8 +213,21 @@ export async function deleteGrupo(id_grupo: number) {
 }
 
 /** ========== Importación masiva desde CSV/XLSX ========= **/
+async function generarClaveUnicaDesdeNombre(nombre: string) {
+  const base = siglasMateria(nombre)
+  let intento = base
+  for (let i = 0; i < 1000; i++) {
+    const { data, error } = await supabase.from('materia').select('id_materia').eq('clave', intento).limit(1)
+    if (error) throw error
+    if (!data || data.length === 0) return intento
+    intento = `${base}-${i + 1}`
+  }
+  return `${base}-${Date.now().toString().slice(-4)}`
+}
+
 export async function bulkUpsertGrupos(fileBuffer: Buffer) {
   const wb = XLSX.read(fileBuffer, { type: 'buffer', cellDates: true })
+  // Solo leer la primera hoja
   const ws = wb.Sheets[wb.SheetNames[0]]
   if (!ws) {
     return { summary: { received: 0, inserted: 0, errors: 1 }, errors: [{ row: 1, error: 'Archivo vacío' }] }
@@ -228,60 +242,143 @@ export async function bulkUpsertGrupos(fileBuffer: Buffer) {
   const ok: any[] = []
 
   // catálogos
-  const [mats, docs, mods, terms] = await Promise.all([
-    supabase.from('materia').select('id_materia,clave,nombre'),
+  const [mats, docs, mods, terms, cars, rels] = await Promise.all([
+    supabase.from('materia').select('id_materia,clave,nombre,unidades,creditos'),
     supabase.from('docente').select('id_docente,nombre,ap_paterno,ap_materno'),
     supabase.from('modalidad').select('id_modalidad,nombre'),
-    supabase.from('termino').select('id_termino,anio,periodo')
+    supabase.from('termino').select('id_termino,anio,periodo'),
+    supabase.from('carrera').select('id_carrera,clave,nombre'),
+    supabase.from('materia_carrera').select('id_materia,id_carrera')
   ])
   if (mats.error) throw mats.error
   if (docs.error) throw docs.error
   if (mods.error) throw mods.error
   if (terms.error) throw terms.error
+  if (cars.error) throw cars.error
+  if (rels.error) throw rels.error
 
   const findMateria = (v: string) => {
-    const s = clean(v).toUpperCase()
-    return (mats.data ?? []).find(x => x.nombre.toUpperCase() === s || x.clave.toUpperCase() === s)?.id_materia || null
+    const s = norm(v)
+    // 1) intento directo por nombre o clave
+    let hit = (mats.data ?? []).find(x => norm(x.nombre) === s || norm(x.clave || '') === s)
+    if (hit) return hit.id_materia
+    // 2) si viene como 'NOMBRE (CLAVE)', probar ambas partes
+    const m = s.match(/^(.*?)[\s]*\(([A-Z0-9\-_.]+)\)[\s]*$/)
+    if (m) {
+      const nombreParte = m[1].trim()
+      const claveParte = m[2].trim()
+      hit = (mats.data ?? []).find(x => norm(x.clave || '') === claveParte || norm(x.nombre) === nombreParte)
+      if (hit) return hit.id_materia
+    }
+    // 3) quitar cualquier sufijo de paréntesis y reintentar por nombre
+    const sinParen = s.replace(/\s*\([^)]*\)\s*$/, '')
+    if (sinParen && sinParen !== s) {
+      hit = (mats.data ?? []).find(x => norm(x.nombre) === sinParen)
+      if (hit) return hit.id_materia
+    }
+    return null
+  }
+  const findCarrera = (v: string) => {
+    const s = norm(v)
+    // soporta id numérico directo
+    const num = Number(s)
+    if (Number.isFinite(num)) {
+      const hit = (cars.data ?? []).find(x => x.id_carrera === num)
+      if (hit) return hit.id_carrera
+    }
+    return (cars.data ?? []).find(x => norm(x.nombre) === s || norm(x.clave || '') === s)?.id_carrera || null
   }
   const findDocente = (v: string) => {
-    const s = clean(v).toUpperCase()
-    return (docs.data ?? []).find(x => `${x.nombre} ${x.ap_paterno ?? ''} ${x.ap_materno ?? ''}`.toUpperCase().trim() === s)?.id_docente || null
+    const s = norm(v)
+    return (docs.data ?? []).find(x => norm(`${x.nombre} ${x.ap_paterno ?? ''} ${x.ap_materno ?? ''}`) === s)?.id_docente || null
   }
   const findModalidad = (v: string) => {
-    const s = clean(v).toUpperCase()
-    return (mods.data ?? []).find(x => x.nombre.toUpperCase() === s)?.id_modalidad || null
+    const s = norm(v)
+    return (mods.data ?? []).find(x => norm(x.nombre) === s)?.id_modalidad || null
   }
   const findTermino = (v: string) => {
-    const s = clean(v).toUpperCase()
+    const s = norm(v)
     // admite "2025 ENE-JUN" o "2025 ENE JUN"
     const m = s.match(/^(\d{4})\s+([A-ZÁÉÍÓÚ\-]+)$/)
     if (!m) return null
     const anio = Number(m[1])
     const periodo = m[2].replace(/\s+/g, '-')
-    return (terms.data ?? []).find(x => x.anio === anio && x.periodo.toUpperCase() === periodo)?.id_termino || null
+    return (terms.data ?? []).find(x => x.anio === anio && norm(x.periodo) === periodo)?.id_termino || null
   }
 
-  rows.forEach((r, i) => {
+  const relSet = new Set((rels.data ?? []).map((r:any) => `${r.id_materia}:${r.id_carrera}`))
+
+  // Índices auxiliares por nombre para resolver alternativas
+  const matsByNombre = new Map<string, any[]>()
+  for (const m of (mats.data ?? [])) {
+    const k = norm(m.nombre)
+    const arr = matsByNombre.get(k) || []
+    arr.push(m)
+    matsByNombre.set(k, arr)
+  }
+
+  const seenKey = new Set<string>()
+  let duplicatesSkipped = 0
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i]
     const row = i + 2
-    const id_materia = findMateria(r.materia ?? '')
+    let id_materia = findMateria(r.materia ?? '')
     const id_docente = findDocente(r.docente ?? '')
     const id_modalidad = findModalidad(r.modalidad ?? '')
     const id_termino = findTermino(r.termino ?? '')
     const horario = clean(r.horario)
     const cupo = r.cupo ? Number(r.cupo) : 30
+    const id_carrera = r.carrera ? findCarrera(r.carrera) : null
 
-    if (!id_materia) return errors.push({ row, error: `Materia inválida (${r.materia})` })
-    if (!id_docente) return errors.push({ row, error: `Docente inválido (${r.docente})` })
-    if (!id_modalidad) return errors.push({ row, error: `Modalidad inválida (${r.modalidad})` })
-    if (!id_termino) return errors.push({ row, error: `Término inválido (${r.termino})` })
-    if (!horario) return errors.push({ row, error: `Horario requerido` })
+    if (!id_materia) { errors.push({ row, error: `Materia inválida (${r.materia})` }); continue }
+    if (!id_docente) { errors.push({ row, error: `Docente inválido (${r.docente})` }); continue }
+    if (!id_modalidad) { errors.push({ row, error: `Modalidad inválida (${r.modalidad})` }); continue }
+    if (!id_termino) { errors.push({ row, error: `Término inválido (${r.termino})` }); continue }
+    if (!horario) { errors.push({ row, error: `Horario requerido` }); continue }
+
+    // Si se indicó carrera, garantizar que la materia pertenezca a esa carrera
+    if (id_carrera) {
+      let key = `${id_materia}:${id_carrera}`
+      if (!relSet.has(key)) {
+        // 1) intentar usar otra materia con el mismo nombre que ya esté vinculada a esa carrera
+        const candidatos = matsByNombre.get(norm(r.materia ?? '')) || []
+        const yaVinc = candidatos.find(m => relSet.has(`${m.id_materia}:${id_carrera}`))
+        if (yaVinc) {
+          id_materia = yaVinc.id_materia
+          key = `${id_materia}:${id_carrera}`
+        } else if (id_materia) {
+          // 2) clonar la materia y crear vínculo
+          const src = (mats.data ?? []).find(x => x.id_materia === id_materia)
+          if (!src) { errors.push({ row, error: 'Materia fuente no encontrada para clonar' }); continue }
+          const nuevaClave = await generarClaveUnicaDesdeNombre(src.nombre)
+          const ins = await supabase
+            .from('materia')
+            .insert({ clave: nuevaClave, nombre: src.nombre, unidades: src.unidades || 5, creditos: src.creditos || 5 })
+            .select('id_materia')
+            .single()
+          if (ins.error || !ins.data) { errors.push({ row, error: ins.error?.message || 'No se pudo clonar materia' }); continue }
+          id_materia = ins.data.id_materia
+          const rel = await supabase
+            .from('materia_carrera')
+            .upsert({ id_materia, id_carrera, semestre: null }, { onConflict: 'id_carrera,id_materia' })
+          if (rel.error) { errors.push({ row, error: rel.error.message }); continue }
+          relSet.add(`${id_materia}:${id_carrera}`)
+        } else {
+          errors.push({ row, error: `Materia inválida (${r.materia})` }); continue
+        }
+      }
+    }
+
+    const uniqueKey = `${id_docente}|${id_termino}|${horario}`
+    if (seenKey.has(uniqueKey)) { duplicatesSkipped++; continue }
+    seenKey.add(uniqueKey)
 
     ok.push({
       id_materia, id_docente, id_termino, id_modalidad,
       grupo_codigo: generarCodigo((mats.data ?? []).find(x => x.id_materia === id_materia)?.nombre || 'MATERIA'),
       horario, cupo: cupo > 0 ? cupo : 30
     })
-  })
+  }
 
   if (ok.length === 0) return { summary: { received, inserted: 0, errors: errors.length }, errors }
 
@@ -290,13 +387,13 @@ export async function bulkUpsertGrupos(fileBuffer: Buffer) {
 
   const { data, error } = await supabase
     .from('grupo')
-    .insert(ok)
+    .upsert(ok, { onConflict: 'id_docente,id_termino,horario' })
     .select('id_grupo')
 
   if (error) errors.push({ row: 0, error: error.message })
 
   return {
-    summary: { received, inserted: data?.length ?? 0, errors: errors.length },
+    summary: { received, inserted: data?.length ?? 0, errors: errors.length, duplicatesSkipped },
     errors
   }
 }

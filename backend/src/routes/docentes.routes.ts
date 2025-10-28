@@ -3,7 +3,7 @@ import { Router } from "express"
 import { createDocente, bulkDocentes } from "../services/docentes.service.js"
 import multer from 'multer'
 
-const upload = multer()
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 const router = Router()
 
 router.post("/", async (req, res, next) => {

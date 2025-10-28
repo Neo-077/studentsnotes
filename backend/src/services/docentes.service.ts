@@ -45,11 +45,18 @@ export async function bulkDocentes(fileBuffer: Buffer) {
   if (eg) throw eg
   const gMap = new Map<string, number>()
   for (const g of gens ?? []) {
-    gMap.set(g.clave.toString().toLowerCase(), g.id_genero)
-    gMap.set(g.descripcion.toString().toLowerCase(), g.id_genero)
+    const clave = (g.clave ?? "").toString().toLowerCase()
+    const desc = (g.descripcion ?? "").toString().toLowerCase()
+    if (clave) gMap.set(clave, g.id_genero)
+    if (desc) gMap.set(desc, g.id_genero)
+    // Atajos: primera letra y equivalentes comunes
+    if (desc.startsWith("m")) gMap.set("m", g.id_genero)
+    if (desc.startsWith("f")) gMap.set("f", g.id_genero)
+    if (clave === "m") gMap.set("masculino", g.id_genero)
+    if (clave === "f") gMap.set("femenino", g.id_genero)
   }
 
-  const ok: any[] = []
+  const ok: Array<{ rfc: string; nombre: string; ap_paterno: string; ap_materno: string | null; correo: string; id_genero: number | null; activo: boolean }> = []
   const errs: any[] = []
 
   rows.forEach((r, i) => {
@@ -61,7 +68,7 @@ export async function bulkDocentes(fileBuffer: Buffer) {
     const correo = clean(r.correo).toLowerCase()
     let id_genero: number | null = null
     if (r.genero) {
-      const k = String(r.genero).toLowerCase()
+      const k = String(r.genero).trim().toLowerCase()
       id_genero = gMap.get(k) ?? null
     }
     if (!rfc || !nombre || !ap_paterno || !correo) {
@@ -72,7 +79,22 @@ export async function bulkDocentes(fileBuffer: Buffer) {
 
   if (!ok.length) return { summary:{received,valid:0,inserted:0,errors:errs.length}, errors:errs }
 
-  const { data, error } = await supabase.from("docente").insert(ok).select("id_docente")
+  // Evitar duplicados por RFC: no actualizar, solo ignorar los ya existentes
+  const rfcs = ok.map(d => d.rfc)
+  const { data: existing, error: exErr } = await supabase
+    .from('docente')
+    .select('rfc')
+    .in('rfc', rfcs)
+  if (exErr) throw exErr
+  const existingSet = new Set((existing ?? []).map((d: any) => String(d.rfc).toUpperCase()))
+
+  const toInsert = ok.filter(d => !existingSet.has(d.rfc))
+
+  if (toInsert.length === 0) {
+    return { summary:{ received, valid: ok.length, inserted: 0, errors: errs.length }, errors: errs }
+  }
+
+  const { data, error } = await supabase.from("docente").insert(toInsert).select("id_docente")
   if (error) errs.push({ row:0, error: error.message })
 
   return { summary:{received, valid:ok.length, inserted:data?.length ?? 0, errors:errs.length}, errors:errs }

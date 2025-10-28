@@ -11,6 +11,8 @@ import analiticaRouter from './routes/analitica.routes.js'
 import authRouter from './routes/auth.routes.js'
 import catalogosRouter from './routes/catalogos.routes.js'
 import estudiantesRouter from './routes/estudiantes.routes.js'
+import docentesRouter from './routes/docentes.routes.js'
+import materiasRouter from './routes/materias.routes.js'
 import gruposRouter from './routes/grupos.routes.js'
 import materiaCarreraRouter from './routes/materiaCarrera.routes.js'
 import importRouter from './routes/import.routes.js'
@@ -44,6 +46,8 @@ app.use('/analitica', analiticaRouter)
 app.use('/auth', authRouter)
 app.use('/catalogos', catalogosRouter)
 app.use('/estudiantes', estudiantesRouter)
+app.use('/docentes', docentesRouter)
+app.use('/materias', materiasRouter)
 app.use('/export', exportRouter)          // ← ahora sí, export nombrado
 app.use('/grupos', gruposRouter)
 app.use('/materia-carrera', materiaCarreraRouter)
