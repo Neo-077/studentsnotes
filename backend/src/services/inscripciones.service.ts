@@ -1,4 +1,3 @@
-// src/services/inscripciones.service.ts
 import { supabaseAdmin } from '../utils/supabaseClient.js'
 
 export async function crearInscripcion(input: { id_estudiante: number; id_grupo: number }) {

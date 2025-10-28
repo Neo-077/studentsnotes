@@ -11,6 +11,7 @@ import Login from './routes/Login'
 import NotFound from './routes/NotFound'
 import useAuth from './store/useAuth'
 import Estudiantes from './routes/Estudiantes'
+import CatalogosPage from "./routes/Catalogos"
 
 function Shell() {
   const { user, logout } = useAuth()
@@ -159,6 +160,7 @@ export default function App() {
           <Route path="/inscripciones" element={<Inscripciones />} />
           <Route path="/grupos" element={<Grupos />} />
           <Route path="/estudiantes" element={<Estudiantes />} />
+          <Route path="/catalogos-admin" element={<CatalogosPage />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
