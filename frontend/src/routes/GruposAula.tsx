@@ -77,7 +77,7 @@ export default function GruposAula() {
         <div className="grid gap-1">
           <label className="text-xs text-slate-500">Término</label>
           <select
-            className="h-10 rounded-xl border px-3 text-sm"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             value={terminoId ?? ""}
             onChange={(e) => setTerminoId(Number(e.target.value))}
           >
@@ -91,7 +91,10 @@ export default function GruposAula() {
 
         <div className="grid gap-1">
           <label className="text-xs text-slate-500">Carrera</label>
-          <CarreraPicker value={carreraId ?? undefined} onChange={setCarreraId} />
+          <CarreraPicker
+            value={carreraId ?? undefined}
+            onChange={(id) => { setCarreraId(id as number | null); setMateriaId(null) }}
+          />
         </div>
 
         <div className="grid gap-1">
@@ -107,7 +110,7 @@ export default function GruposAula() {
         <div className="grid gap-1">
           <label className="text-xs text-slate-500">Buscar</label>
           <input
-            className="h-10 rounded-xl border px-3 text-sm"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             placeholder="Nombre, código, docente, horario"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -131,9 +134,16 @@ export default function GruposAula() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="text-xs text-slate-500 truncate">{g.materia?.nombre ?? "—"}</div>
+                  {/* Carrera si está disponible */}
+                  {(() => {
+                    const carrera = (g as any)?.materia?.carrera?.nombre || (g as any)?.materia?.carrera_nombre
+                    return carrera ? (
+                      <div className="text-[11px] text-slate-400 truncate">{carrera}</div>
+                    ) : null
+                  })()}
                   <div className="text-lg font-semibold leading-tight truncate">{g.grupo_codigo}</div>
                 </div>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 whitespace-nowrap">
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 ring-1 ring-sky-100 whitespace-nowrap">
                   {g.modalidad?.nombre ?? "—"}
                 </span>
               </div>
@@ -143,8 +153,8 @@ export default function GruposAula() {
                 <div className="text-slate-500 text-xs">Cupo: {g.cupo}</div>
               </div>
               <div className="mt-4 flex gap-2">
-                <button className="rounded-lg border px-3 py-1.5 text-xs">Detalles</button>
-                <button className="rounded-lg border px-3 py-1.5 text-xs">Alumnos</button>
+                <button className="rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50">Detalles</button>
+                <button className="rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50">Alumnos</button>
               </div>
             </div>
           ))}

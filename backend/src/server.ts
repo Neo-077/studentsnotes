@@ -12,6 +12,7 @@ import authRouter from './routes/auth.routes.js'
 import catalogosRouter from './routes/catalogos.routes.js'
 import estudiantesRouter from './routes/estudiantes.routes.js'
 import gruposRouter from './routes/grupos.routes.js'
+import materiaCarreraRouter from './routes/materiaCarrera.routes.js'
 import importRouter from './routes/import.routes.js'
 import inscripcionesRouter from './routes/inscripciones.routes.js'
 
@@ -45,6 +46,7 @@ app.use('/catalogos', catalogosRouter)
 app.use('/estudiantes', estudiantesRouter)
 app.use('/export', exportRouter)          // ← ahora sí, export nombrado
 app.use('/grupos', gruposRouter)
+app.use('/materia-carrera', materiaCarreraRouter)
 app.use('/import', importRouter)
 app.use('/inscripciones', inscripcionesRouter)
 app.use('/logs', logsRouter)              // ← export nombrado

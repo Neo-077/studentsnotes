@@ -74,7 +74,30 @@ export async function listMaterias(params?: { carrera_id?: number; termino_id?: 
 
     const { data, error } = await q;
     if (error) throw error;
-    return data ?? [];
+    const list = data ?? [];
+
+    // Si NO hay filtro de carrera, adjunta una carrera de referencia para desambiguar en UI
+    if (!carrera_id && list.length) {
+      const ids = Array.from(new Set(list.map(m => m.id_materia)))
+      const { data: rels, error: er } = await supabase
+        .from('materia_carrera')
+        .select('id_materia, carrera:carrera_id(nombre, clave)')
+        .in('id_materia', ids)
+      if (!er) {
+        const map = new Map<number, any>()
+        for (const r of (rels as any[]) ?? []) {
+          if (!map.has(r.id_materia)) map.set(r.id_materia, r.carrera || {})
+        }
+        for (const m of list as any[]) {
+          const c: any = map.get(m.id_materia)
+          if (c) {
+            m.carrera_nombre = c.nombre || null
+            m.carrera_clave = c.clave || null
+          }
+        }
+      }
+    }
+    return list;
   } catch (err) {
     console.error('[listMaterias] error:', err);
     // No rompas la app: devuelve lista vacía

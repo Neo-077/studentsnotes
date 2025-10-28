@@ -77,7 +77,44 @@ export async function listGrupos(params: {
 
   const { data, error } = await q
   if (error) throw error
-  return data ?? []
+  const list = (data ?? []) as any[]
+
+  // Adjuntar carrera de referencia para cada materia
+  if (list.length) {
+    const matIds = Array.from(new Set(list.map(g => g.materia?.id_materia).filter(Boolean)))
+    if (matIds.length) {
+      const { data: rels, error: er } = await supabase
+        .from('materia_carrera')
+        .select('id_materia, id_carrera, carrera:carrera_id(nombre, clave)')
+        .in('id_materia', matIds as number[])
+      if (!er) {
+        // grupo por materia
+        const byMat = new Map<number, any[]>()
+        for (const r of (rels as any[]) ?? []) {
+          const arr = byMat.get(r.id_materia) || []
+          arr.push(r)
+          byMat.set(r.id_materia, arr)
+        }
+        for (const g of list) {
+          const mid = g.materia?.id_materia
+          const arr = mid ? byMat.get(mid) : null
+          if (arr && arr.length) {
+            // preferida por filtro de carrera si aplica, si no la primera
+            let chosen = arr[0]
+            if (carrera_id) {
+              const found = arr.find(x => x.id_carrera === carrera_id)
+              if (found) chosen = found
+            }
+            g.materia = g.materia || {}
+            g.materia.carrera = { nombre: chosen?.carrera?.nombre || null, clave: chosen?.carrera?.clave || null }
+            g.materia.carrera_nombre = chosen?.carrera?.nombre || null
+            g.materia.carrera_clave  = chosen?.carrera?.clave  || null
+          }
+        }
+      }
+    }
+  }
+  return list
 }
 
 /** ========== Validar choque de horario (docente) ========== **/
@@ -161,6 +198,17 @@ export async function createGrupo(payload: CreateGrupoInput) {
 
   if (error) throw error
   return data
+}
+
+/** ========== Eliminar grupo por ID ========= **/
+export async function deleteGrupo(id_grupo: number) {
+  const { error } = await supabase
+    .from('grupo')
+    .delete()
+    .eq('id_grupo', id_grupo)
+
+  if (error) throw error
+  return { success: true }
 }
 
 /** ========== Importación masiva desde CSV/XLSX ========= **/

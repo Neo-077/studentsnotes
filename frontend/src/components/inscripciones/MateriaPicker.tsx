@@ -2,7 +2,15 @@
 import { useEffect, useState } from 'react'
 import { Catalogos } from '../../lib/catalogos'
 
-type Materia = { id_materia: number; clave?: string; nombre: string }
+type Materia = {
+  id_materia: number
+  clave?: string
+  nombre: string
+  // opcionales, dependen del backend
+  carrera?: { nombre?: string; clave?: string }
+  carrera_nombre?: string
+  carrera_clave?: string
+}
 
 type Props = {
   value?: number | null
@@ -51,11 +59,17 @@ export default function MateriaPicker({
       disabled={disabled || loading}
     >
       <option value="">Todas</option>
-      {items.map(m => (
-        <option key={m.id_materia} value={m.id_materia}>
-          {m.clave ? `${m.clave} — ` : ''}{m.nombre}
-        </option>
-      ))}
+      {items.map(m => {
+        const carreraLabel = m.carrera?.nombre || m.carrera_nombre || m.carrera_clave
+        const label = (!carreraId && carreraLabel)
+          ? `${m.clave ? `${m.clave} — ` : ''}${m.nombre} — ${carreraLabel}`
+          : `${m.clave ? `${m.clave} — ` : ''}${m.nombre}`
+        return (
+          <option key={m.id_materia} value={m.id_materia}>
+            {label}
+          </option>
+        )
+      })}
     </select>
   )
 }

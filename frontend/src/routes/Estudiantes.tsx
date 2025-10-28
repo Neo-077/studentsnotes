@@ -62,6 +62,16 @@ export default function Estudiantes() {
     await load()
   }
 
+  async function onDelete(id: number) {
+    if (!window.confirm('¿Eliminar este estudiante? Esta acción no se puede deshacer.')) return
+    try {
+      await api.delete(`/estudiantes/${id}`)
+      await load()
+    } catch (e: any) {
+      setMsg('❌ ' + (e.message || 'Error eliminando estudiante'))
+    }
+  }
+
   /** ========= Helpers ========= **/
   const norm = (s: any) =>
     String(s ?? '')
@@ -246,17 +256,17 @@ export default function Estudiantes() {
         </div>
       </div>
 
-      <form onSubmit={onSearch} className="flex flex-wrap items-center gap-3 rounded-xl border bg-white p-3">
+      <form onSubmit={onSearch} className="flex flex-wrap items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Buscar (no_control, nombre, apellidos)"
-          className="h-10 flex-1 min-w-[220px] rounded-lg border px-3"
+          className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         />
         <select
           value={idCarrera}
           onChange={(e) => setIdCarrera(e.target.value ? Number(e.target.value) : '')}
-          className="h-10 rounded-lg border px-3"
+          className="h-10 rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <option value="">Todas las carreras</option>
           {carreras.map((c) => (
@@ -265,13 +275,13 @@ export default function Estudiantes() {
             </option>
           ))}
         </select>
-        <button type="submit" className="h-10 rounded-lg bg-blue-600 px-4 text-white">Buscar</button>
+        <button type="submit" className="h-10 rounded-lg bg-blue-600 px-4 text-white shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500">Buscar</button>
       </form>
 
       <div className="rounded-xl border bg-white">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 sticky top-0 z-10">
               <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left text-slate-600">
                 <th>No. control</th>
                 <th>Nombre</th>
@@ -282,16 +292,17 @@ export default function Estudiantes() {
                 <th>Nacimiento</th>
                 <th>Ingreso</th>
                 <th>Estado</th>
+                <th></th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading ? (
-                <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">Cargando…</td></tr>
+                <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">Cargando…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
+                <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
               ) : (
                 rows.map(r => (
-                  <tr key={r.id_estudiante} className="[&>td]:px-3 [&>td]:py-2">
+                  <tr key={r.id_estudiante} className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60">
                     <td className="font-mono">{r.no_control ?? '—'}</td>
                     <td>{r.nombre}</td>
                     <td>{r.ap_paterno ?? '—'}</td>
@@ -300,7 +311,15 @@ export default function Estudiantes() {
                     <td>{r.genero?.descripcion ?? r.id_genero}</td>
                     <td>{r.fecha_nacimiento ?? '—'}</td>
                     <td>{r.fecha_ingreso ?? '—'}</td>
-                    <td>{r.activo ? 'Activo' : 'Inactivo'}</td>
+                    <td><span>{r.activo ? 'Activo' : 'Inactivo'}</span></td>
+                    <td>
+                      <button
+                        type="button"
+                        className="inline-flex items-center rounded-lg border px-3 py-1.5 text-xs hover:bg-red-50 hover:border-red-300 text-red-600"
+                        onClick={() => onDelete(r.id_estudiante)}
+                        title="Eliminar estudiante"
+                      >Eliminar</button>
+                    </td>
                   </tr>
                 ))
               )}

@@ -1,6 +1,6 @@
 // src/routes/grupos.route.ts
 import { Router } from 'express'
-import { listGrupos, createGrupo, bulkUpsertGrupos, checkDocenteHorarioConflict } from '../services/grupos.service.js'
+import { listGrupos, createGrupo, bulkUpsertGrupos, checkDocenteHorarioConflict, deleteGrupo } from '../services/grupos.service.js'
 import multer from 'multer'
 
 const upload = multer()
@@ -50,6 +50,16 @@ router.post('/bulk', upload.single('file'), async (req, res, next) => {
     if (!req.file?.buffer) return res.status(400).json({ error: 'Archivo requerido' })
     const report = await bulkUpsertGrupos(req.file.buffer)
     res.json(report)
+  } catch (e) { next(e) }
+})
+
+// DELETE /grupos/:id  (eliminar)
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id)
+    if (!id) return res.status(400).json({ error: 'id inválido' })
+    await deleteGrupo(id)
+    res.status(204).end()
   } catch (e) { next(e) }
 })
 

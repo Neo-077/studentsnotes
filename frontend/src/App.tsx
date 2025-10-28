@@ -25,15 +25,15 @@ function Shell() {
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
 
   return (
-    <div className="min-h-screen-fix grid grid-cols-1 lg:grid-cols-[280px_1fr]">
+    <div className="min-h-screen-fix grid grid-cols-1 lg:grid-cols-[280px_1fr] bg-gradient-to-b from-slate-50 to-slate-100">
       {/* Sidebar */}
-      <aside className="bg-[#0f172a] text-white p-5 lg:min-h-screen-fix">
+      <aside className="bg-[#0f172a] text-white p-5 lg:min-h-screen-fix shadow-xl">
         <div className="flex items-center gap-3 mb-4">
           <div className="size-8 rounded bg-white/10 grid place-items-center font-semibold">SN</div>
           <h1 className="text-[clamp(1rem,2vw,1.25rem)] font-semibold">StudentsNotes</h1>
         </div>
 
-        <nav className="grid gap-1">
+        <nav className="grid gap-1 mt-2">
           {[
             { to: '/dashboard', label: 'Dashboard' },
             { to: '/pareto', label: 'Pareto' },
@@ -43,18 +43,17 @@ function Shell() {
             { to: '/inscripciones', label: 'Inscripciones' },
             { to: '/grupos', label: 'Grupos' },
             { to: '/grupos/aula', label: 'Grupos (Aula)' },
+            { to: '/catalogos', label: 'Catálogos' },
             { to: '/estudiantes', label: 'Estudiantes' },
           ].map(item => (
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) =>
-                [
-                  "rounded-xl px-3 py-2 text-sm",
-                  "hover:bg-white/10 transition",
-                  isActive ? "bg-white/10 ring-1 ring-white/10" : ""
-                ].join(" ")
-              }
+              className={({ isActive }) => [
+                "rounded-lg px-3 py-2 text-sm transition",
+                "hover:bg-white/10/80",
+                isActive ? "bg-white/10 ring-1 ring-white/20" : "text-white/90"
+              ].join(" ")}
             >
               {item.label}
             </NavLink>
@@ -80,8 +79,8 @@ function Shell() {
       </aside>
 
       {/* Columna principal */}
-      <div className="bg-slate-50">
-        <main className="safe-areas mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-6">
+      <div>
+        <main className="safe-areas mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-7">
           <Outlet />
         </main>
       </div>
@@ -162,6 +161,7 @@ export default function App() {
           <Route path="/inscripciones" element={<Inscripciones />} />
           <Route path="/grupos" element={<Grupos />} />
           <Route path="/grupos/aula" element={<GruposAula />} />
+          <Route path="/catalogos" element={<CatalogosPage />} />
           <Route path="/estudiantes" element={<Estudiantes />} />
           <Route path="/catalogos-admin" element={<CatalogosPage />} />
         </Route>

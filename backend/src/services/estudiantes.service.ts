@@ -14,6 +14,17 @@ export type CreateEstudianteInput = {
   fecha_nacimiento?: string | null
 }
 
+/** ========= Eliminar estudiante por ID ========= **/
+export async function deleteEstudiante(id_estudiante: number) {
+  const { error } = await supabaseAdmin
+    .from('estudiante')
+    .delete()
+    .eq('id_estudiante', id_estudiante)
+
+  if (error) throw new Error(error.message)
+  return { success: true }
+}
+
 export type Estudiante = {
   id_estudiante: number
   no_control: string

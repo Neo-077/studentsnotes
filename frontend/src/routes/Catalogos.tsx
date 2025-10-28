@@ -16,7 +16,6 @@ type Docente = {
 }
 type Materia = {
   id_materia: number
-  clave: string
   nombre: string
   unidades: number
   creditos: number
@@ -27,6 +26,7 @@ export default function CatalogosPage() {
   const [docentes, setDocentes] = useState<Docente[]>([])
   const [materias, setMaterias] = useState<Materia[]>([])
   const [generos, setGeneros] = useState<any[]>([])
+  const [carreras, setCarreras] = useState<any[]>([])
   const [loadingD, setLoadingD] = useState(false)
   const [loadingM, setLoadingM] = useState(false)
   const [msgD, setMsgD] = useState<string | null>(null)
@@ -41,12 +41,9 @@ export default function CatalogosPage() {
     correo: "",
     id_genero: "" as string | number,
   })
-  const [fMat, setFMat] = useState({
-    clave: "",
-    nombre: "",
-    unidades: "5",
-    creditos: "5",
-  })
+  const [fMat, setFMat] = useState({ nombre: "", unidades: "5", creditos: "5" })
+  const [fLink, setFLink] = useState({ id_materia: "", id_carrera: "", semestre: "" })
+  const [msgLink, setMsgLink] = useState<string | null>(null)
 
   // cargar catálogos/base
   async function loadDocentes() {
@@ -54,6 +51,32 @@ export default function CatalogosPage() {
     try { setDocentes(await Catalogos.docentes() ?? []) }
     catch (e: any) { setMsgD(e.message || "Error cargando docentes") }
     finally { setLoadingD(false) }
+  }
+
+  // ====== vincular materia a carrera ======
+  async function onLinkMateriaCarrera(e: React.FormEvent) {
+    e.preventDefault()
+    setMsgLink(null)
+    const payload: any = {
+      id_materia: Number(fLink.id_materia),
+      id_carrera: Number(fLink.id_carrera),
+      semestre: Number(fLink.semestre)
+    }
+    if (!payload.id_materia || !payload.id_carrera) {
+      setMsgLink('Selecciona materia y carrera.')
+      return
+    }
+    if (!Number.isFinite(payload.semestre) || payload.semestre < 1 || payload.semestre > 12) {
+      setMsgLink('Ingresa semestre (1-12).')
+      return
+    }
+    try {
+      await api.post('/materia-carrera', payload)
+      setMsgLink('✅ Vinculación guardada')
+      setFLink({ id_materia: '', id_carrera: '', semestre: '' })
+    } catch (e: any) {
+      setMsgLink('❌ ' + (e.message || 'Error al vincular'))
+    }
   }
   async function loadMaterias() {
     setLoadingM(true); setMsgM(null)
@@ -65,6 +88,7 @@ export default function CatalogosPage() {
   useEffect(() => {
     loadDocentes(); loadMaterias()
     Catalogos.generos().then(setGeneros)
+    Catalogos.carreras().then(setCarreras)
   }, [])
 
   // ====== crear docente ======
@@ -98,19 +122,18 @@ export default function CatalogosPage() {
     e.preventDefault()
     setMsgM(null)
     const payload = {
-      clave: fMat.clave.trim().toUpperCase(),
       nombre: fMat.nombre.trim().toUpperCase(),
       unidades: Number(fMat.unidades || 5),
       creditos: Number(fMat.creditos || 5),
     }
-    if (!payload.clave || !payload.nombre) {
-      setMsgM("Completa clave y nombre.")
+    if (!payload.nombre) {
+      setMsgM("Completa el nombre de la materia.")
       return
     }
     try {
       await api.post("/materias", payload)
       setMsgM("✅ Materia creada")
-      setFMat({ clave: "", nombre: "", unidades: "5", creditos: "5" })
+      setFMat({ nombre: "", unidades: "5", creditos: "5" })
       await loadMaterias()
     } catch (e: any) {
       setMsgM("❌ " + (e.message || "Error al crear materia"))
@@ -162,7 +185,7 @@ export default function CatalogosPage() {
     a.download = "plantilla_docentes.csv"; a.click(); URL.revokeObjectURL(a.href)
   }
   function downloadTemplateMaterias() {
-    const headers = ["clave","nombre","unidades","creditos"]
+    const headers = ["nombre","unidades","creditos"]
     const blob = new Blob([headers.join(",") + "\n"], { type: "text/csv;charset=utf-8" })
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob)
     a.download = "plantilla_materias.csv"; a.click(); URL.revokeObjectURL(a.href)
@@ -249,16 +272,14 @@ export default function CatalogosPage() {
           </div>
         </div>
 
-        <form onSubmit={onCreateMateria} className="mt-3 grid md:grid-cols-4 gap-3">
-          <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Clave"
-            value={fMat.clave} onChange={e=>setFMat({...fMat,clave:e.target.value})}/>
+        <form onSubmit={onCreateMateria} className="mt-3 grid md:grid-cols-3 gap-3">
           <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Nombre"
             value={fMat.nombre} onChange={e=>setFMat({...fMat,nombre:e.target.value})}/>
           <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Unidades" type="number" min={1} max={10}
             value={fMat.unidades} onChange={e=>setFMat({...fMat,unidades:e.target.value})}/>
           <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Créditos" type="number" min={1} max={30}
             value={fMat.creditos} onChange={e=>setFMat({...fMat,creditos:e.target.value})}/>
-          <div className="md:col-span-4">
+          <div className="md:col-span-3">
             <button className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm">Guardar materia</button>
             {msgM && <span className="ml-3 text-sm">{msgM}</span>}
           </div>
@@ -267,13 +288,12 @@ export default function CatalogosPage() {
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50"><tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left text-slate-600">
-              <th>Clave</th><th>Nombre</th><th>Unid.</th><th>Créd.</th></tr></thead>
+              <th>Nombre</th><th>Unid.</th><th>Créd.</th></tr></thead>
             <tbody className="divide-y">
-              {loadingM ? <tr><td colSpan={4} className="px-3 py-6 text-center">Cargando…</td></tr> :
-                mlist.length===0 ? <tr><td colSpan={4} className="px-3 py-6 text-center">Sin materias.</td></tr> :
+              {loadingM ? <tr><td colSpan={3} className="px-3 py-6 text-center">Cargando…</td></tr> :
+                mlist.length===0 ? <tr><td colSpan={3} className="px-3 py-6 text-center">Sin materias.</td></tr> :
                 mlist.map(m=>(
                   <tr key={m.id_materia} className="[&>td]:px-3 [&>td]:py-2">
-                    <td className="font-mono">{m.clave}</td>
                     <td>{m.nombre}</td>
                     <td>{m.unidades}</td>
                     <td>{m.creditos}</td>
@@ -282,6 +302,31 @@ export default function CatalogosPage() {
               }
             </tbody>
           </table>
+        </div>
+
+        {/* Vincular materia a carrera */}
+        <div className="mt-6 border-t pt-4">
+          <h3 className="font-medium">Vincular materia a carrera</h3>
+          <form onSubmit={onLinkMateriaCarrera} className="mt-3 grid md:grid-cols-4 gap-3">
+            <select className="h-10 rounded-xl border px-3 text-sm"
+              value={fLink.id_materia}
+              onChange={e=>setFLink({...fLink, id_materia: e.target.value})}>
+              <option value="">Materia…</option>
+              {mlist.map(m=> <option key={m.id_materia} value={m.id_materia}>{m.nombre}</option>)}
+            </select>
+            <select className="h-10 rounded-xl border px-3 text-sm"
+              value={fLink.id_carrera}
+              onChange={e=>setFLink({...fLink, id_carrera: e.target.value})}>
+              <option value="">Carrera…</option>
+              {carreras.map(c=> <option key={c.id_carrera} value={c.id_carrera}>{c.clave ? `${c.clave} — `: ''}{c.nombre}</option>)}
+            </select>
+            <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Semestre" type="number" min={1} max={12} required
+              value={fLink.semestre} onChange={e=>setFLink({...fLink, semestre: e.target.value})} />
+            <div>
+              <button className="rounded-lg border px-3 py-2 text-sm">Guardar vinculación</button>
+            </div>
+          </form>
+          {msgLink && <div className="mt-2 text-sm">{msgLink}</div>}
         </div>
       </section>
     </div>

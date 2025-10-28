@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import multer from 'multer'
-import { createEstudiante, listEstudiantes, bulkUpsertEstudiantes } from '../services/estudiantes.service.js'
+import { createEstudiante, listEstudiantes, bulkUpsertEstudiantes, deleteEstudiante } from '../services/estudiantes.service.js'
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 const router = Router()
@@ -46,6 +46,18 @@ router.post('/bulk', upload.single('file'), async (req, res, next) => {
     console.log('[bulk] file:', req.file.originalname, req.file.mimetype, req.file.size, 'bytes')
     const report = await bulkUpsertEstudiantes(req.file.buffer)
     res.json(report)
+  } catch (e) {
+    next(e)
+  }
+})
+
+// DELETE /estudiantes/:id — elimina por id_estudiante
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id)
+    if (!id) return res.status(400).json({ error: { message: 'id inválido' } })
+    await deleteEstudiante(id)
+    res.status(204).end()
   } catch (e) {
     next(e)
   }

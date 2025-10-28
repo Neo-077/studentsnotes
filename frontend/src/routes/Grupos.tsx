@@ -54,7 +54,6 @@ export default function Grupos() {
     id_docente: null as number | null,
     id_termino: null as number | null,
     id_modalidad: null as number | null,
-    grupo_codigo: "", // autogenerado
     horario: "",
     cupo: "",
   })
@@ -115,26 +114,7 @@ export default function Grupos() {
 
   const lista = useMemo(() => grupos, [grupos])
 
-  // ===== código autogenerado (cuando cambia la materia) =====
-  useEffect(() => {
-    if (!form.id_materia) {
-      setForm(f => ({ ...f, grupo_codigo: "" }))
-      return
-    }
-    const mat = materias.find((m: any) => m.id_materia === form.id_materia)
-    const nombre = (mat?.nombre || "MATERIA").toUpperCase()
-    const siglas = nombre
-      .split(/\s+/)
-      .filter((w: string) => w.length > 2)
-      .map((w: string) => w[0])
-      .join("")
-      .slice(0, 3) || "MAT"
-    const num = Math.floor(1000 + Math.random() * 9000) // 4 dígitos
-    const suf = String.fromCharCode(65 + Math.floor(Math.random() * 26)) // A-Z
-    const codigo = `${siglas}-${num} - SC${suf}`
-    setForm(f => ({ ...f, grupo_codigo: codigo }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.id_materia])
+  // (el código del grupo lo asigna el backend)
 
   // ===== crear grupo =====
   async function onCreate(e: React.FormEvent) {
@@ -151,7 +131,6 @@ export default function Grupos() {
       id_docente: form.id_docente,
       id_termino: form.id_termino,
       id_modalidad: form.id_modalidad,
-      grupo_codigo: form.grupo_codigo || "AUTO",
       horario: form.horario.trim(),
       cupo: form.cupo ? Number(form.cupo) : 30, // default 30
     }
@@ -210,6 +189,17 @@ export default function Grupos() {
     URL.revokeObjectURL(a.href)
   }
 
+  // ===== eliminar grupo =====
+  async function onDelete(id: number) {
+    setMsg(null)
+    try {
+      await api.delete(`/grupos/${id}`)
+      await load()
+    } catch (e: any) {
+      setMsg("❌ " + (e.message || "Error al eliminar"))
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* ===== Filtros ===== */}
@@ -217,7 +207,7 @@ export default function Grupos() {
         <div className="grid gap-1">
           <label className="text-xs text-slate-500">Término</label>
           <select
-            className="h-10 rounded-xl border px-3 text-sm"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             value={terminoId ?? ""}
             onChange={(e) => setTerminoId(Number(e.target.value))}
           >
@@ -231,7 +221,12 @@ export default function Grupos() {
 
         <div className="grid gap-1">
           <label className="text-xs text-slate-500">Carrera</label>
-          <CarreraPicker value={carreraId ?? undefined} onChange={setCarreraId} />
+          <CarreraPicker
+            value={carreraId ?? undefined}
+            onChange={(id) => { setCarreraId(id as number | null); setMateriaId(null) }}
+            label={false}
+            className="h-10 w-full rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          />
         </div>
 
         <div className="grid gap-1">
@@ -244,7 +239,7 @@ export default function Grupos() {
           />
         </div>
 
-        <button onClick={downloadTemplate} className="rounded-lg border px-3 py-2 text-sm">
+        <button onClick={downloadTemplate} className="rounded-lg border px-3 py-2 text-sm shadow-sm hover:bg-slate-50">
           Descargar plantilla (CSV)
         </button>
 
@@ -263,9 +258,18 @@ export default function Grupos() {
       <form onSubmit={onCreate} className="rounded-2xl border bg-white p-4 shadow-sm space-y-3">
         <h3 className="font-medium text-lg">Nuevo Grupo</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {/* Carrera que acota las materias */}
+          <div className="col-span-1">
+            <CarreraPicker
+              value={carreraId ?? undefined}
+              onChange={(id)=>{ setCarreraId(id); setForm(f=>({...f, id_materia: null})) }}
+              label={false}
+              className="h-10 w-full rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            />
+          </div>
           {/* Materia */}
           <select
-            className="h-10 rounded-xl border px-3 text-sm"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             value={form.id_materia ?? ""}
             onChange={(e) => setForm({ ...form, id_materia: Number(e.target.value) })}
           >
@@ -279,7 +283,7 @@ export default function Grupos() {
 
           {/* Docente (lista fija) */}
           <select
-            className="h-10 rounded-xl border px-3 text-sm"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             value={form.id_docente ?? ""}
             onChange={(e) => setForm({ ...form, id_docente: Number(e.target.value) })}
           >
@@ -293,7 +297,7 @@ export default function Grupos() {
 
           {/* Modalidad */}
           <select
-            className="h-10 rounded-xl border px-3 text-sm"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             value={form.id_modalidad ?? ""}
             onChange={(e) => setForm({ ...form, id_modalidad: Number(e.target.value) })}
           >
@@ -305,18 +309,11 @@ export default function Grupos() {
             ))}
           </select>
 
-          {/* Código autogenerado (solo lectura) */}
-          <input
-            className="h-10 rounded-xl border px-3 text-sm bg-slate-50"
-            value={form.grupo_codigo}
-            readOnly
-            placeholder="Código (auto)"
-            title="Se genera automáticamente al elegir la materia"
-          />
+          {/* (código del grupo lo asigna el backend) */}
 
           {/* Horario obligatorio */}
           <select
-            className="h-10 rounded-xl border px-3 text-sm"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             value={form.horario}
             onChange={(e) => setForm({ ...form, horario: e.target.value })}
             required
@@ -327,7 +324,7 @@ export default function Grupos() {
 
           {/* Cupo (default 30) */}
           <input
-            className="h-10 rounded-xl border px-3 text-sm"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             placeholder="Cupo (default 30)"
             type="number"
             value={form.cupo}
@@ -337,7 +334,7 @@ export default function Grupos() {
 
         <button
           type="submit"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
           disabled={saving}
         >
           {saving ? "Guardando…" : "Guardar grupo"}
@@ -353,27 +350,38 @@ export default function Grupos() {
             <thead className="bg-slate-50">
               <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left text-slate-600">
                 <th>Materia</th>
+                <th>Carrera</th>
                 <th>Código</th>
                 <th>Docente</th>
                 <th>Modalidad</th>
                 <th>Horario</th>
                 <th>Cupo</th>
+                <th></th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading ? (
-                <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-500">Cargando…</td></tr>
+                <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">Cargando…</td></tr>
               ) : lista.length === 0 ? (
-                <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
+                <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
               ) : (
                 lista.map((g) => (
-                  <tr key={g.id_grupo} className="[&>td]:px-3 [&>td]:py-2">
+                  <tr key={g.id_grupo} className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60">
                     <td>{g.materia?.nombre ?? "—"}</td>
+                    <td>{(g as any)?.materia?.carrera?.nombre || (g as any)?.materia?.carrera_nombre || "—"}</td>
                     <td>{g.grupo_codigo}</td>
                     <td>{g.docente ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}` : "N/D"}</td>
                     <td>{g.modalidad?.nombre ?? "—"}</td>
                     <td>{g.horario}</td>
                     <td>{g.cupo}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="inline-flex items-center rounded-lg border px-3 py-1.5 text-xs hover:bg-red-50 hover:border-red-300 text-red-600"
+                        onClick={() => onDelete(g.id_grupo)}
+                        title="Eliminar grupo"
+                      >Eliminar</button>
+                    </td>
                   </tr>
                 ))
               )}
