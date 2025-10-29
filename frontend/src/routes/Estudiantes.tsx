@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import api from '../lib/api'
 import { Catalogos } from '../lib/catalogos'
 import * as XLSX from 'xlsx'
+import ConfirmModal from '../components/ConfirmModal'
 
 type Row = {
   id_estudiante: number
@@ -29,6 +30,9 @@ export default function Estudiantes() {
   const [idCarrera, setIdCarrera] = useState<number | ''>('')
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [confirmDel, setConfirmDel] = useState<{ open: boolean; id?: number; nombre?: string; no_control?: string | null }>(
+    { open: false }
+  )
 
   useEffect(() => { Catalogos.carreras().then(setCarreras) }, [])
 
@@ -54,6 +58,12 @@ export default function Estudiantes() {
 
   useEffect(() => { load() }, [page, pageSize])
 
+  // Búsqueda reactiva (debounce) al escribir o cambiar carrera
+  useEffect(() => {
+    const t = setTimeout(() => { setPage(1); load() }, 250)
+    return () => clearTimeout(t)
+  }, [q, idCarrera])
+
   const maxPage = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize])
 
   async function onSearch(e: React.FormEvent) {
@@ -62,11 +72,17 @@ export default function Estudiantes() {
     await load()
   }
 
-  async function onDelete(id: number) {
-    if (!window.confirm('¿Eliminar este estudiante? Esta acción no se puede deshacer.')) return
+  function askDelete(r: Row) {
+    setConfirmDel({ open: true, id: r.id_estudiante, nombre: `${r.nombre} ${r.ap_paterno ?? ''} ${r.ap_materno ?? ''}`.trim(), no_control: r.no_control })
+  }
+
+  async function confirmDelete() {
+    if (!confirmDel.id) { setConfirmDel({ open: false }); return }
     try {
-      await api.delete(`/estudiantes/${id}`)
+      await api.delete(`/estudiantes/${confirmDel.id}`)
+      setConfirmDel({ open: false })
       await load()
+      setMsg('✅ Estudiante eliminado correctamente')
     } catch (e: any) {
       setMsg('❌ ' + (e.message || 'Error eliminando estudiante'))
     }
@@ -226,7 +242,10 @@ export default function Estudiantes() {
               ) : rows.length === 0 ? (
                 <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
               ) : (
-                rows.map(r => (
+                [...rows].sort((a,b)=> a.nombre.localeCompare(b.nombre,'es',{sensitivity:'base'})
+                  || (a.ap_paterno||'').localeCompare(b.ap_paterno||'','es',{sensitivity:'base'})
+                  || (a.ap_materno||'').localeCompare(b.ap_materno||'','es',{sensitivity:'base'})
+                ).map(r => (
                   <tr key={r.id_estudiante} className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60">
                     <td className="font-mono">{r.no_control ?? '—'}</td>
                     <td>{r.nombre}</td>
@@ -240,8 +259,8 @@ export default function Estudiantes() {
                     <td>
                       <button
                         type="button"
-                        className="inline-flex items-center rounded-lg border px-3 py-1.5 text-xs hover:bg-red-50 hover:border-red-300 text-red-600"
-                        onClick={() => onDelete(r.id_estudiante)}
+                        className="inline-flex items-center px-3 py-1.5 text-xs"
+                        onClick={() => askDelete(r)}
                         title="Eliminar estudiante"
                       >Eliminar</button>
                     </td>
@@ -266,6 +285,25 @@ export default function Estudiantes() {
       </div>
 
       {msg && <div className="text-sm">{msg}</div>}
+
+      <ConfirmModal
+        open={confirmDel.open}
+        title="Confirmar eliminación"
+        subtitle="Esta acción no se puede deshacer"
+        confirmLabel="Eliminar"
+        danger
+        onCancel={()=> setConfirmDel({ open:false })}
+        onConfirm={confirmDelete}
+      >
+        <div className="space-y-2 text-sm">
+          <div>¿Deseas eliminar al siguiente estudiante?</div>
+          <div className="rounded-lg border bg-slate-50 px-3 py-2">
+            <div className="font-medium">{confirmDel.nombre}</div>
+            <div className="text-slate-600">No. control: {confirmDel.no_control ?? '—'}</div>
+          </div>
+          <div className="text-xs text-slate-600">También se eliminarán inscripciones y datos asociados según la configuración del sistema.</div>
+        </div>
+      </ConfirmModal>
     </div>
   )
 }

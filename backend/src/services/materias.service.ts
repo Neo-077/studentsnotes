@@ -13,6 +13,29 @@ function siglasDesdeNombre(nombre: string) {
   return initials || parts[0]?.slice(0, 4) || "MAT"
 }
 
+export async function updateMateria(id_materia: number, input: { nombre?: string; unidades?: number; creditos?: number }) {
+  if (!Number.isFinite(id_materia)) throw new Error('id inválido')
+  const payload: any = {}
+  if (input.nombre != null) payload.nombre = up(String(input.nombre))
+  if (input.unidades != null) payload.unidades = Number(input.unidades)
+  if (input.creditos != null) payload.creditos = Number(input.creditos)
+  if (Object.keys(payload).length === 0) return { ok: true }
+  const { error } = await supabaseAdmin.from('materia').update(payload).eq('id_materia', id_materia)
+  if (error) throw new Error(error.message)
+  return { ok: true }
+}
+
+export async function deleteMateria(id_materia: number) {
+  if (!Number.isFinite(id_materia)) throw new Error('id inválido')
+  // eliminar vínculos primero
+  const delLinks = await supabaseAdmin.from('materia_carrera').delete().eq('id_materia', id_materia)
+  if (delLinks.error) throw new Error(delLinks.error.message)
+  // eliminar materia
+  const delMat = await supabaseAdmin.from('materia').delete().eq('id_materia', id_materia)
+  if (delMat.error) throw new Error(delMat.error.message)
+  return { ok: true }
+}
+
 async function generarClaveUnica(nombre: string): Promise<string> {
   const base = siglasDesdeNombre(nombre)
   // intenta con base, si existe agrega sufijo numérico

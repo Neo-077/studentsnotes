@@ -18,12 +18,36 @@ export async function createDocente(input: {
     id_genero: input.id_genero ?? null,
     activo: true,
   }
+
   if (!payload.rfc || !payload.nombre || !payload.ap_paterno || !payload.correo) {
     throw new Error("Campos obligatorios faltantes")
   }
   const { data, error } = await supabase.from("docente").insert(payload).select("*").single()
   if (error) throw error
   return data
+}
+
+export async function updateDocente(id_docente: number, input: Partial<{ rfc: string; nombre: string; ap_paterno: string; ap_materno: string | null; correo: string; id_genero: number | null; activo: boolean }>) {
+  if (!Number.isFinite(id_docente)) throw new Error('id inválido')
+  const payload: any = {}
+  if (input.rfc != null) payload.rfc = up(String(input.rfc))
+  if (input.nombre != null) payload.nombre = up(String(input.nombre))
+  if (input.ap_paterno != null) payload.ap_paterno = up(String(input.ap_paterno))
+  if (input.ap_materno !== undefined) payload.ap_materno = input.ap_materno ? up(String(input.ap_materno)) : null
+  if (input.correo != null) payload.correo = clean(input.correo).toLowerCase()
+  if (input.id_genero !== undefined) payload.id_genero = input.id_genero
+  if (input.activo !== undefined) payload.activo = !!input.activo
+  if (Object.keys(payload).length === 0) return { ok: true }
+  const { error } = await supabase.from('docente').update(payload).eq('id_docente', id_docente)
+  if (error) throw error
+  return { ok: true }
+}
+
+export async function deleteDocente(id_docente: number) {
+  if (!Number.isFinite(id_docente)) throw new Error('id inválido')
+  const { error } = await supabase.from('docente').delete().eq('id_docente', id_docente)
+  if (error) throw error
+  return { ok: true }
 }
 
 export async function bulkDocentes(fileBuffer: Buffer) {

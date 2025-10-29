@@ -1,21 +1,25 @@
 // App.tsx
 import { Routes, Route, Navigate, Outlet, NavLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import Dashboard from './routes/Dashboard'
-import Pareto from './routes/Pareto'
-import Dispersion from './routes/Dispersion'
-import ControlCharts from './routes/ControlCharts'
-import Pastel from './routes/Pastel'
+// Rutas de gráficas externas removidas (Pareto, Dispersión, Control, Pastel)
 import Inscripciones from './routes/Inscripciones'
 import Grupos from './routes/Grupos'
 import Login from './routes/Login'
 import NotFound from './routes/NotFound'
 import useAuth from './store/useAuth'
 import Estudiantes from './routes/Estudiantes'
-import CatalogosPage from "./routes/Catalogos"
+// CatalogosPage eliminado: se separó en Docentes y Materias
+import Docentes from './routes/Docentes'
+import Materias from './routes/Materias'
 import GruposAula from './routes/GruposAula'
+import GrupoAulaDetalle from './routes/GrupoAulaDetalle'
+import { toggleTheme, isDark } from './lib/theme'
 
 function Shell() {
   const { user, logout } = useAuth()
+  const [dark, setDark] = useState(false)
+  useEffect(()=>{ setDark(isDark()) }, [])
 
   const displayName =
     (user?.user_metadata?.full_name as string) ||
@@ -25,35 +29,44 @@ function Shell() {
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
 
   return (
-    <div className="min-h-screen-fix grid grid-cols-1 lg:grid-cols-[280px_1fr] bg-gradient-to-b from-slate-50 to-slate-100">
+    <div className="min-h-screen-fix grid grid-cols-1 lg:grid-cols-[240px_1fr] app-root">
       {/* Sidebar */}
-      <aside className="bg-[#0f172a] text-white p-5 lg:min-h-screen-fix shadow-xl">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="size-8 rounded bg-white/10 grid place-items-center font-semibold">SN</div>
-          <h1 className="text-[clamp(1rem,2vw,1.25rem)] font-semibold">StudentsNotes</h1>
+      <aside className="sidebar p-4 lg:min-h-screen-fix shadow-xl">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="size-8 rounded-md bg-white/15 grid place-items-center font-semibold">SN</div>
+          <h1 className="text-[clamp(1rem,2vw,1.25rem)] font-semibold tracking-wide">StudentsNotes</h1>
         </div>
+        <button
+          onClick={()=> setDark(toggleTheme()==='dark')}
+          className="theme-toggle mb-4 inline-flex items-center gap-2 rounded-md transition px-3 py-2 text-xs"
+          title="Alternar tema"
+        >
+          {dark ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z" stroke="currentColor" strokeWidth="1.5"/></svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5"/><path d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.07 6.07-1.41-1.41M8.34 8.34 6.93 6.93m10.14 0-1.41 1.41M8.34 15.66l-1.41 1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          )}
+          <span>{dark ? 'Oscuro' : 'Claro'}</span>
+        </button>
 
-        <nav className="grid gap-1 mt-2">
+        <nav className="grid gap-1 mt-1">
           {[
             { to: '/dashboard', label: 'Dashboard' },
-            { to: '/pareto', label: 'Pareto' },
-            { to: '/dispersion', label: 'Dispersión' },
-            { to: '/control', label: 'Control' },
-            { to: '/pastel', label: 'Pastel' },
             { to: '/inscripciones', label: 'Inscripciones' },
             { to: '/grupos', label: 'Grupos' },
             { to: '/grupos/aula', label: 'Grupos (Aula)' },
-            { to: '/catalogos', label: 'Catálogos' },
+            { to: '/docentes', label: 'Docentes' },
+            { to: '/materias', label: 'Materias' },
             { to: '/estudiantes', label: 'Estudiantes' },
           ].map(item => (
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.to === '/grupos'}
               className={({ isActive }) => [
-                "rounded-lg px-3 py-2 text-sm transition",
-                "hover:bg-white/10/80",
-                isActive ? "bg-white/10 ring-1 ring-white/20" : "text-white/90"
-              ].join(" ")}
+                'sidebar-link',
+                isActive ? 'is-active' : ''
+              ].join(' ')}
             >
               {item.label}
             </NavLink>
@@ -62,15 +75,15 @@ function Shell() {
 
         <div className="mt-6 grid gap-3">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-full bg-white/10 grid place-items-center font-semibold">{initials || 'D'}</div>
+            <div className="size-10 rounded-full bg-white/12 grid place-items-center font-semibold">{initials || 'D'}</div>
             <div className="min-w-0">
               <div className="text-sm font-medium truncate">{displayName}</div>
-              {user?.email && <div className="text-xs text-white/70 truncate">{user.email}</div>}
+              {user?.email && <div className="text-xs opacity-80 truncate">{user.email}</div>}
             </div>
           </div>
           <button
             onClick={logout}
-            className="rounded-lg bg-white/10 hover:bg-white/20 transition px-4 py-2 text-sm"
+            className="logout-btn rounded-md transition px-4 py-2 text-sm"
             title="Cerrar sesión"
           >
             Cerrar sesión
@@ -154,16 +167,14 @@ export default function App() {
         <Route element={<Shell />}>
           <Route path="/" element={<Navigate to="/dashboard" />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/pareto" element={<Pareto />} />
-          <Route path="/dispersion" element={<Dispersion />} />
-          <Route path="/control" element={<ControlCharts />} />
-          <Route path="/pastel" element={<Pastel />} />
           <Route path="/inscripciones" element={<Inscripciones />} />
           <Route path="/grupos" element={<Grupos />} />
           <Route path="/grupos/aula" element={<GruposAula />} />
-          <Route path="/catalogos" element={<CatalogosPage />} />
+          <Route path="/grupos/aula/:id_grupo" element={<GrupoAulaDetalle />} />
+          <Route path="/docentes" element={<Docentes />} />
+          <Route path="/materias" element={<Materias />} />
           <Route path="/estudiantes" element={<Estudiantes />} />
-          <Route path="/catalogos-admin" element={<CatalogosPage />} />
+          {/* Ruta /catalogos eliminada */}
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />

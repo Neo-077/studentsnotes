@@ -37,6 +37,7 @@ export default function Grupos() {
 
   // ===== datos =====
   const [grupos, setGrupos] = useState<Grupo[]>([])
+  const [query, setQuery] = useState("")
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -115,7 +116,17 @@ export default function Grupos() {
     if (terminoId) localStorage.setItem('grupos.terminoId', String(terminoId))
   }, [terminoId])
 
-  const lista = useMemo(() => grupos, [grupos])
+  const lista = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return grupos
+    return grupos.filter(g => {
+      const mat = g.materia?.nombre?.toLowerCase() || ""
+      const cod = g.grupo_codigo?.toLowerCase() || ""
+      const doc = `${g.docente?.nombre || ""} ${g.docente?.ap_paterno || ""}`.toLowerCase()
+      const hor = g.horario?.toLowerCase() || ""
+      return mat.includes(q) || cod.includes(q) || doc.includes(q) || hor.includes(q)
+    })
+  }, [grupos, query])
   const totalPages = useMemo(() => Math.max(1, Math.ceil(lista.length / pageSize)), [lista.length])
   const pageSafe = Math.min(page, totalPages)
   const start = (pageSafe - 1) * pageSize
@@ -328,6 +339,16 @@ export default function Grupos() {
             terminoId={terminoId ?? undefined}
             carreraId={carreraId ?? undefined}
             disabled={!carreraId}
+          />
+        </div>
+
+        <div className="grid gap-1">
+          <label className="text-xs text-slate-500">Buscar</label>
+          <input
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            placeholder="Nombre, código, docente, horario"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
           />
         </div>
 

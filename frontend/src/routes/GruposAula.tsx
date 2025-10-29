@@ -1,4 +1,5 @@
 import React, { Fragment, useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Catalogos } from "../lib/catalogos"
 import MateriaPicker from "../components/inscripciones/MateriaPicker"
 import CarreraPicker from "../components/inscripciones/CarreraPicker"
@@ -15,6 +16,7 @@ type Grupo = {
 }
 
 export default function GruposAula() {
+  const navigate = useNavigate()
   const [terminos, setTerminos] = useState<any[]>([])
   const [terminoId, setTerminoId] = useState<number | null>(null)
   const [carreraId, setCarreraId] = useState<number | null>(null)
@@ -240,8 +242,10 @@ export default function GruposAula() {
                   <div className="text-slate-500 text-xs">Cupo: {g.cupo}</div>
                 </div>
                 <div className="mt-4 flex gap-2">
-                  <button className="rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50" onClick={()=> openModalAlumnos(g)}>Detalles</button>
-                  <button className="rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50" onClick={()=> openModalAlumnos(g)}>Alumnos</button>
+                  <button className="rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50" onClick={()=> {
+                    const titulo = `${g.materia?.nombre ?? ''} • ${g.grupo_codigo}`
+                    navigate(`/grupos/aula/${g.id_grupo}`, { state: { id_grupo: g.id_grupo, titulo } })
+                  }}>Detalles</button>
                 </div>
               </div>
             ))}
