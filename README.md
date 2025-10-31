@@ -81,7 +81,7 @@ npm run dev
 📍 Esto abrirá la app en:
 👉 [http://localhost:5173](http://localhost:5173)
 
-#### 📦 Instalación explícita en carpeta backend y frontend (dependencias)
+#### 📦 Instalación explícita en carpeta frontend ambos y en backend solo primer línea (dependencias)
 
 ```bash
 npm install @hookform/resolvers @supabase/supabase-js @tailwindcss/vite chart.js html2canvas jspdf multer papaparse react react-dom react-hook-form react-router-dom recharts sheetjs xlsx zod zustand
