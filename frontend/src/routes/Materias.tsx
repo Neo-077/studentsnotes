@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import api from '../lib/api'
 import { Catalogos } from '../lib/catalogos'
 import * as XLSX from 'xlsx'
@@ -18,18 +18,43 @@ export default function Materias(){
   // crear
   const [f, setF] = useState({ nombre:'', unidades:'5', creditos:'5', id_carrera:'', semestre:'' })
 
-  async function load(){
-    setLoading(true); setMsg(null)
+  const reqRef = useRef(0)
+  async function load(silent = false){
+    const my = ++reqRef.current
+    if (!silent) setLoading(true); setMsg(null)
     try {
-      setRows((await Catalogos.materias()) ?? [])
-      setCarreras((await Catalogos.carreras()) ?? [])
-      const rels = await api.get('/materia-carrera')
-      setRelaciones(Array.isArray(rels) ? rels : [])
+      const [mats, cars, rels] = await Promise.all([
+        Catalogos.materias(),
+        Catalogos.carreras(),
+        api.get('/materia-carrera')
+      ])
+      if (reqRef.current === my){
+        setRows(mats ?? [])
+        setCarreras(cars ?? [])
+        setRelaciones(Array.isArray(rels) ? rels : [])
+      }
     }
     catch(e:any){ setMsg(e.message || 'Error cargando materias') }
-    finally{ setLoading(false) }
+    finally{
+      if (reqRef.current === my){ if (!silent) setLoading(false) }
+    }
   }
-  useEffect(()=>{ load() }, [])
+  useEffect(()=>{ load(false) }, [])
+
+  // Recarga silenciosa al volver del background/enfocar/reconectar
+  useEffect(()=>{
+    const handler = ()=> load(true)
+    window.addEventListener('focus', handler)
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') handler() })
+    window.addEventListener('pageshow', handler)
+    window.addEventListener('online', handler)
+    return ()=>{
+      window.removeEventListener('focus', handler)
+      window.removeEventListener('online', handler)
+      window.removeEventListener('pageshow', handler)
+      document.removeEventListener('visibilitychange', ()=>{})
+    }
+  }, [])
 
   useEffect(()=>{
     if (!edit.open) return
@@ -206,7 +231,7 @@ export default function Materias(){
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading && list.length===0 ? (
                 <tr><td colSpan={6} className="px-3 py-6 text-center">Cargando…</td></tr>
               ) : list.length===0 ? (
                 <tr><td colSpan={6} className="px-3 py-6 text-center">Sin materias.</td></tr>

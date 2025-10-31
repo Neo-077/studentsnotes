@@ -1,9 +1,10 @@
-import React, { Fragment, useEffect, useMemo, useState } from "react"
+import React, { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Catalogos } from "../lib/catalogos"
 import MateriaPicker from "../components/inscripciones/MateriaPicker"
 import CarreraPicker from "../components/inscripciones/CarreraPicker"
 import api from "../lib/api"
+import * as XLSX from "xlsx"
 
 type Grupo = {
   id_grupo: number
@@ -35,10 +36,12 @@ export default function GruposAula() {
     async function boot() {
       const t = await Catalogos.terminos()
       setTerminos(t ?? [])
-      if (t?.length) {
-        const saved = Number(localStorage.getItem('grupos.terminoId') || '')
-        const chosen = t.find((x: any) => x.id_termino === saved) || t[0]
-        setTerminoId(chosen.id_termino)
+      const saved = Number(localStorage.getItem('grupos.terminoId') || '')
+      if (saved && (t ?? []).some((x:any)=> x.id_termino === saved)) {
+        setTerminoId(saved)
+      } else {
+        // Por defecto: Todos
+        setTerminoId(null)
       }
     }
     boot()
@@ -46,24 +49,36 @@ export default function GruposAula() {
 
   // Cargar grupos según filtros seleccionados
   useEffect(() => {
-    async function load() {
-      setLoading(true); setErr(null)
+    async function load(silent = false) {
+      if (!silent) setLoading(true); setErr(null)
       try {
         const q = new URLSearchParams()
         if (terminoId) q.set("termino_id", String(terminoId))
         if (carreraId) q.set("carrera_id", String(carreraId))
         if (materiaId) q.set("materia_id", String(materiaId))
-        // usa el mismo endpoint que Grupos.tsx para asegurar consistencia con backend/DB
-        const data = await api.get(`/grupos?${q.toString()}`)
+        const qs = q.toString()
+        const path = qs ? `/grupos?${qs}` : '/grupos'
+        const data = await api.get(path)
         setGrupos(data || [])
       } catch (e: any) {
         setErr(e.message || "Error al cargar grupos")
       } finally {
-        setLoading(false)
+        if (!silent) setLoading(false)
       }
     }
     setPage(1)
     load()
+
+    // refrescar silenciosamente al volver del background/enfocar/reconectar
+    const handler = () => load(true)
+    window.addEventListener('focus', handler)
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') handler() })
+    window.addEventListener('online', handler)
+    return ()=>{
+      window.removeEventListener('focus', handler)
+      window.removeEventListener('online', handler)
+      document.removeEventListener('visibilitychange', ()=>{})
+    }
   }, [terminoId, carreraId, materiaId])
 
   // Persistir selección de término para sincronizar con la vista de Grupos
@@ -97,6 +112,8 @@ export default function GruposAula() {
   const [msgAlu, setMsgAlu] = useState<string | null>(null)
   const [pageAlu, setPageAlu] = useState(1)
   const pageSizeAlu = 15
+  const [importing, setImporting] = useState(false)
+  const fileRef = useRef<HTMLInputElement|null>(null)
   const totalPagesAlu = useMemo(() => Math.max(1, Math.ceil((alumnos.rows?.length || 0) / pageSizeAlu)), [alumnos])
   const pageSafeAlu = Math.min(pageAlu, totalPagesAlu)
   const startAlu = (pageSafeAlu - 1) * pageSizeAlu
@@ -151,6 +168,40 @@ export default function GruposAula() {
       await api.delete(`/inscripciones/${id_inscripcion}`)
       await loadAlumnos(openAlumnos.id_grupo)
     } catch (e: any) { setMsgAlu(e.message || 'Error') }
+  }
+
+  async function onImportFile(file: File) {
+    if (!openAlumnos || !file) return
+    try {
+      setImporting(true); setMsgAlu(null)
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: 'array' })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json<any>(ws, { defval: '' })
+      const list: string[] = []
+      for (const r of rows) {
+        const vals = Object.values(r)
+        let nc = ''
+        if (r.no_control != null) nc = String(r.no_control)
+        else if (r["No. control"] != null) nc = String(r["No. control"]) 
+        else if (r["NO CONTROL"] != null) nc = String(r["NO CONTROL"]) 
+        else if (vals.length) nc = String(vals[0])
+        nc = nc.trim()
+        if (nc) list.push(nc)
+      }
+      if (list.length === 0) { setMsgAlu('Archivo sin números de control'); return }
+      await api.post('/inscripciones/bulk', { id_grupo: openAlumnos.id_grupo, no_control: list })
+      await loadAlumnos(openAlumnos.id_grupo)
+    } catch (e: any) {
+      setMsgAlu(e.message || 'Error al importar')
+    } finally { setImporting(false); if (fileRef.current) fileRef.current.value = '' }
+  }
+
+  function downloadTemplate() {
+    const ws = XLSX.utils.aoa_to_sheet([["no_control"], [""]])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Alumnos')
+    XLSX.writeFile(wb, 'plantilla_inscripciones.xlsx')
   }
 
   return (
@@ -288,6 +339,9 @@ export default function GruposAula() {
                     const el = document.getElementById('alu_noctrl') as HTMLInputElement
                     if (el?.value) agregarPorNoControl(el.value)
                   }}>Agregar</button>
+                  <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e)=>{ const f = e.currentTarget.files?.[0]; if (f) onImportFile(f) }} />
+                  <button className="h-9 rounded-md border px-3 text-sm disabled:opacity-50" disabled={importing} onClick={()=> fileRef.current?.click()}>{importing ? 'Importando…' : 'Importar'}</button>
+                  <button className="h-9 rounded-md border px-3 text-sm" onClick={downloadTemplate}>Plantilla</button>
                 </div>
               </div>
 

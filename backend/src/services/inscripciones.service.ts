@@ -171,3 +171,84 @@ export async function actualizarUnidades(input: { id_inscripcion: number; unidad
   }
   return { success: true }
 }
+
+// Importación masiva por números de control
+export async function bulkInscribirPorNoControl(input: { id_grupo: number; no_control: string[] }) {
+  const id_grupo = Number(input.id_grupo)
+  const lista = Array.isArray(input.no_control) ? input.no_control.map(String).map(s=>s.trim()).filter(Boolean) : []
+  if (!id_grupo) throw new Error('id_grupo inválido')
+  if (!lista.length) return { ok: true, created: 0, skipped: 0, not_found: [], duplicates: [], over_capacity: 0 }
+
+  // Obtener cupo y usados actuales
+  const gq = await supabaseAdmin
+    .from('grupo')
+    .select('id_grupo,cupo')
+    .eq('id_grupo', id_grupo)
+    .single()
+  if (gq.error) throw gq.error
+  const cupo = Number((gq.data as any)?.cupo || 0)
+
+  const existCount = await supabaseAdmin
+    .from('inscripcion')
+    .select('id_inscripcion', { count: 'exact', head: true })
+    .eq('id_grupo', id_grupo)
+  if (existCount.error) throw existCount.error
+  let usados = existCount.count ?? 0
+
+  // Buscar estudiantes por no_control
+  const { data: estudiantes, error: eEst } = await supabaseAdmin
+    .from('estudiante')
+    .select('id_estudiante,no_control')
+    .in('no_control', lista)
+  if (eEst) throw eEst
+
+  const mapEst = new Map<string, number>()
+  for (const e of estudiantes || []) mapEst.set(String((e as any).no_control), Number((e as any).id_estudiante))
+
+  // Duplicados en entrada
+  const seen = new Set<string>()
+  const duplicates: string[] = []
+  const unique = [] as string[]
+  for (const nc of lista) {
+    const key = String(nc)
+    if (seen.has(key)) { duplicates.push(key); continue }
+    seen.add(key); unique.push(key)
+  }
+
+  // Ver existentes ya inscritos
+  const idsEst = unique.map(nc => mapEst.get(nc)).filter((x): x is number => Number.isFinite(x))
+  let yaInscritos = new Set<number>()
+  if (idsEst.length) {
+    const q = await supabaseAdmin
+      .from('inscripcion')
+      .select('id_estudiante')
+      .eq('id_grupo', id_grupo)
+      .in('id_estudiante', idsEst)
+    if (q.error) throw q.error
+    yaInscritos = new Set((q.data || []).map((r: any) => Number(r.id_estudiante)))
+  }
+
+  const not_found: string[] = []
+  let created = 0
+  let over_capacity = 0
+  for (const nc of unique) {
+    const id_est = mapEst.get(nc)
+    if (!id_est) { not_found.push(nc); continue }
+    if (yaInscritos.has(id_est)) continue
+    if (usados >= cupo) { over_capacity += 1; continue }
+    const up = await supabaseAdmin
+      .from('inscripcion')
+      .upsert(
+        { id_grupo, id_estudiante: id_est, status: 'ACTIVA' },
+        { onConflict: 'id_grupo,id_estudiante', ignoreDuplicates: true }
+      )
+      .select('id_inscripcion')
+      .single()
+    if (up.error) throw up.error
+    created += 1
+    usados += 1
+  }
+
+  const skipped = duplicates.length + not_found.length + Array.from(yaInscritos).length + over_capacity
+  return { ok: true, created, skipped, not_found, duplicates, over_capacity, cupo, usados_final: usados }
+}

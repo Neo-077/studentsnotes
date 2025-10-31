@@ -79,18 +79,49 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ring); outl
 input::placeholder, textarea::placeholder { color: color-mix(in oklab, var(--muted), transparent 30%); }
 
 /* Botones neutros */
-button { color: var(--text); }
-button:hover { filter: brightness(1.03); }
+button {
+  color: var(--text);
+  transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, transform .05s ease, filter .15s ease, border-color .15s ease;
+}
+button:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  transform: translateY(-0.5px);
+}
+button:active { transform: translateY(0); filter: brightness(0.98); }
 
 /* Botón primario azul (si se usa bg-blue-500/600 por clases) */
 .bg-blue-500, .bg-blue-600, .bg-indigo-600, .bg-sky-500 { background-color: var(--primary) !important; color: var(--primary-ctr) !important; }
-.hover\:bg-blue-600:hover, .hover\:bg-indigo-700:hover { filter: brightness(0.95); }
+.hover\:bg-blue-600:hover, .hover\:bg-indigo-700:hover { filter: brightness(0.93); box-shadow: 0 2px 10px rgba(0,0,0,.1); }
 
 /* Hover de tarjetas y superficies claras */
 .hover\:bg-slate-50:hover { background-color: var(--surface) !important; }
 .bg-white\/10 { background-color: color-mix(in oklab, var(--text), transparent 90%) !important; }
 .hover\:bg-white\/20:hover { background-color: color-mix(in oklab, var(--text), transparent 80%) !important; }
 .hover\:bg-white\/10\/80:hover { background-color: color-mix(in oklab, var(--text), transparent 85%) !important; }
+
+/* Botones de borde (ej. Descargar/Importar, labels clicables) */
+.rounded-lg.border,
+.rounded-xl.border,
+button.border,
+label.cursor-pointer.border {
+  transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, transform .05s ease, border-color .15s ease;
+}
+.rounded-lg.border:hover,
+.rounded-xl.border:hover,
+button.border:hover,
+label.cursor-pointer.border:hover {
+  background-color: color-mix(in oklab, var(--text), transparent 92%);
+  border-color: color-mix(in oklab, var(--text), transparent 80%);
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  transform: translateY(-0.5px);
+}
+.rounded-lg.border:active,
+.rounded-xl.border:active,
+button.border:active,
+label.cursor-pointer.border:active {
+  transform: translateY(0);
+}
 
 /* Sidebar helper */
 .sidebar {
@@ -199,20 +230,35 @@ table:not(.table-plain) tfoot td, table:not(.table-plain) tfoot th {
 .table-compact td, .table-compact th { padding: 0.5rem 0.7rem !important; }
 .table-plain { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
 
-/* Botón estándar en tablas (Eliminar) */
+/* Botones de acción dentro de tablas (Editar/Eliminar) */
 table button {
   appearance: none;
-  border: 1px solid color-mix(in oklab, var(--danger-bg), black 10%);
-  background-color: var(--danger-bg);
-  color: var(--danger-fg);
+  border: 1px solid color-mix(in oklab, var(--border), black 4%);
+  background-color: color-mix(in oklab, var(--surface), black 4%);
+  color: var(--text);
   font-size: 0.72rem;
   line-height: 1;
-  padding: 0.45rem 0.6rem;
+  padding: 0.42rem 0.6rem;
   border-radius: 999px;
-  box-shadow: 0 1px 0 rgba(0,0,0,.08);
+  box-shadow: none;
 }
-table button:hover { background-color: var(--danger-bg-hover); }
-table button:active { transform: translateY(0.5px); filter: brightness(.98); }
+/* Variante peligrosa si viene con texto 'Eliminar' (hereda color rojo en hover) */
+table button:hover {
+  background-color: color-mix(in oklab, var(--surface), black 7%);
+  border-color: color-mix(in oklab, var(--border), black 8%);
+  filter: none;
+  transform: none;
+}
+/* Si el botón ya tiene color rojo (por clase inline), respeta el rojo y solo ajusta leve */
+table button.bg-red-500:hover,
+table button.bg-rose-500:hover,
+table button[aria-label*="Eliminar"]:hover,
+table button:where(.btn-danger):hover {
+  background-color: var(--danger-bg-hover) !important;
+  color: var(--danger-fg) !important;
+  border-color: color-mix(in oklab, var(--danger-bg), black 10%) !important;
+}
+table button:active { transform: none; filter: brightness(.98); }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

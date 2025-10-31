@@ -16,6 +16,23 @@ if (window.matchMedia) {
   } catch {}
 }
 
+// Refresh al volver de background/enfoque/conexión (throttled)
+{
+  let last = 0
+  const throttle = async () => {
+    const now = Date.now()
+    if (now - last < 1500) return
+    last = now
+    try { await useAuth.getState().refresh() } catch {}
+  }
+  window.addEventListener('focus', throttle)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') throttle()
+  })
+  window.addEventListener('pageshow', () => throttle())
+  window.addEventListener('online', throttle)
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>

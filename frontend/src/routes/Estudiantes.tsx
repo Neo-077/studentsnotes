@@ -1,6 +1,7 @@
 // src/routes/Estudiantes.tsx
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import api from '../lib/api'
+import useAuth from '../store/useAuth'
 import { Catalogos } from '../lib/catalogos'
 import * as XLSX from 'xlsx'
 import ConfirmModal from '../components/ConfirmModal'
@@ -21,6 +22,7 @@ type Row = {
 }
 
 export default function Estudiantes() {
+  const { initialized, role } = useAuth()
   const [rows, setRows] = useState<Row[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -36,8 +38,10 @@ export default function Estudiantes() {
 
   useEffect(() => { Catalogos.carreras().then(setCarreras) }, [])
 
-  async function load() {
-    setLoading(true)
+  const reqRef = useRef(0)
+  async function load(silent = false) {
+    const my = ++reqRef.current
+    if (!silent) setLoading(true)
     setMsg(null)
     try {
       const qs = new URLSearchParams({
@@ -46,23 +50,41 @@ export default function Estudiantes() {
         pageSize: String(pageSize),
         ...(idCarrera ? { id_carrera: String(idCarrera) } : {}),
       })
-      const data = await api.get(`/estudiantes?${qs.toString()}`)
-      setRows(data.rows || [])
-      setTotal(data.total || 0)
+      const path = qs.toString() ? `/estudiantes?${qs.toString()}` : '/estudiantes'
+      const data = await api.get(path)
+      if (reqRef.current === my){
+        setRows(data.rows || [])
+        setTotal(data.total || 0)
+      }
     } catch (e: any) {
-      setMsg('Error cargando estudiantes: ' + (e.message || ''))
+      if (reqRef.current === my) setMsg('Error cargando estudiantes: ' + (e.message || ''))
     } finally {
-      setLoading(false)
+      if (reqRef.current === my){ if (!silent) setLoading(false) }
     }
   }
 
-  useEffect(() => { load() }, [page, pageSize])
+  useEffect(() => { if (initialized) load(false) }, [initialized, page, pageSize])
 
   // Búsqueda reactiva (debounce) al escribir o cambiar carrera
   useEffect(() => {
-    const t = setTimeout(() => { setPage(1); load() }, 250)
+    const t = setTimeout(() => { if (initialized){ setPage(1); load(false) } }, 250)
     return () => clearTimeout(t)
-  }, [q, idCarrera])
+  }, [initialized, q, idCarrera])
+
+  // Recarga silenciosa al volver del background/enfocar/reconectar
+  useEffect(()=>{
+    const handler = () => { if (initialized) load(true) }
+    window.addEventListener('focus', handler)
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') handler() })
+    window.addEventListener('pageshow', handler)
+    window.addEventListener('online', handler)
+    return ()=>{
+      window.removeEventListener('focus', handler)
+      window.removeEventListener('online', handler)
+      window.removeEventListener('pageshow', handler)
+      document.removeEventListener('visibilitychange', ()=>{})
+    }
+  }, [initialized])
 
   const maxPage = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize])
 
@@ -237,7 +259,7 @@ export default function Estudiantes() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {loading ? (
+              {loading && rows.length===0 ? (
                 <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">Cargando…</td></tr>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>

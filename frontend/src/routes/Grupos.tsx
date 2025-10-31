@@ -1,6 +1,7 @@
 // src/routes/Grupos.tsx
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Catalogos } from "../lib/catalogos"
+import ConfirmModal from "../components/ConfirmModal"
 import MateriaPicker from "../components/inscripciones/MateriaPicker"
 import CarreraPicker from "../components/inscripciones/CarreraPicker"
 import api from "../lib/api"
@@ -41,6 +42,7 @@ export default function Grupos() {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [confirmDel, setConfirmDel] = useState<{open:boolean; id?:number; label?:string}>({open:false})
   const [importErrors, setImportErrors] = useState<Array<{ row: number; error: string }>>([])
   // paginación
   const [page, setPage] = useState(1)
@@ -68,11 +70,14 @@ export default function Grupos() {
       setTerminos(t ?? [])
       setDocentes(d ?? [])
       setModalidades(m ?? [])
-      if (t?.length) {
-        const saved = Number(localStorage.getItem('grupos.terminoId') || '')
-        const chosen = t.find((x: any) => x.id_termino === saved) || t[0]
-        setTerminoId(chosen.id_termino)
-        setForm(f => ({ ...f, id_termino: chosen.id_termino }))
+      const saved = Number(localStorage.getItem('grupos.terminoId') || '')
+      if (saved && (t ?? []).some((x:any)=> x.id_termino === saved)) {
+        setTerminoId(saved)
+        setForm(f => ({ ...f, id_termino: saved }))
+      } else {
+        // Por defecto: Todos (null)
+        setTerminoId(null)
+        setForm(f => ({ ...f, id_termino: null }))
       }
     }
     boot()
@@ -94,22 +99,43 @@ export default function Grupos() {
   }, [materiaId])
 
   // cargar grupos
-  async function load() {
-    setLoading(true); setErr(null)
+  const reqRef = useRef(0)
+  async function load(silent = false) {
+    const my = ++reqRef.current
+    if (!silent) setLoading(true); setErr(null)
     try {
       const q = new URLSearchParams()
       if (terminoId) q.set("termino_id", String(terminoId))
       if (carreraId) q.set("carrera_id", String(carreraId))
       if (materiaId) q.set("materia_id", String(materiaId))
-      const data = await api.get(`/grupos?${q.toString()}`)
-      setGrupos(data || [])
+      const qs = q.toString()
+      const path = qs ? `/grupos?${qs}` : '/grupos'
+      const data = await api.get(path)
+      if (reqRef.current === my) setGrupos(data || [])
     } catch (e: any) {
-      setErr(e.message || "Error al cargar grupos")
+      if (reqRef.current === my) setErr(e.message || "Error al cargar grupos")
     } finally {
-      setLoading(false)
+      if (reqRef.current === my) {
+        if (!silent) setLoading(false)
+      }
     }
   }
   useEffect(() => { setPage(1); load() }, [terminoId, carreraId, materiaId])
+
+  // Refrescar en segundo plano al volver de background/enfocar/reconectar
+  useEffect(()=>{
+    const handler = () => load(true)
+    window.addEventListener('focus', handler)
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') handler() })
+    window.addEventListener('pageshow', handler)
+    window.addEventListener('online', handler)
+    return ()=>{
+      window.removeEventListener('focus', handler)
+      window.removeEventListener('online', handler)
+      window.removeEventListener('pageshow', handler)
+      document.removeEventListener('visibilitychange', ()=>{})
+    }
+  }, [])
 
   // Persistir selecciones
   useEffect(() => {
@@ -287,14 +313,20 @@ export default function Grupos() {
   }
 
   // ===== eliminar grupo =====
-  async function onDelete(id: number) {
+  function askDelete(g: Grupo){
+    const docente = g.docente ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ''}`.trim() : 'N/D'
+    const label = `${g.materia?.nombre ?? '—'} — ${g.grupo_codigo} — ${docente}`
+    setConfirmDel({ open:true, id: g.id_grupo, label })
+  }
+  async function confirmDelete(){
+    if (!confirmDel.id){ setConfirmDel({ open:false }); return }
     setMsg(null)
-    try {
-      await api.delete(`/grupos/${id}`)
+    try{
+      await api.delete(`/grupos/${confirmDel.id}`)
+      setConfirmDel({ open:false })
       await load()
-    } catch (e: any) {
-      setMsg("❌ " + (e.message || "Error al eliminar"))
-    }
+      setMsg('✅ Grupo eliminado')
+    }catch(e:any){ setMsg('❌ '+(e.message||'Error al eliminar')) }
   }
 
   return (
@@ -320,6 +352,21 @@ export default function Grupos() {
             ))}
           </select>
         </div>
+
+      <ConfirmModal
+        open={confirmDel.open}
+        title="Eliminar grupo"
+        subtitle="Esta acción no se puede deshacer"
+        confirmLabel="Eliminar"
+        danger
+        onCancel={()=> setConfirmDel({ open:false })}
+        onConfirm={confirmDelete}
+      >
+        <div className="space-y-2 text-sm">
+          <div>¿Deseas eliminar el siguiente grupo?</div>
+          <div className="rounded-lg border bg-slate-50 px-3 py-2">{confirmDel.label}</div>
+        </div>
+      </ConfirmModal>
 
         <div className="grid gap-1">
           <label className="text-xs text-slate-500">Carrera</label>
@@ -483,7 +530,7 @@ export default function Grupos() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {loading ? (
+              {loading && grupos.length===0 ? (
                 <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">Cargando…</td></tr>
               ) : lista.length === 0 ? (
                 <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
@@ -501,7 +548,7 @@ export default function Grupos() {
                       <button
                         type="button"
                         className="inline-flex items-center rounded-lg border px-3 py-1.5 text-xs hover:bg-red-50 hover:border-red-300 text-red-600"
-                        onClick={() => onDelete(g.id_grupo)}
+                        onClick={() => askDelete(g)}
                         title="Eliminar grupo"
                       >Eliminar</button>
                     </td>

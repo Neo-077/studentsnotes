@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { crearInscripcion, listarInscripcionesPorGrupo, actualizarUnidades, eliminarInscripcion } from '../services/inscripciones.service.js';
+import { crearInscripcion, listarInscripcionesPorGrupo, actualizarUnidades, eliminarInscripcion, bulkInscribirPorNoControl } from '../services/inscripciones.service.js';
 
 const router = Router();
 const bodySchema = z.object({ id_estudiante: z.number(), id_grupo: z.number() });
+const bulkSchema = z.object({ id_grupo: z.number(), no_control: z.array(z.string().min(1)) })
 
 router.post('/', async (req, res, next)=>{
   try{
@@ -12,6 +13,15 @@ router.post('/', async (req, res, next)=>{
     res.status(201).json(data);
   }catch(e){ next(e); }
 });
+
+// POST /inscripciones/bulk  — inscribir por arreglo de no_control
+router.post('/bulk', async (req, res, next) => {
+  try {
+    const body = bulkSchema.parse(req.body)
+    const report = await bulkInscribirPorNoControl(body)
+    res.json(report)
+  } catch (e) { next(e) }
+})
 
 // GET /inscripciones?grupo_id=ID  — lista alumnos del grupo con unidades
 router.get('/', async (req, res, next) => {

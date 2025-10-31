@@ -2,18 +2,25 @@
 import { Router } from 'express'
 import { listGrupos, createGrupo, bulkUpsertGrupos, checkDocenteHorarioConflict, deleteGrupo } from '../services/grupos.service.js'
 import multer from 'multer'
+import { requireAuth as requireSupabaseAuth } from '../middleware/auth.js'
 
 const upload = multer()
 const router = Router()
 
 // GET /grupos  (lista + filtros)  — también sirve para validar conflictos
-router.get('/', async (req, res, next) => {
+router.get('/', requireSupabaseAuth, async (req, res, next) => {
   try {
     const termino_id  = req.query.termino_id  ? Number(req.query.termino_id)  : undefined
     const materia_id  = req.query.materia_id  ? Number(req.query.materia_id)  : undefined
     const carrera_id  = req.query.carrera_id  ? Number(req.query.carrera_id)  : undefined
-    const docente_id  = req.query.docente_id  ? Number(req.query.docente_id)  : undefined
+    let docente_id  = req.query.docente_id  ? Number(req.query.docente_id)  : undefined
     const horario     = req.query.horario ? String(req.query.horario) : undefined
+
+    // Si es maestro autenticado vía Supabase, limita a sus grupos
+    const appUsuario = (req as any).appUsuario as { rol?: string, id_docente?: number } | null
+    if (appUsuario && appUsuario.rol === 'maestro' && appUsuario.id_docente) {
+      docente_id = appUsuario.id_docente
+    }
 
     // Si vienen los 3 para conflicto, responde rápidamente
     if (docente_id && termino_id && horario) {

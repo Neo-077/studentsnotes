@@ -1,6 +1,7 @@
-import React, { Fragment, useEffect, useMemo, useState } from "react"
+import React, { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 import api from "../lib/api"
+import * as XLSX from "xlsx"
 
 export default function GrupoAulaDetalle() {
   const navigate = useNavigate()
@@ -15,6 +16,8 @@ export default function GrupoAulaDetalle() {
   const [msgAlu, setMsgAlu] = useState<string | null>(null)
   const [pageAlu, setPageAlu] = useState(1)
   const pageSizeAlu = 15
+  const [importing, setImporting] = useState(false)
+  const fileRef = useRef<HTMLInputElement|null>(null)
 
   const totalPagesAlu = useMemo(() => Math.max(1, Math.ceil((alumnos.rows?.length || 0) / pageSizeAlu)), [alumnos])
   const pageSafeAlu = Math.min(pageAlu, totalPagesAlu)
@@ -77,6 +80,40 @@ export default function GrupoAulaDetalle() {
     } catch (e: any) { setMsgAlu(e.message || 'Error') }
   }
 
+  async function handleImportFile(file: File) {
+    if (!file) return
+    try {
+      setImporting(true); setMsgAlu(null)
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: 'array' })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json<any>(ws, { defval: '' })
+      const list: string[] = []
+      for (const r of rows) {
+        const vals = Object.values(r)
+        let nc = ''
+        if ((r as any).no_control != null) nc = String((r as any).no_control)
+        else if ((r as any)["No. control"] != null) nc = String((r as any)["No. control"]) 
+        else if ((r as any)["NO CONTROL"] != null) nc = String((r as any)["NO CONTROL"]) 
+        else if (vals.length) nc = String(vals[0])
+        nc = nc.trim()
+        if (nc) list.push(nc)
+      }
+      if (list.length === 0) { setMsgAlu('Archivo sin números de control'); return }
+      await api.post('/inscripciones/bulk', { id_grupo, no_control: list })
+      await loadAlumnos(id_grupo)
+    } catch (e: any) {
+      setMsgAlu(e.message || 'Error al importar')
+    } finally { setImporting(false); if (fileRef.current) fileRef.current.value = '' }
+  }
+
+  function downloadTemplate() {
+    const ws = XLSX.utils.aoa_to_sheet([["no_control"], [""]])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Alumnos')
+    XLSX.writeFile(wb, 'plantilla_inscripciones.xlsx')
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -93,6 +130,9 @@ export default function GrupoAulaDetalle() {
               const el = document.getElementById('alu_noctrl') as HTMLInputElement
               if (el?.value) agregarPorNoControl(el.value)
             }}>Agregar</button>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e)=>{ const f = e.currentTarget.files?.[0]; if (f) handleImportFile(f) }} />
+            <button className="h-9 rounded-md border px-3 text-sm disabled:opacity-50" disabled={importing} onClick={()=> fileRef.current?.click()}>{importing ? 'Importando…' : 'Importar'}</button>
+            <button className="h-9 rounded-md border px-3 text-sm" onClick={downloadTemplate}>Plantilla</button>
           </div>
         </div>
 

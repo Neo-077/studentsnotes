@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import api from '../lib/api'
 import * as XLSX from 'xlsx'
 import { Catalogos } from '../lib/catalogos'
@@ -17,13 +17,37 @@ export default function Docentes() {
   // crear
   const [f, setF] = useState({ rfc: '', nombre: '', ap_paterno: '', ap_materno: '', correo: '', id_genero: '' as number | string })
 
-  async function load() {
-    setLoading(true); setMsg(null)
-    try { setRows((await Catalogos.docentes()) ?? []); setGeneros((await Catalogos.generos()) ?? []) }
-    catch (e: any) { setMsg(e.message || 'Error cargando docentes') }
-    finally { setLoading(false) }
+  const reqRef = useRef(0)
+  async function load(silent = false) {
+    const myId = ++reqRef.current
+    if (!silent) setLoading(true)
+    setMsg(null)
+    try {
+      const [ds, gs] = await Promise.all([Catalogos.docentes(), Catalogos.generos()])
+      setRows(ds ?? [])
+      setGeneros(gs ?? [])
+    } catch (e: any) {
+      setMsg(e.message || 'Error cargando docentes')
+    } finally {
+      if (reqRef.current === myId) {
+        if (!silent) setLoading(false)
+      }
+    }
   }
-  useEffect(()=>{ load() }, [])
+  useEffect(()=>{ load(false) }, [])
+
+  // Al volver de background/enfocar/reconectar: refrescar sin bloquear UI si ya hay datos
+  useEffect(()=>{
+    const handler = () => load(true)
+    window.addEventListener('focus', handler)
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') handler() })
+    window.addEventListener('online', handler)
+    return ()=>{
+      window.removeEventListener('focus', handler)
+      window.removeEventListener('online', handler)
+      document.removeEventListener('visibilitychange', ()=>{})
+    }
+  }, [])
 
   useEffect(()=>{
     if (!edit.open) return
@@ -130,7 +154,7 @@ export default function Docentes() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading && rows.length===0 ? (
                 <tr><td colSpan={7} className="px-3 py-6 text-center">Cargando…</td></tr>
               ) : dlist.length===0 ? (
                 <tr><td colSpan={7} className="px-3 py-6 text-center">Sin docentes.</td></tr>

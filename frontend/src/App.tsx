@@ -1,5 +1,5 @@
 // App.tsx
-import { Routes, Route, Navigate, Outlet, NavLink } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import Dashboard from './routes/Dashboard'
 // Rutas de gráficas externas removidas (Pareto, Dispersión, Control, Pastel)
@@ -15,11 +15,20 @@ import Materias from './routes/Materias'
 import GruposAula from './routes/GruposAula'
 import GrupoAulaDetalle from './routes/GrupoAulaDetalle'
 import { toggleTheme, isDark } from './lib/theme'
+import Account from './routes/Account'
 
 function Shell() {
-  const { user, logout } = useAuth()
+  const { user, logout, role, avatarUrl, refresh } = useAuth()
   const [dark, setDark] = useState(false)
   useEffect(()=>{ setDark(isDark()) }, [])
+
+  // Si hay sesión pero rol aún no llega (primer render), refresca perfil una sola vez
+  useEffect(()=>{
+    if (user && role == null) {
+      refresh().catch(()=>{})
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!user])
 
   const displayName =
     (user?.user_metadata?.full_name as string) ||
@@ -29,7 +38,7 @@ function Shell() {
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
 
   return (
-    <div className="min-h-screen-fix grid grid-cols-1 lg:grid-cols-[240px_1fr] app-root">
+    <div className="min-h-screen-fix grid grid-cols-1 lg:grid-cols-[260px_1fr] app-root">
       {/* Sidebar */}
       <aside className="sidebar p-4 lg:min-h-screen-fix shadow-xl">
         <div className="flex items-center gap-3 mb-5">
@@ -50,15 +59,19 @@ function Shell() {
         </button>
 
         <nav className="grid gap-1 mt-1">
-          {[
-            { to: '/dashboard', label: 'Dashboard' },
-            { to: '/inscripciones', label: 'Inscripciones' },
-            { to: '/grupos', label: 'Grupos' },
-            { to: '/grupos/aula', label: 'Grupos (Aula)' },
-            { to: '/docentes', label: 'Docentes' },
-            { to: '/materias', label: 'Materias' },
-            { to: '/estudiantes', label: 'Estudiantes' },
-          ].map(item => (
+          {(role === 'maestro'
+            ? [ { to: '/grupos/aula', label: 'Grupos (Aula)' }, { to: '/cuenta', label: 'Configuración' } ]
+            : [
+                { to: '/dashboard', label: 'Dashboard' },
+                { to: '/inscripciones', label: 'Inscripciones' },
+                { to: '/grupos', label: 'Grupos' },
+                { to: '/grupos/aula', label: 'Grupos (Aula)' },
+                { to: '/docentes', label: 'Docentes' },
+                { to: '/materias', label: 'Materias' },
+                { to: '/estudiantes', label: 'Estudiantes' },
+                { to: '/cuenta', label: 'Configuración' },
+              ]
+          ).map(item => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -75,10 +88,16 @@ function Shell() {
 
         <div className="mt-6 grid gap-3">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-full bg-white/12 grid place-items-center font-semibold">{initials || 'D'}</div>
-            <div className="min-w-0">
-              <div className="text-sm font-medium truncate">{displayName}</div>
-              {user?.email && <div className="text-xs opacity-80 truncate">{user.email}</div>}
+            <div className="size-10 rounded-full bg-white/12 grid place-items-center font-semibold overflow-hidden">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover"/>
+            ) : (
+              <span>{initials || 'D'}</span>
+            )}
+          </div>
+            <div className="min-w-0 w-full">
+              <div className="text-sm font-medium break-words leading-snug">{displayName}</div>
+              {user?.email && <div className="text-xs opacity-80 break-all leading-snug">{user.email}</div>}
             </div>
           </div>
           <button
@@ -93,7 +112,7 @@ function Shell() {
 
       {/* Columna principal */}
       <div>
-        <main className="safe-areas mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-7">
+        <main className="safe-areas mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-7">
           <Outlet />
         </main>
       </div>
@@ -159,25 +178,41 @@ function RequireAuth() {
   return <Outlet />
 }
 
+function AdminOnly(){
+  const { role, initialized } = useAuth()
+  if (!initialized) return null
+  if (role === 'maestro') return <Navigate to="/grupos/aula" replace />
+  return <Outlet/>
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAuth />}>
         <Route element={<Shell />}>
-          <Route path="/" element={<Navigate to="/dashboard" />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/inscripciones" element={<Inscripciones />} />
-          <Route path="/grupos" element={<Grupos />} />
+          <Route path="/" element={<DefaultRedirect />} />
+          {/* Rutas accesibles a todos los autenticados */}
           <Route path="/grupos/aula" element={<GruposAula />} />
           <Route path="/grupos/aula/:id_grupo" element={<GrupoAulaDetalle />} />
-          <Route path="/docentes" element={<Docentes />} />
-          <Route path="/materias" element={<Materias />} />
-          <Route path="/estudiantes" element={<Estudiantes />} />
-          {/* Ruta /catalogos eliminada */}
+          <Route path="/cuenta" element={<Account />} />
+          {/* Rutas solo admin */}
+          <Route element={<AdminOnly />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/inscripciones" element={<Inscripciones />} />
+            <Route path="/grupos" element={<Grupos />} />
+            <Route path="/docentes" element={<Docentes />} />
+            <Route path="/materias" element={<Materias />} />
+            <Route path="/estudiantes" element={<Estudiantes />} />
+          </Route>
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
   )
+}
+
+function DefaultRedirect(){
+  const { role } = useAuth()
+  return <Navigate to={role === 'maestro' ? '/grupos/aula' : '/dashboard'} replace />
 }

@@ -14,6 +14,10 @@ declare global {
   }
 }
 
+// Caché simple en memoria por token → { userId, email, exp }
+const TOKEN_CACHE = new Map<string, { id: string; email?: string; exp: number }>()
+const TTL_MS = 60_000
+
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const header = req.headers.authorization || ''
@@ -23,16 +27,25 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       return res.status(401).json({ error: { message: 'Token requerido' } })
     }
 
-    // 1) Validar token contra Supabase
-    const { data, error } = await supabase.auth.getUser(token)
-    if (error || !data?.user) {
-      return res.status(401).json({ error: { message: 'Token inválido' } })
+    // 1) Validar token con caché para reducir latencia
+    const now = Date.now()
+    const cached = TOKEN_CACHE.get(token)
+    if (cached && cached.exp > now) {
+      res.setHeader('X-Auth-Cache', 'HIT')
+      req.authUser = { id: cached.id, email: cached.email }
+    } else {
+      const { data, error } = await supabase.auth.getUser(token)
+      if (error || !data?.user) {
+        return res.status(401).json({ error: { message: 'Token inválido' } })
+      }
+      const email = data.user.email || undefined
+      req.authUser = { id: data.user.id, email }
+      TOKEN_CACHE.set(token, { id: data.user.id, email, exp: now + TTL_MS })
+      res.setHeader('X-Auth-Cache', 'MISS')
     }
 
-    const email = data.user.email || undefined
-    req.authUser = { id: data.user.id, email }
-
     // 2) Mapear al usuario de la app (tabla usuario)
+    const email = req.authUser?.email
     if (email) {
       const { data: usuarios, error: uErr } = await supabase
         .from('usuario')
