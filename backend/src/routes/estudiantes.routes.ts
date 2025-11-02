@@ -43,7 +43,6 @@ router.post('/bulk', upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file)
       return res.status(400).json({ error: { message: 'Archivo requerido (.xlsx, .xls, .csv)' } })
-    console.log('[bulk] file:', req.file.originalname, req.file.mimetype, req.file.size, 'bytes')
     const report = await bulkUpsertEstudiantes(req.file.buffer)
     res.json(report)
   } catch (e) {
@@ -61,6 +60,8 @@ router.delete('/:id', async (req, res, next) => {
   } catch (e) {
     next(e)
   }
-})
+});
+
+//router.get();
 
 export default router

@@ -1,7 +1,10 @@
-import React, { Fragment, useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 import api from "../lib/api"
 import * as XLSX from "xlsx"
+import PieChartPage from "../pages/PieChart"
+import ScatterChartPage from "../pages/ScatterChart"
+import ControlChart from "../pages/ControlChart"
 
 export default function GrupoAulaDetalle() {
   const navigate = useNavigate()
@@ -17,7 +20,9 @@ export default function GrupoAulaDetalle() {
   const [pageAlu, setPageAlu] = useState(1)
   const pageSizeAlu = 15
   const [importing, setImporting] = useState(false)
-  const fileRef = useRef<HTMLInputElement|null>(null)
+  const fileRef = useRef<HTMLInputElement | null>(null)
+  const [grupo, setGrupo] = useState<any>({})
+  const [promedio, setPromedio] = useState<any>({})
 
   const totalPagesAlu = useMemo(() => Math.max(1, Math.ceil((alumnos.rows?.length || 0) / pageSizeAlu)), [alumnos])
   const pageSafeAlu = Math.min(pageAlu, totalPagesAlu)
@@ -31,7 +36,7 @@ export default function GrupoAulaDetalle() {
       return
     }
     loadAlumnos(id_grupo)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id_grupo])
 
   async function loadAlumnos(id: number) {
@@ -39,6 +44,8 @@ export default function GrupoAulaDetalle() {
     try {
       const data = await api.get(`/inscripciones?grupo_id=${id}`)
       setAlumnos(data || { cupo: 0, unidades: 0, rows: [] })
+      setGrupo(data?.grupo || { aprobados: 0, reprobados: 0, total: 0 })
+      setPromedio(data?.promedio || []);
       if (!titulo) {
         // si viene la materia y código dentro de alguna fila, intenta formarlo
         const first = (data?.rows || [])[0]
@@ -70,7 +77,7 @@ export default function GrupoAulaDetalle() {
     try {
       const payload = { unidades: [{ unidad, [campo]: num }] }
       await api.put(`/inscripciones/${id_inscripcion}/unidades`, payload)
-    } catch {}
+    } catch { }
   }
 
   async function bajaInscripcion(id_inscripcion: number) {
@@ -93,8 +100,8 @@ export default function GrupoAulaDetalle() {
         const vals = Object.values(r)
         let nc = ''
         if ((r as any).no_control != null) nc = String((r as any).no_control)
-        else if ((r as any)["No. control"] != null) nc = String((r as any)["No. control"]) 
-        else if ((r as any)["NO CONTROL"] != null) nc = String((r as any)["NO CONTROL"]) 
+        else if ((r as any)["No. control"] != null) nc = String((r as any)["No. control"])
+        else if ((r as any)["NO CONTROL"] != null) nc = String((r as any)["NO CONTROL"])
         else if (vals.length) nc = String(vals[0])
         nc = nc.trim()
         if (nc) list.push(nc)
@@ -123,15 +130,15 @@ export default function GrupoAulaDetalle() {
 
       <div className="rounded-2xl bg-white border p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <div className="text-sm text-slate-600">Cupo: {(alumnos.rows||[]).length} / {alumnos.cupo} • Unidades: {alumnos.unidades} {((alumnos.rows||[]).length >= (alumnos.cupo||0)) && <span className="ml-2 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-700 ring-1 ring-red-100">Cupo lleno</span>}</div>
+          <div className="text-sm text-slate-600">Cupo: {(alumnos.rows || []).length} / {alumnos.cupo} • Unidades: {alumnos.unidades} {((alumnos.rows || []).length >= (alumnos.cupo || 0)) && <span className="ml-2 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-700 ring-1 ring-red-100">Cupo lleno</span>}</div>
           <div className="flex gap-2 items-center">
-            <input id="alu_noctrl" placeholder="No. control" className="h-9 rounded-md border px-3 text-sm" disabled={(alumnos.rows||[]).length >= (alumnos.cupo||0)} />
-            <button className="h-9 rounded-md border px-3 text-sm" disabled={(alumnos.rows||[]).length >= (alumnos.cupo||0)} onClick={()=>{
+            <input id="alu_noctrl" placeholder="No. control" className="h-9 rounded-md border px-3 text-sm" disabled={(alumnos.rows || []).length >= (alumnos.cupo || 0)} />
+            <button className="h-9 rounded-md border px-3 text-sm" disabled={(alumnos.rows || []).length >= (alumnos.cupo || 0)} onClick={() => {
               const el = document.getElementById('alu_noctrl') as HTMLInputElement
               if (el?.value) agregarPorNoControl(el.value)
             }}>Agregar</button>
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e)=>{ const f = e.currentTarget.files?.[0]; if (f) handleImportFile(f) }} />
-            <button className="h-9 rounded-md border px-3 text-sm disabled:opacity-50" disabled={importing} onClick={()=> fileRef.current?.click()}>{importing ? 'Importando…' : 'Importar'}</button>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { const f = e.currentTarget.files?.[0]; if (f) handleImportFile(f) }} />
+            <button className="h-9 rounded-md border px-3 text-sm disabled:opacity-50" disabled={importing} onClick={() => fileRef.current?.click()}>{importing ? 'Importando…' : 'Importar'}</button>
             <button className="h-9 rounded-md border px-3 text-sm" onClick={downloadTemplate}>Plantilla</button>
           </div>
         </div>
@@ -144,7 +151,7 @@ export default function GrupoAulaDetalle() {
               <tr className="[&>th]:px-3 [&>th]:py-2 text-left">
                 <th>No. control</th>
                 <th>Nombre</th>
-                {Array.from({ length: alumnos.unidades || 0 }, (_,i)=> i+1).map(u => (
+                {Array.from({ length: alumnos.unidades || 0 }, (_, i) => i + 1).map(u => (
                   <Fragment key={`u_head_${u}`}>
                     <th className="text-center">U{u} Cal</th>
                     <th className="text-center">U{u} Asist%</th>
@@ -156,38 +163,38 @@ export default function GrupoAulaDetalle() {
             <tbody className="divide-y">
               {loadingAlu && (
                 <tr>
-                  <td colSpan={2 + (alumnos.unidades||0)*2 + 1} className="px-3 py-6 text-center text-slate-500">Cargando…</td>
+                  <td colSpan={2 + (alumnos.unidades || 0) * 2 + 1} className="px-3 py-6 text-center text-slate-500">Cargando…</td>
                 </tr>
               )}
               {!loadingAlu && pagedAlu.length === 0 && (
                 <tr>
-                  <td colSpan={2 + (alumnos.unidades||0)*2 + 1} className="px-3 py-6 text-center text-slate-500">Sin alumnos.</td>
+                  <td colSpan={2 + (alumnos.unidades || 0) * 2 + 1} className="px-3 py-6 text-center text-slate-500">Sin alumnos.</td>
                 </tr>
               )}
-              {!loadingAlu && pagedAlu.length > 0 && pagedAlu.map((r:any)=> (
+              {!loadingAlu && pagedAlu.length > 0 && pagedAlu.map((r: any) => (
                 <tr key={r.id_inscripcion} className="[&>td]:px-3 [&>td]:py-2">
                   <td className="whitespace-nowrap">{r.estudiante?.no_control}</td>
                   <td className="whitespace-nowrap">{`${r.estudiante?.nombre ?? ''} ${r.estudiante?.ap_paterno ?? ''}`}</td>
-                  {Array.from({ length: alumnos.unidades || 0 }, (_,i)=> i+1).map(u => {
-                    const cal = r.unidades?.find((x:any)=> x.unidad===u)?.calificacion ?? ''
-                    const asi = r.unidades?.find((x:any)=> x.unidad===u)?.asistencia ?? ''
+                  {Array.from({ length: alumnos.unidades || 0 }, (_, i) => i + 1).map(u => {
+                    const cal = r.unidades?.find((x: any) => x.unidad === u)?.calificacion ?? ''
+                    const asi = r.unidades?.find((x: any) => x.unidad === u)?.asistencia ?? ''
                     return (
                       <Fragment key={`u_row_${r.id_inscripcion}-${u}`}>
                         <td className="text-center">
                           <input type="number" min={0} max={100} defaultValue={cal as any}
                             className="h-9 w-20 rounded-md border px-2 text-sm text-center"
-                            onBlur={(e)=> actualizarUnidad(r.id_inscripcion, u, 'calificacion', e.currentTarget.value)} />
+                            onBlur={(e) => actualizarUnidad(r.id_inscripcion, u, 'calificacion', e.currentTarget.value)} />
                         </td>
                         <td className="text-center">
                           <input type="number" min={0} max={100} defaultValue={asi as any}
                             className="h-9 w-20 rounded-md border px-2 text-sm text-center"
-                            onBlur={(e)=> actualizarUnidad(r.id_inscripcion, u, 'asistencia', e.currentTarget.value)} />
+                            onBlur={(e) => actualizarUnidad(r.id_inscripcion, u, 'asistencia', e.currentTarget.value)} />
                         </td>
                       </Fragment>
                     )
                   })}
                   <td className="text-right">
-                    <button className="rounded-md border px-3 py-1 text-xs text-red-600 hover:bg-red-50" onClick={()=> bajaInscripcion(r.id_inscripcion)}>Baja</button>
+                    <button className="rounded-md border px-3 py-1 text-xs text-red-600 hover:bg-red-50" onClick={() => bajaInscripcion(r.id_inscripcion)}>Baja</button>
                   </td>
                 </tr>
               ))}
@@ -198,11 +205,16 @@ export default function GrupoAulaDetalle() {
         <div className="flex items-center justify-between text-sm">
           <div className="text-slate-600">Mostrando {alumnos.rows.length === 0 ? 0 : (startAlu + 1)}–{Math.min(endAlu, alumnos.rows.length)} de {alumnos.rows.length}</div>
           <div className="flex items-center gap-2">
-            <button className="rounded-md border px-3 py-1 disabled:opacity-50" disabled={pageSafeAlu<=1} onClick={()=> setPageAlu(p=>Math.max(1,p-1))}>Anterior</button>
+            <button className="rounded-md border px-3 py-1 disabled:opacity-50" disabled={pageSafeAlu <= 1} onClick={() => setPageAlu(p => Math.max(1, p - 1))}>Anterior</button>
             <div className="px-1">Página {pageSafeAlu} / {totalPagesAlu}</div>
-            <button className="rounded-md border px-3 py-1 disabled:opacity-50" disabled={pageSafeAlu>=totalPagesAlu} onClick={()=> setPageAlu(p=>Math.min(totalPagesAlu,p+1))}>Siguiente</button>
+            <button className="rounded-md border px-3 py-1 disabled:opacity-50" disabled={pageSafeAlu >= totalPagesAlu} onClick={() => setPageAlu(p => Math.min(totalPagesAlu, p + 1))}>Siguiente</button>
           </div>
         </div>
+      </div>
+      <div>
+        <PieChartPage grupo={ grupo } />
+        <ScatterChartPage alumnos = {alumnos?.rows}/>
+        <ControlChart promedio= {promedio}/>
       </div>
     </div>
   )

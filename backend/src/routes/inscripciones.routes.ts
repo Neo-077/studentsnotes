@@ -1,6 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { crearInscripcion, listarInscripcionesPorGrupo, actualizarUnidades, eliminarInscripcion, bulkInscribirPorNoControl } from '../services/inscripciones.service.js';
+import { 
+  crearInscripcion,
+  listarInscripcionesPorGrupo,
+  actualizarUnidades,
+  eliminarInscripcion,
+  bulkInscribirPorNoControl,
+  obtenerReporteAprobadosReprobados,
+  obtenerReportePromedioSemestre
+} from '../services/inscripciones.service.js';
 
 const router = Router();
 const bodySchema = z.object({ id_estudiante: z.number(), id_grupo: z.number() });
@@ -29,7 +37,9 @@ router.get('/', async (req, res, next) => {
     const id = Number(req.query.grupo_id)
     if (!id) return res.status(400).json({ error: { message: 'grupo_id requerido' } })
     const data = await listarInscripcionesPorGrupo(id)
-    res.json(data)
+    const grupo = obtenerReporteAprobadosReprobados(data);
+    const promedio = obtenerReportePromedioSemestre(data.rows);
+    res.json({ ...data, grupo, promedio})
   } catch (e) { next(e) }
 })
 

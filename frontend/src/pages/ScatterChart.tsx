@@ -1,16 +1,14 @@
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
 import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 
-export default function ScatterChartPage(){
+export default function ScatterChartPage({alumnos }: { alumnos: any }){
   const [points, setPoints] = useState<any[]>([])
   useEffect(()=>{
     (async ()=>{
-      const { data } = await supabase.from('students').select('asistencia, promedio, nombre')
-      setPoints((data||[]).map(d=> ({ x: d.asistencia, y: d.promedio, name: d.nombre })))
+      setPoints((alumnos||[]).map( (alumno : {asistencia: number, promedio: number, estudiante: {nombre: string}}) => ({ x: alumno.asistencia, y: alumno.promedio, name: `${alumno?.estudiante?.nombre}` })))
     })()
-  },[])
+  },[alumnos])
 
   return (
     <div className="space-y-4">

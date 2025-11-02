@@ -88,11 +88,26 @@ export async function listarInscripcionesPorGrupo(id_grupo: number) {
         asistencia: (asiByKey.get(`${r.id_inscripcion}|${u}`) ?? null) as any,
       })
     }
+
+    // Calcular promedio de calificaciones
+    const calificaciones = unidadesArr.map(u => u.calificacion).filter((cal): cal is number => cal != null)
+    const promedio = calificaciones.length > 0
+      ? calificaciones.reduce((sum, cal) => sum + cal, 0) / calificaciones.length
+      : 0
+
+    // Calcular promedio de asistencia
+    const asistencias = unidadesArr.map(u => u.asistencia).filter((asi): asi is number => asi != null)
+    const promedioAsistencia = asistencias.length > 0
+      ? asistencias.reduce((sum, asi) => sum + asi, 0) / asistencias.length
+      : 0
+
     return {
       id_inscripcion: r.id_inscripcion,
       status: r.status,
       estudiante: r.estudiante,
       unidades: unidadesArr,
+      asistencia: promedioAsistencia,
+      promedio: promedio,
     }
   })
 
@@ -175,7 +190,7 @@ export async function actualizarUnidades(input: { id_inscripcion: number; unidad
 // Importación masiva por números de control
 export async function bulkInscribirPorNoControl(input: { id_grupo: number; no_control: string[] }) {
   const id_grupo = Number(input.id_grupo)
-  const lista = Array.isArray(input.no_control) ? input.no_control.map(String).map(s=>s.trim()).filter(Boolean) : []
+  const lista = Array.isArray(input.no_control) ? input.no_control.map(String).map(s => s.trim()).filter(Boolean) : []
   if (!id_grupo) throw new Error('id_grupo inválido')
   if (!lista.length) return { ok: true, created: 0, skipped: 0, not_found: [], duplicates: [], over_capacity: 0 }
 
@@ -251,4 +266,58 @@ export async function bulkInscribirPorNoControl(input: { id_grupo: number; no_co
 
   const skipped = duplicates.length + not_found.length + Array.from(yaInscritos).length + over_capacity
   return { ok: true, created, skipped, not_found, duplicates, over_capacity, cupo, usados_final: usados }
+}
+
+// Obtener reprobados y aprobados
+export function obtenerReporteAprobadosReprobados(alumnos: any) {
+  let promedio: number = 0;
+  let aprobados: number = 0;
+  let reprobados: number = 0;
+  let promedioAsistencia: number = 0;
+  let desercion: number = 0;
+  for (const alumno of alumnos?.rows) {
+    promedio = alumno.unidades.reduce((acc: number, curr: any) => acc + (curr.calificacion || 0), 0) / alumno.unidades.length;
+    promedioAsistencia = alumno.unidades.reduce((acc: number, curr: any) => acc + (curr.asistencia || 0), 0) / alumno.unidades.length;
+    if (promedio >= 70 && promedioAsistencia >= 85) {
+      aprobados += 1;
+    } else {
+      reprobados += 1;
+    }
+
+    if (promedioAsistencia < 85) {
+      desercion += 1;
+    }
+
+  };
+  return {
+    aprobados,
+    reprobados,
+    desercion,
+    total: alumnos?.rows.length || 0
+  };
+}
+
+export function obtenerReportePromedioSemestre(alumnos: any) {
+  const promediosPorUnidad = [];
+  const numAlumnos = alumnos.length;
+  const numUnidades = alumnos[0].unidades.length;
+
+  for (let i = 0; i < numUnidades; i++) {
+    let sumaCalificacion = 0;
+    let sumaAsistencia = 0;
+
+    for (const alumno of alumnos) {
+      console.log("alumno", alumno.unidades);
+      const unidad = alumno.unidades[i];
+      sumaCalificacion += unidad.calificacion;
+      sumaAsistencia += unidad.asistencia;
+    }
+
+    promediosPorUnidad.push({
+      semestre: i + 1,
+      calificacion: (sumaCalificacion / numAlumnos).toFixed(2),
+      asistencia: (sumaAsistencia / numAlumnos).toFixed(2),
+    });
+  }
+  return promediosPorUnidad;
 }
