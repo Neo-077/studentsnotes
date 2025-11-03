@@ -62,7 +62,7 @@ function Shell() {
           {(role === 'maestro'
             ? [ { to: '/grupos/aula', label: 'Grupos (Aula)' }, { to: '/cuenta', label: 'Configuración' } ]
             : [
-                { to: '/dashboard', label: 'Dashboard' },
+               // { to: '/dashboard', label: 'Dashboard' },
                 { to: '/inscripciones', label: 'Inscripciones' },
                 { to: '/grupos', label: 'Grupos' },
                 { to: '/grupos/aula', label: 'Grupos (Aula)' },
