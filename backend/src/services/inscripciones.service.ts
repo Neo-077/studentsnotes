@@ -300,17 +300,16 @@ export function obtenerReporteAprobadosReprobados(alumnos: any) {
 export function obtenerReportePromedioSemestre(alumnos: any) {
   const promediosPorUnidad = [];
   const numAlumnos = alumnos.length;
-  const numUnidades = alumnos[0].unidades.length;
+  const numUnidades = alumnos[0]?.unidades?.length;
 
   for (let i = 0; i < numUnidades; i++) {
     let sumaCalificacion = 0;
     let sumaAsistencia = 0;
 
     for (const alumno of alumnos) {
-      console.log("alumno", alumno.unidades);
-      const unidad = alumno.unidades[i];
-      sumaCalificacion += unidad.calificacion;
-      sumaAsistencia += unidad.asistencia;
+      const unidad = alumno?.unidades?.[i];
+      sumaCalificacion += unidad?.calificacion || 0;
+      sumaAsistencia += unidad?.asistencia || 0;
     }
 
     promediosPorUnidad.push({

@@ -5,6 +5,8 @@ import * as XLSX from "xlsx"
 import PieChartPage from "../pages/PieChart"
 import ScatterChartPage from "../pages/ScatterChart"
 import ControlChart from "../pages/ControlChart"
+import ModalBaja from '../components/grupoAulaDetalle/ModalBaja'
+import ParetoChart from '../pages/ParetoChart'
 
 export default function GrupoAulaDetalle() {
   const navigate = useNavigate()
@@ -23,6 +25,8 @@ export default function GrupoAulaDetalle() {
   const fileRef = useRef<HTMLInputElement | null>(null)
   const [grupo, setGrupo] = useState<any>({})
   const [promedio, setPromedio] = useState<any>({})
+  const [showBajaModal, setShowBajaModal] = useState(false)
+  const [id_inscripcion, setIdInscripcion] = useState<number>()
 
   const totalPagesAlu = useMemo(() => Math.max(1, Math.ceil((alumnos.rows?.length || 0) / pageSizeAlu)), [alumnos])
   const pageSafeAlu = Math.min(pageAlu, totalPagesAlu)
@@ -43,23 +47,12 @@ export default function GrupoAulaDetalle() {
     setLoadingAlu(true); setMsgAlu(null)
     try {
       const data = await api.get(`/inscripciones?grupo_id=${id}`)
-      // Normalizar estructura esperada para evitar accesos a undefined
-      const normalized = (() => {
-        const cupo = Number((data as any)?.cupo) || 0
-        const unidades = Number((data as any)?.unidades ?? (data as any)?.grupo?.unidades ?? (data as any)?.materia?.unidades) || 0
-        const rows = Array.isArray((data as any)?.rows)
-          ? (data as any).rows
-          : Array.isArray(data)
-            ? (data as any)
-            : []
-        return { cupo, unidades, rows }
-      })()
-      setAlumnos(normalized)
-      setGrupo((data as any)?.grupo || { aprobados: 0, reprobados: 0, total: 0 })
-      setPromedio((data as any)?.promedio || [])
+      setAlumnos(data || { cupo: 0, unidades: 0, rows: [] })
+      setGrupo(data?.grupo || { aprobados: 0, reprobados: 0, total: 0 })
+      setPromedio(data?.promedio || []);
       if (!titulo) {
         // si viene la materia y código dentro de alguna fila, intenta formarlo
-        const first = (((data as any)?.rows) || [])[0]
+        const first = (data?.rows || [])[0]
         const t = location?.state?.titulo
         setTitulo(typeof t === 'string' && t ? t : (first?.grupo_titulo || ""))
       }
@@ -91,12 +84,25 @@ export default function GrupoAulaDetalle() {
     } catch { }
   }
 
-  async function bajaInscripcion(id_inscripcion: number) {
-    try {
-      await api.delete(`/inscripciones/${id_inscripcion}`)
-      await loadAlumnos(id_grupo)
-    } catch (e: any) { setMsgAlu(e.message || 'Error') }
+  function abrirModalBaja() {
+    setShowBajaModal(true);
   }
+
+  function cerrarModalBaja() {
+    setShowBajaModal(false);
+  }
+
+  async function bajaInscripcion(id_inscripcion: number) {
+    abrirModalBaja();
+    setIdInscripcion(id_inscripcion);
+  }
+
+  // async function bajaInscripcion(id_inscripcion: number) {
+  //   try {
+  //     await api.delete(`/inscripciones/${id_inscripcion}`)
+  //     await loadAlumnos(id_grupo)
+  //   } catch (e: any) { setMsgAlu(e.message || 'Error') }
+  // }
 
   async function handleImportFile(file: File) {
     if (!file) return
@@ -214,7 +220,7 @@ export default function GrupoAulaDetalle() {
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <div className="text-slate-600">Mostrando {(alumnos?.rows?.length || 0) === 0 ? 0 : (startAlu + 1)}–{Math.min(endAlu, alumnos?.rows?.length || 0)} de {alumnos?.rows?.length || 0}</div>
+          <div className="text-slate-600">Mostrando {alumnos.rows.length === 0 ? 0 : (startAlu + 1)}–{Math.min(endAlu, alumnos.rows.length)} de {alumnos.rows.length}</div>
           <div className="flex items-center gap-2">
             <button className="rounded-md border px-3 py-1 disabled:opacity-50" disabled={pageSafeAlu <= 1} onClick={() => setPageAlu(p => Math.max(1, p - 1))}>Anterior</button>
             <div className="px-1">Página {pageSafeAlu} / {totalPagesAlu}</div>
@@ -223,10 +229,15 @@ export default function GrupoAulaDetalle() {
         </div>
       </div>
       <div>
+        <div className="m-10" />
         <PieChartPage grupo={grupo} />
+        <div className="m-10" />
         <ScatterChartPage alumnos={alumnos?.rows} />
+        <div className="m-10" />
         <ControlChart promedio={promedio} />
+        <ParetoChart />
       </div>
+      <ModalBaja open={showBajaModal} onConfirm={cerrarModalBaja} onCancel={cerrarModalBaja} idInscripcion={id_inscripcion}/>
     </div>
   )
 }

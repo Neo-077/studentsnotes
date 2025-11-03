@@ -88,33 +88,37 @@ export default function PieChartPage({ grupo }: { grupo: any }) {
   };
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-xl font-semibold">Pastel (Aprobados vs Reprobados)</h3>
-      <div className="h-80 bg-white p-4 rounded-xl border shadow">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              activeIndex={activeIndex ?? 0}
-              activeShape={renderActiveShape as any}
-              data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={80}
-              dataKey="value"
-              onMouseEnter={onPieEnter}
-              labelLine={false}
-              label={false}
-            />
-            <Tooltip
-              formatter={(value: number, name: string) => [
-                `${value} ${name}`,
-                name
-              ]}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+    <>
+      {grupo && grupo.aprobados > 0 && grupo.reprobados > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold">Pastel (Aprobados vs Reprobados)</h3>
+          <div className="h-80 bg-white p-4 rounded-xl border shadow">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  activeIndex={activeIndex ?? 0}
+                  activeShape={renderActiveShape}
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  dataKey="value"
+                  onMouseEnter={onPieEnter}
+                  labelLine={false}
+                  label={false}
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) => [
+                    `${value} ${name}`,
+                    name
+                  ]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -1,7 +1,3 @@
-Perfecto 👍 Aquí tienes tu **README.md** actualizado e integrado con la guía completa de instalación y ejecución (lo segundo que me diste), manteniendo el formato profesional, ordenado y unificado para el repositorio **StudentsNotes** 👇
-
----
-
 # 🎓 StudentsNotes
 
 **StudentsNotes** es una aplicación web desarrollada para el **seguimiento académico** y **análisis de desempeño estudiantil**.

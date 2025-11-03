@@ -7,7 +7,7 @@ import {
   eliminarInscripcion,
   bulkInscribirPorNoControl,
   obtenerReporteAprobadosReprobados,
-  obtenerReportePromedioSemestre
+  obtenerReportePromedioSemestre,
 } from '../services/inscripciones.service.js';
 
 const router = Router();
