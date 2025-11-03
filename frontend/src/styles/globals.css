@@ -1,0 +1,281 @@
+@import "tailwindcss";
+
+/* ===== Responsive / Cross-browser base ===== */
+:root {
+  color-scheme: light dark;
+  /* Paleta solicitada */
+  --c-bg:       #EFF1EB; /* fondo */
+  --c-teal:     #63C1CA; /* primario suave */
+  --c-blue:     #5292AB; /* secundario */
+  --c-rose:     #B0747A; /* acento */
+  --c-navy:     #1E3452; /* sidebar / títulos */
+
+  /* Light theme mapping */
+  --bg:            var(--c-bg);
+  --surface:       #FFFFFF;
+  --card:          #FFFFFF;
+  --text:          #1E3452;
+  --muted:         #4F667F;
+  --border:        #D9E0E6;
+  --ring:          color-mix(in oklab, var(--c-teal), transparent 55%);
+  --shadow-soft:   0 1px 2px rgba(30,52,82,.08), 0 1px 1px rgba(30,52,82,.04);
+  --primary:       var(--c-teal);
+  --primary-ctr:   #0B1220;
+  --sidebar-bg:    var(--c-navy);
+  --sidebar-fg:    #E9EEF5;
+  --danger-bg:     #E11D48; /* rojo */
+  --danger-fg:     #FFFFFF;
+  --danger-bg-hover:#BE123C;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text);
+  background-color: var(--bg);
+}
+
+/* Contenedor raíz de la app */
+.app-root { background-color: var(--bg); color: var(--text); }
+
+/* ===== Dark mode (html.dark) ===== */
+html.dark {
+  /* Derivaciones de la misma paleta para oscuro (más "curado") */
+  --bg:          #0E1624;   /* fondo profundo pero limpio */
+  --surface:     #111B2B;   /* superficie */
+  --card:        #0F1C2C;   /* tarjeta */
+  --text:        #EAF2FB;   /* texto principal alto contraste */
+  --muted:       #B7C7D9;   /* texto secundario */
+  --border:      #24344A;   /* líneas discretas */
+  --ring:        color-mix(in oklab, var(--c-teal), white 10%);
+  --shadow-soft: 0 1px 1px rgba(0,0,0,.5), 0 6px 16px rgba(0,0,0,.35);
+  --primary:     color-mix(in oklab, var(--c-teal), #1E3452 15%);
+  --primary-ctr: #08111E;
+  --sidebar-bg:  #13233A;
+  --sidebar-fg:  #E7EEF6;
+  --danger-bg:   #F87171; /* rojo suave visible en oscuro */
+  --danger-fg:   #0B1220;
+  --danger-bg-hover:#F05252;
+}
+
+/* ===== Mapear utilidades comunes a la paleta ===== */
+.bg-white { background-color: var(--card) !important; }
+.bg-slate-50, .bg-slate-100 { background-color: var(--surface) !important; }
+.text-slate-900 { color: var(--text) !important; }
+.text-slate-700, .text-slate-600 { color: var(--muted) !important; }
+.text-slate-500 { color: var(--muted) !important; opacity: .95; }
+.border { border-color: var(--border) !important; }
+.ring-1 { --tw-ring-color: var(--ring) !important; }
+.shadow, .shadow-sm, .shadow-md, .shadow-lg { box-shadow: var(--shadow-soft) !important; }
+
+/* Inputs y selects */
+input, select, textarea {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--ring); outline-offset: 2px; }
+input::placeholder, textarea::placeholder { color: color-mix(in oklab, var(--muted), transparent 30%); }
+
+/* Botones neutros */
+button {
+  color: var(--text);
+  transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, transform .05s ease, filter .15s ease, border-color .15s ease;
+}
+button:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  transform: translateY(-0.5px);
+}
+button:active { transform: translateY(0); filter: brightness(0.98); }
+
+/* Botón primario azul (si se usa bg-blue-500/600 por clases) */
+.bg-blue-500, .bg-blue-600, .bg-indigo-600, .bg-sky-500 { background-color: var(--primary) !important; color: var(--primary-ctr) !important; }
+.hover\:bg-blue-600:hover, .hover\:bg-indigo-700:hover { filter: brightness(0.93); box-shadow: 0 2px 10px rgba(0,0,0,.1); }
+
+/* Hover de tarjetas y superficies claras */
+.hover\:bg-slate-50:hover { background-color: var(--surface) !important; }
+.bg-white\/10 { background-color: color-mix(in oklab, var(--text), transparent 90%) !important; }
+.hover\:bg-white\/20:hover { background-color: color-mix(in oklab, var(--text), transparent 80%) !important; }
+.hover\:bg-white\/10\/80:hover { background-color: color-mix(in oklab, var(--text), transparent 85%) !important; }
+
+/* Botones de borde (ej. Descargar/Importar, labels clicables) */
+.rounded-lg.border,
+.rounded-xl.border,
+button.border,
+label.cursor-pointer.border {
+  transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, transform .05s ease, border-color .15s ease;
+}
+.rounded-lg.border:hover,
+.rounded-xl.border:hover,
+button.border:hover,
+label.cursor-pointer.border:hover {
+  background-color: color-mix(in oklab, var(--text), transparent 92%);
+  border-color: color-mix(in oklab, var(--text), transparent 80%);
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  transform: translateY(-0.5px);
+}
+.rounded-lg.border:active,
+.rounded-xl.border:active,
+button.border:active,
+label.cursor-pointer.border:active {
+  transform: translateY(0);
+}
+
+/* Sidebar helper */
+.sidebar {
+  background-color: var(--sidebar-bg) !important;
+  color: var(--sidebar-fg) !important;
+  border-right: 1px solid color-mix(in oklab, var(--sidebar-fg), transparent 85%);
+}
+
+/* Sidebar — enlaces y botones */
+.sidebar-link {
+  display: block;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.6rem;
+  color: color-mix(in oklab, var(--sidebar-fg), white 6%);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  position: relative;
+  transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, transform .05s ease;
+}
+.sidebar-link:hover { background-color: color-mix(in oklab, var(--sidebar-fg), transparent 90%); }
+.sidebar-link.is-active {
+  background-color: color-mix(in oklab, var(--sidebar-fg), transparent 88%);
+  color: white;
+}
+.sidebar-link.is-active::before {
+  content: '';
+  position: absolute; left: -8px; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 2px;
+  background: var(--primary);
+}
+
+.sidebar .theme-toggle {
+  color: var(--sidebar-fg);
+  background-color: color-mix(in oklab, var(--sidebar-fg), transparent 85%);
+  border: 1px solid color-mix(in oklab, var(--sidebar-fg), transparent 70%);
+}
+.sidebar .theme-toggle:hover { 
+  background-color: color-mix(in oklab, var(--sidebar-fg), transparent 78%);
+}
+.sidebar .theme-toggle svg { opacity: .9; }
+.sidebar .theme-toggle span { opacity: .95; }
+
+.sidebar .logout-btn {
+  color: var(--sidebar-fg);
+  background-color: color-mix(in oklab, var(--sidebar-fg), transparent 86%);
+  border: 1px solid color-mix(in oklab, var(--sidebar-fg), transparent 70%);
+}
+.sidebar .logout-btn:hover { background-color: color-mix(in oklab, var(--sidebar-fg), transparent 78%); }
+
+/* Tablas contraste en oscuro */
+html.dark table { color: var(--text); }
+html.dark thead { background-color: color-mix(in oklab, var(--surface), white 2%); }
+html.dark tbody tr:nth-child(odd) { background-color: color-mix(in oklab, var(--surface), black 3%); }
+html.dark tbody tr:hover { background-color: color-mix(in oklab, var(--surface), white 4%); }
+
+/* ===== Estilos globales de tablas (toda la app) ===== */
+table:not(.table-plain) {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+table:not(.table-plain) thead th {
+  position: sticky; /* si hay overflow en contenedor, funciona */
+  top: 0;
+  z-index: 1;
+  background: color-mix(in oklab, var(--surface), white 4%);
+  color: color-mix(in oklab, var(--text), black 10%);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+table:not(.table-plain) tbody td {
+  padding: 0.7rem 0.9rem;
+  border-top: 1px solid var(--border);
+  vertical-align: middle;
+}
+table:not(.table-plain) tbody tr:nth-child(odd) {
+  background: color-mix(in oklab, var(--surface), white 2%);
+}
+html.dark table:not(.table-plain) tbody tr:nth-child(odd) {
+  background: color-mix(in oklab, var(--surface), black 3%);
+}
+table:not(.table-plain) tbody tr:hover {
+  background: color-mix(in oklab, var(--surface), white 6%);
+}
+html.dark table:not(.table-plain) tbody tr:hover {
+  background: color-mix(in oklab, var(--surface), white 4%);
+}
+table:not(.table-plain) tfoot td, table:not(.table-plain) tfoot th {
+  padding: 0.7rem 0.9rem;
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklab, var(--surface), white 3%);
+}
+
+/* Utilidades opcionales */
+.table-compact td, .table-compact th { padding: 0.5rem 0.7rem !important; }
+.table-plain { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
+
+/* Botones de acción dentro de tablas (Editar/Eliminar) */
+table button {
+  appearance: none;
+  border: 1px solid color-mix(in oklab, var(--border), black 4%);
+  background-color: color-mix(in oklab, var(--surface), black 4%);
+  color: var(--text);
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0.42rem 0.6rem;
+  border-radius: 999px;
+  box-shadow: none;
+}
+/* Variante peligrosa si viene con texto 'Eliminar' (hereda color rojo en hover) */
+table button:hover {
+  background-color: color-mix(in oklab, var(--surface), black 7%);
+  border-color: color-mix(in oklab, var(--border), black 8%);
+  filter: none;
+  transform: none;
+}
+/* Si el botón ya tiene color rojo (por clase inline), respeta el rojo y solo ajusta leve */
+table button.bg-red-500:hover,
+table button.bg-rose-500:hover,
+table button[aria-label*="Eliminar"]:hover,
+table button:where(.btn-danger):hover {
+  background-color: var(--danger-bg-hover) !important;
+  color: var(--danger-fg) !important;
+  border-color: color-mix(in oklab, var(--danger-bg), black 10%) !important;
+}
+table button:active { transform: none; filter: brightness(.98); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* Focus visible accesible */
+:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, .5);
+  outline-offset: 2px;
+}
+
+/* Safe areas (iOS notches) */
+.safe-areas {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Alturas fiables en móviles */
+.min-h-screen-fix { min-height: 100dvh; }
