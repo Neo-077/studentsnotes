@@ -279,3 +279,38 @@ table button:active { transform: none; filter: brightness(.98); }
 
 /* Alturas fiables en móviles */
 .min-h-screen-fix { min-height: 100dvh; }
+
+
+
+/* ===== Dropdown neutro (independiente de estilos globales de button) ===== */
+.dropdown-menu {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  text-align: left;
+  text-decoration: none;
+  color: var(--text);
+  background: transparent;         /* importante: sin fondo base */
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: color-mix(in oklab, var(--text), transparent 92%);
+  outline: none;
+}
+
+/* separador fino dentro del menú */
+.dropdown-sep {
+  height: 1px;
+  background: var(--border);
+}

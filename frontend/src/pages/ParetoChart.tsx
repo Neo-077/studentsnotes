@@ -1,119 +1,146 @@
+// ParetoChart.tsx
 import { useEffect, useState } from 'react'
-import { ResponsiveContainer, ComposedChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Line } from 'recharts'
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Bar,
+  Line,
+  Legend,
+} from 'recharts'
 import api from '../lib/api'
 
-export default function ParetoChart() {
-  const [bajas, setBajas] = useState<any[]>([])
+type Props = { id_grupo: number }
+
+type Baja = {
+  id_baja?: number
+  id_inscripcion?: number
+  motivo_adicional?: string | null
+  motivo?: string | null
+}
+
+export default function ParetoChart({ id_grupo }: Props) {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchData = async () => {
+    let alive = true
+    ;(async () => {
       try {
         setLoading(true)
-        
-        const response = await api.get('/baja-materia')
-        
-        const responseData = response.data?.data || response.data || response
-        
-        if (!Array.isArray(responseData)) {
-          throw new Error('La respuesta no es un array')
+        setError(null)
+
+        // 1) Trae las inscripciones del grupo (para obtener sus ids)
+        const insRes = await api.get(`/inscripciones?grupo_id=${id_grupo}`)
+        const insRows = (insRes?.rows ?? insRes?.data?.rows ?? insRes) as any[]
+        const ids = new Set<number>((insRows || []).map(r => Number(r?.id_inscripcion)).filter(Boolean))
+
+        if (ids.size === 0) {
+          if (alive) {
+            setData([])
+          }
+          return
         }
 
-        setBajas(responseData)
-        
-        const counts = new Map<string, number>()
-        responseData.forEach((baja: any, index: number) => {
-          if (baja?.motivo_adicional) {
-            counts.set(baja.motivo_adicional, (counts.get(baja.motivo_adicional) || 0) + 1)
-          } else {
-            console.warn(`⚠️ Registro ${index + 1} sin motivo_adicional:`, baja)
-          }
-        })
+        // 2) Trae todas las bajas y filtra por los ids de inscripcion del grupo
+        const bajasRes = await api.get(`/baja-materia`)
+        const bajasRaw = (bajasRes ?? bajasRes?.data ?? bajasRes?.data?.data) as Baja[] | any
+        const bajas: Baja[] = Array.isArray(bajasRaw) ? bajasRaw : []
 
-        
+        const rows = bajas.filter(b => ids.has(Number((b as any)?.id_inscripcion)))
+
+        // 3) Agrupar por motivo (normalizado) y contar
+        const counts = new Map<string, number>()
+        for (const b of rows) {
+          const raw = (b.motivo_adicional ?? b.motivo ?? '').toString().trim()
+          if (!raw) continue
+          const key = normalize(raw)
+          counts.set(key, (counts.get(key) || 0) + 1)
+        }
+
+        // 4) Orden descendente + % acumulado
         const arr = Array.from(counts.entries())
-          .map(([name, value]) => ({ name, value }))
+          .map(([normKey, value]) => ({
+            name: prettyMotivo(normKey),
+            value,
+          }))
           .sort((a, b) => b.value - a.value)
 
-        const total = arr.reduce((sum, x) => sum + x.value, 0) || 1
+        const total = arr.reduce((s, x) => s + x.value, 0) || 1
         let cum = 0
         const final = arr.map(x => {
           cum += x.value
-          return {
-            ...x,
-            cumPct: +(cum / total * 100).toFixed(2),
-            motivo: traducirMotivo(x.name)
-          }
+          return { ...x, cumPct: +(cum / total * 100).toFixed(2) }
         })
 
-        console.log('📈 Datos finales para la gráfica:', final)
-        setData(final)
-
-      } catch (err: any) {
-        console.error('Error completo:', err)
-        console.error('Mensaje de error:', err.message)
-        console.error('Respuesta del servidor:', err.response?.data)
-        setError(`Error: ${err.message || 'Error desconocido al cargar los datos'}`)
+        if (alive) setData(final)
+      } catch (e: any) {
+        if (alive) setError(e?.response?.data?.message || e?.message || 'No se pudo cargar el Pareto')
       } finally {
-        setLoading(false)
+        if (alive) setLoading(false)
       }
-    }
+    })()
+    return () => { alive = false }
+  }, [id_grupo])
 
-    fetchData()
-  }, [])
-
-  function traducirMotivo(codigo: string): string {
-    const motivos: Record<string, string> = {
-      'academico': 'Académico',
-      'conductual': 'Conductual',
-      'salud': 'Problemas de salud',
-      'personal': 'Situación personal/familiar',
-      'economico': 'Problemas económicos',
-      'otro': 'Otro'
+  // ---------- helpers ----------
+  function normalize(s: string) {
+    try {
+      return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+    } catch {
+      // Fallback por si el entorno no soporta \p{Diacritic}
+      return s
+        .toLowerCase()
+        .normalize?.('NFD')
+        ?.replace(/[\u0300-\u036f]/g, '') || s.toLowerCase()
     }
-    return motivos[codigo] || codigo
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-        <p className="mt-2 text-gray-600">Cargando datos...</p>
-      </div>
-    </div>
-  )
+  function prettyMotivo(norm: string) {
+    const map: Record<string, string> = {
+      academico: 'Académico',
+      conductual: 'Conductual',
+      salud: 'Problemas de salud',
+      personal: 'Situación personal/familiar',
+      economico: 'Problemas económicos',
+      otro: 'Otro',
+    }
+    // si llega ya bonito, respétalo
+    if (map[norm]) return map[norm]
+    return norm.replace(/\b\w/g, c => c.toUpperCase())
+  }
 
-  if (error) return (
-    <div className="bg-red-50 border-l-4 border-red-500 p-4">
-      <div className="flex">
-        <div className="flex-shrink-0">
-          <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-          </svg>
-        </div>
-        <div className="ml-3">
-          <p className="text-sm text-red-700">{error}</p>
+  // ---------- renders ----------
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 mx-auto" />
+          <p className="mt-2 text-gray-600">Cargando datos…</p>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
-  if (data.length === 0) return (
-    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-      <div className="flex">
-        <div className="flex-shrink-0">
-          <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-        </div>
-        <div className="ml-3">
-          <p className="text-sm text-yellow-700">No hay datos disponibles para mostrar la gráfica</p>
-        </div>
+  if (error) {
+    return (
+      <div className="bg-red-50 border-l-4 border-red-500 p-4">
+        <p className="text-sm text-red-700">{error}</p>
       </div>
-    </div>
-  )
+    )
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+        <p className="text-sm text-yellow-700">No hay bajas registradas para este grupo.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -123,27 +150,28 @@ export default function ParetoChart() {
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="motivo" />
+              <XAxis dataKey="name" />
               <YAxis yAxisId="left" label={{ value: 'Cantidad', angle: -90, position: 'insideLeft' }} />
-              <YAxis 
-                yAxisId="right" 
-                orientation="right" 
+              <YAxis
+                yAxisId="right"
+                orientation="right"
                 domain={[0, 100]}
                 label={{ value: 'Porcentaje %', angle: 90, position: 'insideRight' }}
               />
-              <Tooltip 
-                formatter={(value: any, name: any, props: any) => {
-                  if (name === 'value') return [value, 'Cantidad']
-                  if (name === 'cumPct') return [`${value}%`, 'Porcentaje acumulado']
-                  return [value, name]
+              <Tooltip
+                formatter={(value: any, _name: any, payload: any) => {
+                  // name mostrado en la leyenda
+                  const key = payload?.dataKey
+                  if (key === 'cumPct') return [`${value}%`, 'Porcentaje acumulado']
+                  return [value, 'Cantidad']
                 }}
               />
-              <Bar yAxisId="left" dataKey="value" fill="#3b82f6" name="Cantidad" />
-              <Line 
-                yAxisId="right" 
-                type="monotone" 
-                dataKey="cumPct" 
-                stroke="#10b981" 
+              <Legend />
+              <Bar yAxisId="left" dataKey="value" name="Cantidad" />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="cumPct"
                 strokeWidth={2}
                 dot={false}
                 name="Porcentaje acumulado"

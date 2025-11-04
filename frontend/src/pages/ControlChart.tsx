@@ -49,7 +49,7 @@ export default function ControlChart({ promedio }: { promedio: PuntoDatos[] }) {
     <>
       {promedio && promedio.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold">Control de Promedios por Semestre</h3>
+          <h3 className="text-xl font-semibold">Control de Promedios por Unidad</h3>
           <div className="h-96 bg-white p-4 rounded-xl border shadow">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
