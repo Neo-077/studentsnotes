@@ -13,7 +13,7 @@ if (window.matchMedia) {
   try {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     mq.addEventListener?.('change', () => applyTheme())
-  } catch {}
+  } catch { }
 }
 
 // Refresh al volver de background/enfoque/conexión (throttled)
@@ -23,7 +23,7 @@ if (window.matchMedia) {
     const now = Date.now()
     if (now - last < 1500) return
     last = now
-    try { await useAuth.getState().refresh() } catch {}
+    try { await useAuth.getState().refresh() } catch { }
   }
   window.addEventListener('focus', throttle)
   document.addEventListener('visibilitychange', () => {
