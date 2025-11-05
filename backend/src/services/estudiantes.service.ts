@@ -25,6 +25,65 @@ export async function deleteEstudiante(id_estudiante: number) {
   return { success: true }
 }
 
+/** ========= Dar de baja definitiva a un estudiante ========= **/
+export async function darBajaEstudiante(
+  id_estudiante: number,
+  options?: {
+    motivo_adicional?: string
+    fecha_baja?: string
+    registrado_por?: number
+  }
+) {
+  const id = Number(id_estudiante)
+  if (!Number.isFinite(id)) throw new Error('id_estudiante inválido')
+
+  // 1. Verificar que el estudiante existe
+  const { data: estudiante, error: errEst } = await supabaseAdmin
+    .from('estudiante')
+    .select('id_estudiante, activo')
+    .eq('id_estudiante', id)
+    .single()
+
+  if (errEst) throw new Error(`Estudiante no encontrado: ${errEst.message}`)
+  if (!estudiante) throw new Error('Estudiante no encontrado')
+
+  // 2. Dar de baja todas las inscripciones activas del estudiante
+  const { error: errInsc } = await supabaseAdmin
+    .from('inscripcion')
+    .update({ status: 'BAJA' })
+    .eq('id_estudiante', id)
+    .eq('status', 'ACTIVA')
+
+  if (errInsc) throw new Error(`Error al dar de baja inscripciones: ${errInsc.message}`)
+
+  // 3. Cambiar activo a false en el estudiante
+  const { error: errActivo } = await supabaseAdmin
+    .from('estudiante')
+    .update({ activo: false })
+    .eq('id_estudiante', id)
+
+  if (errActivo) throw new Error(`Error al dar de baja estudiante: ${errActivo.message}`)
+
+  // 4. Registrar en el log del sistema si hay motivo
+  if (options?.motivo_adicional && options?.registrado_por) {
+    try {
+      const { logSistemaService } = await import('./logSistema.service.js')
+      await logSistemaService.crearLog({
+        id_usuario: options.registrado_por,
+        accion: 'BAJA_ESTUDIANTE',
+        detalle: `Baja de estudiante ${id}: ${options.motivo_adicional}`,
+        tabla_afectada: 'estudiante',
+        id_registro_afectado: id,
+      })
+    } catch (logError) {
+      // No fallamos la operación principal si falla el log
+      console.warn('Error al registrar en log del sistema:', logError)
+    }
+  }
+
+  return { success: true, message: 'Estudiante dado de baja definitivamente' }
+}
+
 export type Estudiante = {
   id_estudiante: number
   no_control: string

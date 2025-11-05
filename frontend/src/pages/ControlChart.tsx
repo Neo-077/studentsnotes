@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, ReferenceLine, Tooltip } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, ReferenceLine, Tooltip, Legend } from 'recharts';
+import { isDark } from '../lib/theme';
 
 // Definición de tipos
 type PuntoDatos = {
@@ -18,14 +19,18 @@ type SerieDatos = {
 
 export default function ControlChart({ promedio }: { promedio: PuntoDatos[] }) {
   const [series, setSeries] = useState<SerieDatos[]>([]);
+  const darkMode = isDark();
 
   useEffect(() => {
-    if (!promedio || !promedio.length) return;
+    if (!promedio || !promedio.length) {
+      setSeries([]);
+      return;
+    }
 
     const datosTransformados = promedio
       .sort((a, b) => a.semestre - b.semestre)
       .map(item => ({
-        sem: `S${item.semestre}`,
+        sem: `U${item.semestre}`,
         avg: parseFloat(item.calificacion) || 0,
         asistencia: parseFloat(item.asistencia) || 0
       }));
@@ -45,58 +50,124 @@ export default function ControlChart({ promedio }: { promedio: PuntoDatos[] }) {
     setSeries(seriesActualizadas);
   }, [promedio]);
 
-  return (
-    <>
-      {promedio && promedio.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-xl font-semibold">Control de Promedios por Unidad</h3>
-          <div className="h-96 bg-white p-4 rounded-xl border shadow">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={series}
-                margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="sem"
-                  tick={{ fill: '#6b7280' }}
-                  tickLine={{ stroke: '#e5e7eb' }}
-                />
-                <YAxis
-                  tick={{ fill: '#6b7280' }}
-                  tickLine={{ stroke: '#e5e7eb' }}
-                  domain={[0, 100]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    borderRadius: '0.5rem',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                  }}
-                  formatter={(value: number, name: string) => {
-                    if (name === 'avg') return [`${value.toFixed(2)}`, 'Promedio'];
-                    if (name === 'center') return [`${value.toFixed(2)}`, 'Media'];
-                    return [`${value.toFixed(2)}`, name];
-                  }}
-                />
-                <ReferenceLine y={series[0]?.center} label="Media" stroke="#3b82f6" strokeDasharray="3 3" />
-                <ReferenceLine y={series[0]?.UCL} label="UCL" stroke="#ef4444" strokeDasharray="3 3" />
-                <ReferenceLine y={series[0]?.LCL} label="LCL" stroke="#ef4444" strokeDasharray="3 3" />
+  const gridColor = darkMode ? 'rgba(36, 52, 74, 0.8)' : '#e2e8f0';
+  const textColor = darkMode ? '#B7C7D9' : '#64748b';
+  const axisLineColor = darkMode ? 'rgba(36, 52, 74, 0.8)' : '#cbd5e1';
 
-                <Line
-                  type="monotone"
-                  dataKey="avg"
-                  name="Promedio"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={{ r: 4, fill: '#10b981' }}
-                  activeDot={{ r: 6, fill: '#059669' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-[var(--card)] p-3 rounded-lg shadow-lg border border-slate-200 dark:border-[var(--border)]">
+          {payload.map((item: any, index: number) => (
+            <div key={index} className="mb-1">
+              <p className="font-semibold text-slate-900 dark:text-[var(--text)]">
+                {item.dataKey === 'avg' && 'Promedio'}
+                {item.dataKey === 'center' && 'Media'}
+                {item.dataKey === 'UCL' && 'Límite Superior (UCL)'}
+                {item.dataKey === 'LCL' && 'Límite Inferior (LCL)'}
+              </p>
+              <p className="text-sm" style={{ color: item.color }}>
+                <span className="font-bold">{Number(item.value).toFixed(2)}</span>
+              </p>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  if (!promedio || promedio.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-xl font-bold text-slate-900 dark:text-[var(--text)] mb-1">Carta de Control</h3>
+          <p className="text-sm text-slate-600 dark:text-[var(--muted)]">Promedios por unidad</p>
+        </div>
+        <div className="h-96 bg-white dark:bg-[var(--card)] p-4 rounded-xl border border-slate-200 dark:border-[var(--border)] shadow-sm flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-slate-500 dark:text-[var(--muted)]">No hay datos disponibles</p>
+            <p className="text-sm text-slate-400 dark:text-[var(--muted)] mt-1">Aún no hay calificaciones registradas</p>
           </div>
-        </div>)}
-    </>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-[var(--text)] mb-1">Carta de Control</h3>
+        <p className="text-sm text-slate-600 dark:text-[var(--muted)]">Promedios por unidad con límites de control</p>
+      </div>
+      <div className="h-96 bg-white dark:bg-[var(--card)] p-4 rounded-xl border border-slate-200 dark:border-[var(--border)] shadow-sm">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={series}
+            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+          >
+            <defs>
+              <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                <stop offset="100%" stopColor="#059669" stopOpacity={0.8} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={gridColor}
+            />
+            <XAxis
+              dataKey="sem"
+              tick={{ fill: textColor, fontSize: 12 }}
+              axisLine={{ stroke: axisLineColor }}
+              tickLine={{ stroke: axisLineColor }}
+              label={{ value: 'Unidad', position: 'insideBottom', offset: -5, style: { fill: textColor, fontSize: 12 } }}
+            />
+            <YAxis
+              tick={{ fill: textColor, fontSize: 12 }}
+              axisLine={{ stroke: axisLineColor }}
+              tickLine={{ stroke: axisLineColor }}
+              domain={[0, 100]}
+              label={{ value: 'Calificación', angle: -90, position: 'insideLeft', style: { fill: textColor, fontSize: 12 } }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine
+              y={series[0]?.center}
+              label={{ value: 'Media', position: 'top', style: { fill: textColor, fontSize: 11 } }}
+              stroke="#3b82f6"
+              strokeDasharray="3 3"
+              strokeWidth={2}
+            />
+            <ReferenceLine
+              y={series[0]?.UCL}
+              label={{ value: 'UCL', position: 'top', style: { fill: textColor, fontSize: 11 } }}
+              stroke="#ef4444"
+              strokeDasharray="3 3"
+              strokeWidth={1.5}
+            />
+            <ReferenceLine
+              y={series[0]?.LCL}
+              label={{ value: 'LCL', position: 'bottom', style: { fill: textColor, fontSize: 11 } }}
+              stroke="#ef4444"
+              strokeDasharray="3 3"
+              strokeWidth={1.5}
+            />
+            <Line
+              type="monotone"
+              dataKey="avg"
+              name="Promedio"
+              stroke="url(#lineGradient)"
+              strokeWidth={3}
+              dot={{ r: 5, fill: '#10b981', strokeWidth: 2, stroke: '#ffffff' }}
+              activeDot={{ r: 7, fill: '#059669', strokeWidth: 2, stroke: '#ffffff' }}
+            />
+            <Legend
+              wrapperStyle={{ paddingTop: '10px' }}
+              iconType="line"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 }

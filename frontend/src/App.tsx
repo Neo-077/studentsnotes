@@ -11,6 +11,7 @@ import Docentes from './routes/Docentes'
 import Materias from './routes/Materias'
 import GruposAula from './routes/GruposAula'
 import GrupoAulaDetalle from './routes/GrupoAulaDetalle'
+import Dashboard from './routes/Dashboard'
 import { toggleTheme, isDark } from './lib/theme'
 import Account from './routes/Account'
 
@@ -57,9 +58,13 @@ function Shell() {
 
         <nav className="grid gap-1 mt-1">
           {(role === 'maestro'
-            ? [{ to: '/grupos/aula', label: 'Grupos (Aula)' }, { to: '/cuenta', label: 'Configuración' }]
+            ? [
+              { to: '/dashboard', label: 'Página principal' },
+              { to: '/grupos/aula', label: 'Grupos (Aula)' },
+              { to: '/cuenta', label: 'Configuración' }
+            ]
             : [
-              // { to: '/dashboard', label: 'Dashboard' },
+              { to: '/dashboard', label: 'Página principal' },
               { to: '/inscripciones', label: 'Inscripciones' },
               { to: '/grupos', label: 'Grupos' },
               { to: '/grupos/aula', label: 'Grupos (Aula)' },
@@ -176,10 +181,9 @@ function RequireAuth() {
 
   if (!session) return <Navigate to="/login" replace state={{ from: location }} />
 
-  // 🔒 Fuerza que cualquier usuario autenticado termine en /grupos/aula
-  // incluso si viene de "/" o "/dashboard".
-  if (location.pathname === '/' || location.pathname === '/dashboard') {
-    return <Navigate to="/grupos/aula" replace />
+  // 🔒 Redirigir "/" a dashboard
+  if (location.pathname === '/') {
+    return <Navigate to="/dashboard" replace />
   }
 
   return <Outlet />
@@ -199,6 +203,7 @@ export default function App() {
         <Route element={<Shell />}>
           <Route path="/" element={<DefaultRedirect />} />
           {/* Rutas accesibles a todos los autenticados */}
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/grupos/aula" element={<GruposAula />} />
           <Route path="/grupos/aula/:id_grupo" element={<GrupoAulaDetalle />} />
           <Route path="/cuenta" element={<Account />} />
@@ -218,6 +223,5 @@ export default function App() {
 }
 
 function DefaultRedirect() {
-  const { role } = useAuth()
-  return <Navigate to="/grupos/aula" replace />
+  return <Navigate to="/dashboard" replace />
 }

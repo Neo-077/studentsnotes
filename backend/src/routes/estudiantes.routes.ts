@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import multer from 'multer'
-import { createEstudiante, listEstudiantes, bulkUpsertEstudiantes, deleteEstudiante } from '../services/estudiantes.service.js'
+import { createEstudiante, listEstudiantes, bulkUpsertEstudiantes, deleteEstudiante, darBajaEstudiante } from '../services/estudiantes.service.js'
+import { createBajaEstudianteSchema } from '../schemas/bajaEstudiante.schema.js'
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 const router = Router()
@@ -60,7 +61,25 @@ router.delete('/:id', async (req, res, next) => {
   } catch (e) {
     next(e)
   }
-});
+})
+
+// POST /estudiantes/:id/baja — dar de baja definitiva al estudiante
+router.post('/:id/baja', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id)
+    if (!id) return res.status(400).json({ error: { message: 'id inválido' } })
+
+    // Validar el body si existe
+    const body = req.body && Object.keys(req.body).length > 0
+      ? createBajaEstudianteSchema.parse(req.body)
+      : undefined
+
+    const result = await darBajaEstudiante(id, body)
+    res.json(result)
+  } catch (e) {
+    next(e)
+  }
+})
 
 //router.get();
 

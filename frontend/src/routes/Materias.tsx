@@ -1,3 +1,4 @@
+// src/routes/Materias.tsx
 import { useEffect, useMemo, useRef, useState } from 'react'
 import api from '../lib/api'
 import { Catalogos } from '../lib/catalogos'
@@ -6,9 +7,11 @@ import ConfirmModal from '../components/ConfirmModal'
 
 export default function Materias(){
   type Materia = { id_materia: number; clave?: string; nombre: string; unidades: number; creditos: number }
+  type RelMC = { id_materia:number; id_carrera:number; semestre:number | null; carrera?: { nombre:string; clave?: string } }
+
   const [rows, setRows] = useState<Materia[]>([])
   const [carreras, setCarreras] = useState<any[]>([])
-  const [relaciones, setRelaciones] = useState<Array<{ id_materia:number; id_carrera:number; semestre:number | null; carrera?: { nombre:string; clave?: string } }>>([])
+  const [relaciones, setRelaciones] = useState<RelMC[]>([])
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [q, setQ] = useState('')
@@ -17,6 +20,39 @@ export default function Materias(){
 
   // crear
   const [f, setF] = useState({ nombre:'', unidades:'5', creditos:'5', id_carrera:'', semestre:'' })
+
+  /** ===== Helpers ===== **/
+  const norm = (s:any) =>
+    String(s ?? '')
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+  const materiaKey = (nombre:string, id_carrera:number|''|undefined|null) =>
+    `${norm(nombre)}|${id_carrera ? Number(id_carrera) : 0}`
+
+  function carreraInputToId(v:any): number | null {
+    if (v == null || v === '') return null
+    const asNum = Number(v)
+    if (!isNaN(asNum)) return asNum
+    // por clave o por nombre
+    const n = norm(String(v))
+    const found = carreras.find((c:any)=> norm(c.clave ?? '') === n || norm(c.nombre ?? '') === n)
+    return found ? Number(found.id_carrera) : null
+  }
+
+  // Pairs existentes (materia,carrera) actuales en UI:
+  const existingPairs = useMemo(()=>{
+    const set = new Set<string>()
+    for (const r of relaciones) {
+      const mat = rows.find(m => m.id_materia === r.id_materia)
+      if (!mat) continue
+      set.add(materiaKey(mat.nombre, r.id_carrera))
+    }
+    return set
+  }, [relaciones, rows])
 
   const reqRef = useRef(0)
   async function load(silent = false){
@@ -81,6 +117,7 @@ export default function Materias(){
       ["Obligatorio: nombre, unidades, creditos."],
       ["Opcional: 'carrera' puede ser id, clave o nombre exacto."],
       ["Opcional: 'semestre' (1-12) si se vinculará con carrera."],
+      ["Regla: NO se permite duplicar (materia,carrera). La misma materia SÍ puede estar en otra carrera."],
       ["La 'clave' se autogenera en el backend."]
     ])
     const wb = XLSX.utils.book_new()
@@ -123,41 +160,56 @@ export default function Materias(){
     return arr
   }, [filasMateriaCarrera, q])
 
+  /** ===== Crear con validación (materia única por carrera) ===== **/
   async function onCreate(e: React.FormEvent){
     e.preventDefault(); setMsg(null)
-    const payload = { nombre: f.nombre.trim().toUpperCase(), unidades: Number(f.unidades||5), creditos: Number(f.creditos||5) }
+    const payload = {
+      nombre: norm(f.nombre),
+      unidades: Number(f.unidades||5),
+      creditos: Number(f.creditos||5)
+    }
+    const idCarr = carreraInputToId(f.id_carrera)
+
     if (!payload.nombre){ setMsg('Completa el nombre de la materia.'); return }
+
+    // Si existe materia con ese nombre, reutilizamos
+    const existing = (rows || []).find(m => norm(m.nombre) === payload.nombre)
+
+    // Si además seleccionó carrera, validar duplicado (materia,carrera)
+    if (existing && idCarr){
+      const dupKey = materiaKey(existing.nombre, idCarr)
+      if (existingPairs.has(dupKey)){
+        setMsg('❌ Ya existe esta materia vinculada a esa carrera.')
+        return
+      }
+    }
+
     try{
-      // Evitar duplicados: si ya existe por nombre, solo vincular si se indicó carrera+semestre
-      const existing = (rows || []).find(m => m.nombre.trim().toUpperCase() === payload.nombre)
-      if (existing){
-        if (f.id_carrera && f.semestre){
-          await api.post('/materia-carrera', { id_materia: existing.id_materia, id_carrera: Number(f.id_carrera), semestre: Number(f.semestre) })
-          setMsg('✅ Vinculación creada con materia existente')
-          setF({ nombre:'', unidades:'5', creditos:'5', id_carrera:'', semestre:'' })
-          await load();
-          return
-        } else {
-          setMsg('ℹ️ La materia ya existe. Puedes seleccionar carrera y semestre para vincularla.')
-          return
+      let id_materia = existing?.id_materia
+      if (!id_materia){
+        const created = await api.post('/materias', payload)
+        id_materia = created?.id_materia
+        if (!id_materia){
+          // fallback: recargar y buscar por nombre
+          const latest = (await Catalogos.materias()) ?? []
+          const found = latest.find((m:any) => norm(m.nombre) === payload.nombre)
+          id_materia = found?.id_materia
         }
       }
 
-      const created = await api.post('/materias', payload)
-      let id_materia = created?.id_materia
-      if (!id_materia){
-        // fallback: recargar y buscar por nombre
-        const latest = (await Catalogos.materias()) ?? []
-        const found = latest.find((m:any) => m.nombre?.trim()?.toUpperCase() === payload.nombre)
-        id_materia = found?.id_materia
-      }
-
-      // Si hay carrera+semestre, crear vínculo
-      if (id_materia && f.id_carrera && f.semestre){
-        await api.post('/materia-carrera', { id_materia, id_carrera: Number(f.id_carrera), semestre: Number(f.semestre) })
-        setMsg('✅ Materia creada y vinculada')
+      // Si hay carrera+semestre, crear vínculo (evita duplicado por si acaso)
+      if (id_materia && idCarr && f.semestre){
+        const dupKey = materiaKey(payload.nombre, idCarr)
+        if (existingPairs.has(dupKey)){
+          setMsg('❌ Ya existe esta materia vinculada a esa carrera.')
+          return
+        }
+        await api.post('/materia-carrera', {
+          id_materia, id_carrera: idCarr, semestre: Number(f.semestre)
+        })
+        setMsg(existing ? '✅ Vinculación creada con materia existente' : '✅ Materia creada y vinculada')
       } else {
-        setMsg('✅ Materia creada')
+        setMsg(existing ? 'ℹ️ La materia ya existía (sin cambios). Puedes vincularla a una carrera.' : '✅ Materia creada')
       }
 
       setF({ nombre:'', unidades:'5', creditos:'5', id_carrera:'', semestre:'' })
@@ -174,6 +226,104 @@ export default function Materias(){
     catch(e:any){ setMsg('❌ '+(e.message||'Error eliminando materia')) }
   }
 
+  /** ===== Importación con anti-duplicados (materia,carrera) ===== **/
+  function sheetToRows(sheet: XLSX.WorkSheet) {
+    const json = XLSX.utils.sheet_to_json<any>(sheet, { defval: null })
+    // Normalizamos y resolvemos 'carrera' a id
+    return json.map((r) => {
+      const nombre = norm(r.nombre ?? '')
+      const unidades = Number(r.unidades ?? 5)
+      const creditos = Number(r.creditos ?? 5)
+      const id_carrera = carreraInputToId(r.carrera ?? r.id_carrera ?? '')
+      const semestre = r.semestre != null && r.semestre !== '' ? Number(r.semestre) : null
+      return { nombre, unidades, creditos, id_carrera, semestre }
+    })
+  }
+
+  async function onImport(file: File) {
+    setMsg(null); setLoading(true)
+    try{
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: 'array' })
+      const sheet = wb.Sheets[wb.SheetNames[0]]
+      if (!sheet) throw new Error('El archivo no contiene hojas.')
+
+      // 1) Normalizar y descartar vacíos
+      let incoming = sheetToRows(sheet).filter(r => !!r.nombre)
+
+      // 2) Quitar duplicados DENTRO DEL ARCHIVO por (materia,carrera)
+      const seen = new Set<string>()
+      const uniqueInFile: any[] = []
+      const dupInFile: any[] = []
+      for (const r of incoming) {
+        const k = materiaKey(r.nombre, r.id_carrera ?? 0)
+        if (seen.has(k)) dupInFile.push(r)
+        else { seen.add(k); uniqueInFile.push(r) }
+      }
+
+      // 3) Quitar los que YA EXISTEN en UI por (materia,carrera)
+      const notInUI = uniqueInFile.filter(r => {
+        const k = materiaKey(r.nombre, r.id_carrera ?? 0)
+        return !existingPairs.has(k)
+      })
+      const dupVsUI = uniqueInFile.length - notInUI.length
+
+      // 4) (Opcional) Pre-chequeo en servidor para pares existentes
+      //    Endpoint sugerido: POST /materias/dedup-check  body: { pairs: [{ nombre:string, id_carrera:number }] } -> { exists: string[] } (keys normalizadas)
+      let dupVsDb = 0
+      let filtered = notInUI
+      try {
+        const pairs = notInUI
+          .filter(r => r.id_carrera) // solo chequear si tiene carrera
+          .map(r => ({ nombre: r.nombre, id_carrera: Number(r.id_carrera) }))
+        if (pairs.length) {
+          const res = await api.post('/materias/dedup-check', { pairs })
+          const existsKeys: string[] = Array.isArray(res?.exists) ? res.exists : []
+          const existsSet = new Set(existsKeys)
+          filtered = notInUI.filter(r => {
+            const k = materiaKey(r.nombre, r.id_carrera ?? 0)
+            return !existsSet.has(k)
+          })
+          dupVsDb = notInUI.length - filtered.length
+        }
+      } catch {
+        // si no existe endpoint, continuamos
+      }
+
+      // 5) Generar XLSX limpio SOLO con filas finales
+      const headers = ['nombre','unidades','creditos','id_carrera','semestre']
+      const dataAoA = [
+        headers,
+        ...filtered.map(r => [r.nombre, r.unidades, r.creditos, r.id_carrera ?? '', r.semestre ?? ''])
+      ]
+      const cleanSheet = XLSX.utils.aoa_to_sheet(dataAoA)
+      const cleanBook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(cleanBook, cleanSheet, 'MATERIAS_LIMPIAS')
+      const out = XLSX.write(cleanBook, { type: 'array', bookType: 'xlsx' })
+      const cleanBlob = new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const fd = new FormData()
+      fd.append('file', cleanBlob, `materias_limpias_${Date.now()}.xlsx`)
+
+      // 6) Subir a tu endpoint bulk
+      const rep = await api.post('/materias/bulk', fd as any)
+
+      setMsg(
+        `✅ Importadas: ${rep?.summary?.inserted ?? 0} / Errores: ${rep?.summary?.errors ?? 0}` +
+        (dupInFile.length ? ` | Omitidas (duplicadas en archivo): ${dupInFile.length}` : '') +
+        (dupVsUI ? ` | Omitidas (ya existían en UI): ${dupVsUI}` : '') +
+        (dupVsDb ? ` | Omitidas (ya existían en BD): ${dupVsDb}` : '')
+      )
+      await load()
+    } catch (err:any){
+      setMsg('❌ '+(err.message||'Error importando materias'))
+    } finally {
+      const input = document.querySelector<HTMLInputElement>('input[type=file]')
+      if (input) input.value = ''
+      setLoading(false)
+    }
+  }
+
+  /** ===== Render ===== **/
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -219,7 +369,8 @@ export default function Materias(){
           <button onClick={downloadTemplateXLSX} className="rounded-lg border px-3 py-2 text-sm">Descargar plantilla (XLSX)</button>
           <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
             Importar (.xlsx/.csv)
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e)=> e.target.files?.[0] && (async (file)=>{ const fd=new FormData(); fd.append('file', file, file.name); try{ const rep=await api.post('/materias/bulk', fd as any); setMsg(`✅ Importadas: ${rep.summary.inserted} / Errores: ${rep.summary.errors}`); await load() }catch(err:any){ setMsg('❌ '+(err.message||'Error importando materias')) } })(e.target.files[0]) }/>
+            <input type="file" accept=".xlsx,.xls,.csv" className="hidden"
+                   onChange={(e)=> e.target.files?.[0] && onImport(e.target.files[0]) }/>
           </label>
         </div>
 
@@ -231,7 +382,7 @@ export default function Materias(){
               </tr>
             </thead>
             <tbody>
-              {loading && list.length===0 ? (
+              {loading && filasMateriaCarrera.length===0 ? (
                 <tr><td colSpan={6} className="px-3 py-6 text-center">Cargando…</td></tr>
               ) : list.length===0 ? (
                 <tr><td colSpan={6} className="px-3 py-6 text-center">Sin materias.</td></tr>
@@ -243,8 +394,14 @@ export default function Materias(){
                   <td>{m.unidades}</td>
                   <td>{m.creditos}</td>
                   <td className="text-right flex items-center gap-2 justify-end">
-                    <button onClick={()=> askEdit({ id_materia: m.id_materia, nombre: m.nombre, unidades: m.unidades, creditos: m.creditos } as any)} className="px-3 py-1.5 text-xs">Editar</button>
-                    <button onClick={()=> askDelete({ id_materia: m.id_materia, nombre: m.nombre, clave: m.clave } as any)} className="px-3 py-1.5 text-xs">Eliminar</button>
+                    <button
+                      onClick={()=> askEdit({ id_materia: m.id_materia, nombre: m.nombre, unidades: m.unidades, creditos: m.creditos } as any)}
+                      className="px-3 py-1.5 text-xs"
+                    >Editar</button>
+                    <button
+                      onClick={()=> askDelete({ id_materia: m.id_materia, nombre: m.nombre, clave: m.clave } as any)}
+                      className="px-3 py-1.5 text-xs"
+                    >Eliminar</button>
                   </td>
                 </tr>
               ))}
@@ -295,7 +452,7 @@ export default function Materias(){
                 if (!edit.id) return setEdit({ open:false })
                 try{
                   const payload:any = { }
-                  if (edit.nombre!=null) payload.nombre = edit.nombre
+                  if (edit.nombre!=null) payload.nombre = norm(edit.nombre)
                   if (edit.unidades!=null) payload.unidades = Number(edit.unidades)
                   if (edit.creditos!=null) payload.creditos = Number(edit.creditos)
                   await api.put(`/materias/${edit.id}`, payload)

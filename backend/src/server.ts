@@ -3,7 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import morgan from 'morgan'
 import { env } from './config/env.js'
-import 'dotenv/config'            
+import 'dotenv/config'
 import './server.js'
 
 // Routers (los que sí exportan default)
@@ -17,7 +17,8 @@ import gruposRouter from './routes/grupos.routes.js'
 import materiaCarreraRouter from './routes/materiaCarrera.routes.js'
 import importRouter from './routes/import.routes.js'
 import inscripcionesRouter from './routes/inscripciones.routes.js'
-import bajaMateriaRouter from './routes/bajaMateria.routes.js';
+import bajaMateriaRouter from './routes/bajaMateria.routes.js'
+import dashboardRouter from './routes/dashboard.routes.js'
 
 // Routers con **export nombrado**
 import { exportRouter } from './routes/export.js'
@@ -55,7 +56,8 @@ app.use('/materia-carrera', materiaCarreraRouter)
 app.use('/import', importRouter)
 app.use('/inscripciones', inscripcionesRouter)
 app.use('/logs', logsRouter)              // ← export nombrado
-app.use('/baja-materia', bajaMateriaRouter);
+app.use('/baja-materia', bajaMateriaRouter)
+app.use('/dashboard', dashboardRouter)
 
 app.use((_req, res) => res.status(404).json({ error: { message: 'Not Found' } }))
 app.use(errorHandler)

@@ -270,30 +270,42 @@ export async function bulkInscribirPorNoControl(input: { id_grupo: number; no_co
 
 // Obtener reprobados y aprobados
 export function obtenerReporteAprobadosReprobados(alumnos: any) {
-  let promedio: number = 0;
   let aprobados: number = 0;
   let reprobados: number = 0;
-  let promedioAsistencia: number = 0;
   let desercion: number = 0;
-  for (const alumno of alumnos?.rows) {
-    promedio = alumno.unidades.reduce((acc: number, curr: any) => acc + (curr.calificacion || 0), 0) / alumno.unidades.length;
-    promedioAsistencia = alumno.unidades.reduce((acc: number, curr: any) => acc + (curr.asistencia || 0), 0) / alumno.unidades.length;
-    if (promedio >= 70 && promedioAsistencia >= 85) {
-      aprobados += 1;
-    } else {
-      reprobados += 1;
+
+  // Solo contar inscripciones activas (no BAJA)
+  const alumnosActivos = (alumnos?.rows || []).filter((alumno: any) => {
+    const status = String(alumno?.status || 'ACTIVA').toUpperCase();
+    return status !== 'BAJA';
+  });
+
+  for (const alumno of alumnosActivos) {
+    // Usar los promedios ya calculados en listarInscripcionesPorGrupo
+    const promedio = Number(alumno.promedio) || 0;
+    const promedioAsistencia = Number(alumno.asistencia) || 0;
+
+    // Solo contar si tiene al menos una calificación registrada
+    const tieneCalificaciones = alumno.unidades?.some((u: any) => u.calificacion != null);
+
+    if (tieneCalificaciones) {
+      if (promedio >= 70 && promedioAsistencia >= 85) {
+        aprobados += 1;
+      } else {
+        reprobados += 1;
+      }
     }
 
     if (promedioAsistencia < 85) {
       desercion += 1;
     }
+  }
 
-  };
   return {
     aprobados,
     reprobados,
     desercion,
-    total: alumnos?.rows.length || 0
+    total: alumnosActivos.length
   };
 }
 
