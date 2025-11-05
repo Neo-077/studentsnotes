@@ -4,7 +4,7 @@ import api from '../lib/api'
 import useAuth from '../store/useAuth'
 import { Catalogos } from '../lib/catalogos'
 import * as XLSX from 'xlsx'
-import ConfirmModal from '../components/ConfirmModal'
+import ModalBajaEstudiante from '../components/inscripciones/ModalBajaEstudiante'
 
 type Row = {
   id_estudiante: number
@@ -32,9 +32,7 @@ export default function Estudiantes() {
   const [idCarrera, setIdCarrera] = useState<number | ''>('')
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
-  const [confirmDel, setConfirmDel] = useState<{ open: boolean; id?: number; nombre?: string; no_control?: string | null }>(
-    { open: false }
-  )
+  const [modalBaja, setModalBaja] = useState<{ open: boolean; id?: number }>({ open: false })
 
   useEffect(() => { Catalogos.carreras().then(setCarreras) }, [])
 
@@ -52,14 +50,14 @@ export default function Estudiantes() {
       })
       const path = qs.toString() ? `/estudiantes?${qs.toString()}` : '/estudiantes'
       const data = await api.get(path)
-      if (reqRef.current === my){
+      if (reqRef.current === my) {
         setRows(data.rows || [])
         setTotal(data.total || 0)
       }
     } catch (e: any) {
       if (reqRef.current === my) setMsg('Error cargando estudiantes: ' + (e.message || ''))
     } finally {
-      if (reqRef.current === my){ if (!silent) setLoading(false) }
+      if (reqRef.current === my) { if (!silent) setLoading(false) }
     }
   }
 
@@ -67,22 +65,22 @@ export default function Estudiantes() {
 
   // Búsqueda reactiva (debounce) al escribir o cambiar carrera
   useEffect(() => {
-    const t = setTimeout(() => { if (initialized){ setPage(1); load(false) } }, 250)
+    const t = setTimeout(() => { if (initialized) { setPage(1); load(false) } }, 250)
     return () => clearTimeout(t)
   }, [initialized, q, idCarrera])
 
   // Recarga silenciosa al volver del background/enfocar/reconectar
-  useEffect(()=>{
+  useEffect(() => {
     const handler = () => { if (initialized) load(true) }
     window.addEventListener('focus', handler)
-    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') handler() })
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') handler() })
     window.addEventListener('pageshow', handler)
     window.addEventListener('online', handler)
-    return ()=>{
+    return () => {
       window.removeEventListener('focus', handler)
       window.removeEventListener('online', handler)
       window.removeEventListener('pageshow', handler)
-      document.removeEventListener('visibilitychange', ()=>{})
+      document.removeEventListener('visibilitychange', () => { })
     }
   }, [initialized])
 
@@ -94,20 +92,14 @@ export default function Estudiantes() {
     await load()
   }
 
-  function askDelete(r: Row) {
-    setConfirmDel({ open: true, id: r.id_estudiante, nombre: `${r.nombre} ${r.ap_paterno ?? ''} ${r.ap_materno ?? ''}`.trim(), no_control: r.no_control })
+  function askBaja(r: Row) {
+    setModalBaja({ open: true, id: r.id_estudiante })
   }
 
-  async function confirmDelete() {
-    if (!confirmDel.id) { setConfirmDel({ open: false }); return }
-    try {
-      await api.delete(`/estudiantes/${confirmDel.id}`)
-      setConfirmDel({ open: false })
-      await load()
-      setMsg('✅ Estudiante eliminado correctamente')
-    } catch (e: any) {
-      setMsg('❌ ' + (e.message || 'Error eliminando estudiante'))
-    }
+  async function handleConfirmBaja() {
+    setModalBaja({ open: false })
+    await load()
+    setMsg('✅ Estudiante dado de baja definitivamente')
   }
 
   /** ========= Helpers ========= **/
@@ -122,6 +114,7 @@ export default function Estudiantes() {
   function toISOAny(v: any): string | null {
     if (v == null || v === '') return null
     if (typeof v === 'number') {
+      // Excel serial date → ISO (asumiendo base 1899-12-30)
       const epoch = new Date(Date.UTC(1899, 11, 30))
       const ms = Math.round(v * 24 * 3600 * 1000)
       const d = new Date(epoch.getTime() + ms)
@@ -146,25 +139,121 @@ export default function Estudiantes() {
     return null
   }
 
-  /** ========= Importación CSV/XLSX ========= **/
+  // ======= Helpers de deduplicación para importación =======
+  const keyFromRow = (r: any) => {
+    // Identidad lógica del estudiante para evitar duplicados en import:
+    // nombre + apellidos + fecha_nacimiento (normalizados)
+    const nombre = norm(r.nombre)
+    const apPat = norm(r.ap_paterno ?? '')
+    const apMat = norm(r.ap_materno ?? '')
+    const fnac = toISOAny(r.fecha_nacimiento) || ''
+    return `${nombre}|${apPat}|${apMat}|${fnac}`
+  }
+
+  // Convierte hoja a objetos con las cabeceras esperadas
+  function sheetToRows(sheet: XLSX.WorkSheet) {
+    const json = XLSX.utils.sheet_to_json<any>(sheet, { defval: null })
+    return json.map((r) => ({
+      nombre: String(r.nombre ?? '').trim(),
+      ap_paterno: r.ap_paterno ? String(r.ap_paterno).trim() : null,
+      ap_materno: r.ap_materno ? String(r.ap_materno).trim() : null,
+      genero: r.genero ?? r.id_genero ?? null,      // se permiten texto o id
+      carrera: r.carrera ?? r.id_carrera ?? null,   // se permiten texto o id
+      fecha_nacimiento: toISOAny(r.fecha_nacimiento),
+      // fecha_ingreso/activo los omitimos en el archivo final para que coincida con tu /bulk actual
+    }))
+  }
+
+  /** ========= Importación CSV/XLSX con anti-duplicados ========= **/
   async function onUpload(file: File) {
     setMsg(null)
+    setLoading(true)
     try {
+      // 1) Leer archivo local
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: 'array' })
+      const firstSheetName = wb.SheetNames[0]
+      if (!firstSheetName) throw new Error('El archivo no contiene hojas.')
+      const ws = wb.Sheets[firstSheetName]
+
+      // 2) Normalizar filas y filtrar vacíos (sin nombre)
+      let incoming = sheetToRows(ws).filter(r => norm(r.nombre).length > 0)
+
+      // 3) Quitar duplicados INTERNOS (mismo archivo)
+      const seen = new Set<string>()
+      const uniqueInFile: any[] = []
+      const dupInFile: any[] = []
+      for (const r of incoming) {
+        const k = keyFromRow(r)
+        if (seen.has(k)) dupInFile.push(r)
+        else { seen.add(k); uniqueInFile.push(r) }
+      }
+
+      // 4) (Opcional) Pre-chequeo en servidor para evitar EXISTENTES en BD
+      //    Si tu backend implementa este endpoint, úsalo; si no existe, lo ignoramos sin fallar.
+      //    POST /estudiantes/dedup-check  body: { keys: string[] } => { exists: string[] }
+      let alreadyInDbKeys: string[] = []
+      try {
+        const keys = uniqueInFile.map(keyFromRow)
+        if (keys.length > 0) {
+          const res = await api.post('/estudiantes/dedup-check', { keys })
+          alreadyInDbKeys = Array.isArray(res.exists) ? res.exists : []
+        }
+      } catch {
+        // Ignorar si no existe o falla: el backend /bulk hará sus propias validaciones
+      }
+
+      const finalRows = alreadyInDbKeys.length
+        ? uniqueInFile.filter(r => !alreadyInDbKeys.includes(keyFromRow(r)))
+        : uniqueInFile
+
+      // 5) Generar XLSX "limpio" con solo columnas que tu /bulk ya acepta
+      const headers = ['nombre', 'ap_paterno', 'ap_materno', 'genero', 'carrera', 'fecha_nacimiento']
+      const dataAoA = [
+        headers,
+        ...finalRows.map(r => [
+          r.nombre,
+          r.ap_paterno,
+          r.ap_materno,
+          r.genero,
+          r.carrera,
+          r.fecha_nacimiento,
+        ])
+      ]
+      const cleanSheet = XLSX.utils.aoa_to_sheet(dataAoA)
+      const cleanBook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(cleanBook, cleanSheet, 'ESTUDIANTES_LIMPIOS')
+      const out = XLSX.write(cleanBook, { type: 'array', bookType: 'xlsx' })
+      const cleanBlob = new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
       const fd = new FormData()
-      fd.append('file', file, file.name)
+      fd.append('file', cleanBlob, `estudiantes_limpios_${Date.now()}.xlsx`)
+
+      // 6) Subir archivo limpio al mismo endpoint /bulk
       const report = await api.post('/estudiantes/bulk', fd as any)
-      setMsg(`✅ Importación completada: ${report.summary.inserted} insertados, ${report.summary.errors} errores`)
+
+      // 7) Resumen amigable
+      const dupInFileCount = dupInFile.length
+      const dupInDbCount = alreadyInDbKeys.length
+      const inserted = report?.summary?.inserted ?? 0
+      const errors = report?.summary?.errors ?? 0
+
+      setMsg(
+        `✅ Importación: ${inserted} insertados, ${errors} errores` +
+        (dupInFileCount ? ` | Omitidos (duplicados en archivo): ${dupInFileCount}` : '') +
+        (dupInDbCount ? ` | Omitidos (ya existen en BD): ${dupInDbCount}` : '')
+      )
       await load()
     } catch (e: any) {
       setMsg('❌ ' + (e.message || 'Error importando'))
     } finally {
       const input = document.querySelector<HTMLInputElement>('input[type=file]')
       if (input) input.value = ''
+      setLoading(false)
     }
   }
 
   async function downloadTemplateXLSX() {
-    const headers = ['nombre','ap_paterno','ap_materno','genero','carrera','fecha_nacimiento']
+    const headers = ['nombre', 'ap_paterno', 'ap_materno', 'genero', 'carrera', 'fecha_nacimiento']
     const wsMain = XLSX.utils.aoa_to_sheet([headers])
 
     // Listas de referencia: carreras y géneros
@@ -259,14 +348,14 @@ export default function Estudiantes() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {loading && rows.length===0 ? (
+              {loading && rows.length === 0 ? (
                 <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">Cargando…</td></tr>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
               ) : (
-                [...rows].sort((a,b)=> a.nombre.localeCompare(b.nombre,'es',{sensitivity:'base'})
-                  || (a.ap_paterno||'').localeCompare(b.ap_paterno||'','es',{sensitivity:'base'})
-                  || (a.ap_materno||'').localeCompare(b.ap_materno||'','es',{sensitivity:'base'})
+                [...rows].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
+                  || (a.ap_paterno || '').localeCompare(b.ap_paterno || '', 'es', { sensitivity: 'base' })
+                  || (a.ap_materno || '').localeCompare(b.ap_materno || '', 'es', { sensitivity: 'base' })
                 ).map(r => (
                   <tr key={r.id_estudiante} className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60">
                     <td className="font-mono">{r.no_control ?? '—'}</td>
@@ -279,12 +368,16 @@ export default function Estudiantes() {
                     <td>{r.fecha_ingreso ?? '—'}</td>
                     <td><span>{r.activo ? 'Activo' : 'Inactivo'}</span></td>
                     <td>
-                      <button
-                        type="button"
-                        className="inline-flex items-center px-3 py-1.5 text-xs"
-                        onClick={() => askDelete(r)}
-                        title="Eliminar estudiante"
-                      >Eliminar</button>
+                      {r.activo ? (
+                        <button
+                          type="button"
+                          className="inline-flex items-center px-3 py-1.5 text-xs text-orange-700 hover:bg-orange-50 rounded-md border"
+                          onClick={() => askBaja(r)}
+                          title="Dar de baja al estudiante"
+                        >Dar de baja</button>
+                      ) : (
+                        <span className="text-xs text-slate-500">Dado de baja</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -308,24 +401,12 @@ export default function Estudiantes() {
 
       {msg && <div className="text-sm">{msg}</div>}
 
-      <ConfirmModal
-        open={confirmDel.open}
-        title="Confirmar eliminación"
-        subtitle="Esta acción no se puede deshacer"
-        confirmLabel="Eliminar"
-        danger
-        onCancel={()=> setConfirmDel({ open:false })}
-        onConfirm={confirmDelete}
-      >
-        <div className="space-y-2 text-sm">
-          <div>¿Deseas eliminar al siguiente estudiante?</div>
-          <div className="rounded-lg border bg-slate-50 px-3 py-2">
-            <div className="font-medium">{confirmDel.nombre}</div>
-            <div className="text-slate-600">No. control: {confirmDel.no_control ?? '—'}</div>
-          </div>
-          <div className="text-xs text-slate-600">También se eliminarán inscripciones y datos asociados según la configuración del sistema.</div>
-        </div>
-      </ConfirmModal>
+      <ModalBajaEstudiante
+        open={modalBaja.open}
+        idEstudiante={modalBaja.id}
+        onConfirm={handleConfirmBaja}
+        onCancel={() => setModalBaja({ open: false })}
+      />
     </div>
   )
 }

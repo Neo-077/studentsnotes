@@ -32,9 +32,23 @@ export default function Login() {
     setLoading(true)
     try {
       if (mode === 'maestro' && isRegister) {
-        await api.post('/auth/register-docente', { email: values.email, password: values.password })
-        setMsg('✅ Cuenta creada. Iniciando sesión…')
+        try {
+          await api.post('/auth/register-docente', {
+            email: values.email,
+            password: values.password
+          })
+          setMsg('✅ Cuenta creada. Iniciando sesión…')
+        } catch (err: any) {
+          const status = err?.response?.status
+          if (status === 409) {
+            setMsg('⚠️ Este correo ya está registrado. Inicia sesión con tu contraseña.')
+            return
+          }
+          setMsg('❌ No se pudo crear la cuenta')
+          return
+        }
       }
+
       const ok = await login(values.email, values.password)
       if (!ok) { setMsg('❌ Credenciales inválidas'); return }
       await refresh()
@@ -86,22 +100,20 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setMode('admin')}
-                  className={`flex-1 rounded-md px-3 py-2 text-sm border transition ${
-                    mode === 'admin'
+                  className={`flex-1 rounded-md px-3 py-2 text-sm border transition ${mode === 'admin'
                       ? 'bg-[color:var(--primary)] text-[color:var(--primary-ctr)]'
                       : 'bg-[color:var(--card)]'
-                  }`}
+                    }`}
                 >
                   Administrador
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode('maestro')}
-                  className={`flex-1 rounded-md px-3 py-2 text-sm border transition ${
-                    mode === 'maestro'
+                  className={`flex-1 rounded-md px-3 py-2 text-sm border transition ${mode === 'maestro'
                       ? 'bg-[color:var(--primary)] text-[color:var(--primary-ctr)]'
                       : 'bg-[color:var(--card)]'
-                  }`}
+                    }`}
                 >
                   Docente
                 </button>

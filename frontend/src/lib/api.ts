@@ -9,64 +9,100 @@ function joinURL(base: string, path: string) {
 }
 
 async function request(path: string, opts: RequestInit = {}) {
-  const attempt = async (retrying = false) => {
+  const attempt = async (retrying = false): Promise<any> => {
     const { data } = await supabase.auth.getSession()
-    const accessToken = data.session?.access_token
+    const accessToken = data.session?.access_token || null
 
     const isFormData = opts.body instanceof FormData
     const headers: Record<string, string> = {
       Accept: 'application/json',
-      ...(opts.headers as Record<string, string>),
+      ...(opts.headers as Record<string, string> | undefined),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     }
-    if (!isFormData) headers['Content-Type'] = headers['Content-Type'] ?? 'application/json'
 
-    // Timeout para evitar requests colgados
-    const controller = new AbortController()
-    const t = setTimeout(() => controller.abort(), 12000)
-    let res: Response
-    try {
-      const url = (()=>{
-        const base = joinURL(BASE, path)
-        return retrying ? (base + (base.includes('?') ? '&' : '?') + `_ts=${Date.now()}`) : base
-      })()
-      // No agregamos headers de no-cache para evitar preflights CORS innecesarios
-      res = await fetch(url, { ...opts, headers, mode: 'cors', cache: 'no-store', signal: controller.signal })
-    } catch (e: any) {
-      clearTimeout(t)
-      // Un retry en errores de red
-      if (!retrying) return attempt(true)
-      throw e
-    }
-    clearTimeout(t)
-
-    const raw = await res.text()
-    let payload: any = null
-    try { payload = raw ? JSON.parse(raw) : null } catch { payload = raw }
-
-    if (res.status === 304 && !retrying) {
-      // Algunos navegadores devuelven 304 con cuerpo vacío → forzamos un retry con cache-buster
-      return attempt(true)
-    }
-    if (!res.ok) {
-      // Reintentar una vez si 401 y podemos refrescar sesión
-      if (res.status === 401 && !retrying) {
-        try { await supabase.auth.refreshSession() } catch {}
-        return attempt(true)
+    // Solo agrega Content-Type si hay body (y no es FormData)
+    if (!isFormData && opts.body !== undefined) {
+      headers['Content-Type'] = headers['Content-Type'] ?? 'application/json'
+      if (typeof opts.body !== 'string') {
+        opts = { ...opts, body: JSON.stringify(opts.body) }
       }
-      const msg = payload?.error?.message || payload?.message || (typeof payload === 'string' ? payload : res.statusText)
-      throw new Error(msg)
     }
-    return res.status === 204 ? null : payload
+
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 12000)
+
+    // Encadenar signal externo si viene
+    if (opts.signal) {
+      const outer = opts.signal as AbortSignal
+      if (outer.aborted) controller.abort()
+      else outer.addEventListener('abort', () => controller.abort(), { once: true })
+    }
+
+    const base = joinURL(BASE, path)
+    const url = retrying ? base + (base.includes('?') ? '&' : '?') + `_ts=${Date.now()}` : base
+
+    try {
+      const res = await fetch(url, {
+        ...opts,
+        headers,
+        mode: 'cors',
+        cache: 'no-store',
+        signal: controller.signal,
+      })
+      clearTimeout(timer)
+
+      if (res.status === 304 && !retrying) return attempt(true)
+
+      const raw = await res.text()
+      let payload: any = null
+      try { payload = raw ? JSON.parse(raw) : null } catch { payload = raw }
+
+      if (!res.ok) {
+        if (res.status === 401 && !retrying) {
+          try { await supabase.auth.refreshSession() } catch {}
+          return attempt(true)
+        }
+        const msg =
+          payload?.error?.message ||
+          payload?.message ||
+          (typeof payload === 'string' ? payload : res.statusText || 'Error')
+        throw new Error(msg)
+      }
+
+      if (res.status === 204 || res.status === 205) return null
+      return payload
+    } catch (err: any) {
+      clearTimeout(timer)
+      if (err?.name === 'AbortError') {
+        if (!retrying) return attempt(true)
+        throw new Error('Tiempo de espera agotado')
+      }
+      if (!retrying) return attempt(true)
+      throw new Error(err?.message || 'Error de red')
+    }
   }
+
   return attempt(false)
 }
 
 export default {
-  get: (path: string) => request(path),
+  get: (path: string, opts?: RequestInit) =>
+    request(path, { method: 'GET', ...(opts || {}) }),
+
   post: (path: string, body?: any, opts?: RequestInit) =>
-    request(path, { method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body), ...opts }),
+    request(path, {
+      method: 'POST',
+      ...(opts || {}),
+      body: body instanceof FormData ? body : body ?? undefined,
+    }),
+
   put: (path: string, body?: any, opts?: RequestInit) =>
-    request(path, { method: 'PUT', body: body instanceof FormData ? body : JSON.stringify(body), ...opts }),
-  delete: (path: string, opts?: RequestInit) => request(path, { method: 'DELETE', ...opts }),
+    request(path, {
+      method: 'PUT',
+      ...(opts || {}),
+      body: body instanceof FormData ? body : body ?? undefined,
+    }),
+
+  delete: (path: string, opts?: RequestInit) =>
+    request(path, { method: 'DELETE', ...(opts || {}) }),
 }

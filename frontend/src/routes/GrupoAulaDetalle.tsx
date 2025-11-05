@@ -48,6 +48,28 @@ function lockScroll() {
   }
 }
 
+// ==== helpers para plantilla/importación de calificaciones ====
+function buildGradesHeaders(unidades: number) {
+  const head = ["no_control", "nombre"]
+  for (let u = 1; u <= unidades; u++) {
+    head.push(`U${u}_CAL`, `U${u}_ASIST`)
+  }
+  return head
+}
+
+function normPct(v: unknown): number | null {
+  if (v === null || v === undefined) return null
+  const s = String(v).trim()
+  if (s === "") return null
+  const n = Math.round(Number(s))
+  if (!Number.isFinite(n)) return null
+  return Math.max(0, Math.min(100, n))
+}
+
+function normalizeKey(k: string) {
+  return k.toUpperCase().replace(/\s+/g, "_").replace(/[.%]/g, "_").replace(/__+/g, "_")
+}
+
 export default function GrupoAulaDetalle() {
   const navigate = useNavigate()
   const { id_grupo: idParam } = useParams()
@@ -65,9 +87,9 @@ export default function GrupoAulaDetalle() {
 
   const [pageAlu, setPageAlu] = useState(1)
   const pageSizeAlu = 15
-  const [importing, setImporting] = useState(false)
+  const [importing, setImporting] = useState(false) // importar INSCRIPCIONES
   const [exportingCharts, setExportingCharts] = useState(false)
-  const fileRef = useRef<HTMLInputElement | null>(null)
+  const fileRef = useRef<HTMLInputElement | null>(null) // inscripciones
   const [grupo, setGrupo] = useState<GrupoResumen>({})
   const [promedio, setPromedio] = useState<any>({})
   const [showBajaModal, setShowBajaModal] = useState(false)
@@ -75,23 +97,34 @@ export default function GrupoAulaDetalle() {
   const [showTemplateOptions, setShowTemplateOptions] = useState(false)
   const templateButtonRef = useRef<HTMLDivElement>(null)
 
+  // subir calificaciones
+  const gradesFileRef = useRef<HTMLInputElement | null>(null)
+  const [importingGrades, setImportingGrades] = useState(false)
+
   // Refs para exportar gráficas
   const pieRef = useRef<HTMLDivElement | null>(null)
   const scatterRef = useRef<HTMLDivElement | null>(null)
   const controlRef = useRef<HTMLDivElement | null>(null)
   const paretoRef = useRef<HTMLDivElement | null>(null)
 
-  const totalPagesAlu = useMemo(
-    () => Math.max(1, Math.ceil((alumnos.rows?.length || 0) / pageSizeAlu)),
+  // === Sólo alumnos ACTIVOS (se ocultan BAJA en la tabla) ===
+  const activeRows = useMemo(
+    () =>
+      (alumnos.rows || []).filter((r) => {
+        const s = String(r?.status ?? r?.estado ?? r?.inscripcion_status ?? "ACTIVA").toUpperCase()
+        return s !== "BAJA"
+      }),
     [alumnos]
+  )
+
+  const totalPagesAlu = useMemo(
+    () => Math.max(1, Math.ceil((activeRows.length || 0) / pageSizeAlu)),
+    [activeRows]
   )
   const pageSafeAlu = Math.min(pageAlu, totalPagesAlu)
   const startAlu = (pageSafeAlu - 1) * pageSizeAlu
   const endAlu = startAlu + pageSizeAlu
-  const pagedAlu = useMemo(
-    () => (alumnos.rows || []).slice(startAlu, endAlu),
-    [alumnos, startAlu, endAlu]
-  )
+  const pagedAlu = useMemo(() => activeRows.slice(startAlu, endAlu), [activeRows, startAlu, endAlu])
 
   useEffect(() => {
     if (!Number.isFinite(id_grupo)) {
@@ -145,7 +178,7 @@ export default function GrupoAulaDetalle() {
   async function agregarPorNoControl(no_control: string) {
     setMsgAlu(null)
     try {
-      if ((alumnos.rows?.length || 0) >= (alumnos.cupo || 0)) {
+      if ((activeRows.length || 0) >= (alumnos.cupo || 0)) {
         setMsgKind("error")
         setMsgAlu("Cupo lleno")
         return
@@ -197,35 +230,28 @@ export default function GrupoAulaDetalle() {
     setIdInscripcion(undefined)
   }
 
-  function setInscripcionStatusLocal(
-    id: number,
-    status: "BAJA" | "ACTIVA" | "APROBADA" | "REPROBADA"
-  ) {
-    const nextRows = (alumnos.rows || []).map((r) =>
-      r.id_inscripcion === id ? { ...r, status } : r
-    )
-    setAlumnos((prev) => ({ ...prev, rows: nextRows }))
-
-    setGrupo((prev) => {
-      if (prev?.total == null) return prev
-      const total = nextRows.length
-      const aprobados = nextRows.filter((x) => String(x.status).toUpperCase() === "APROBADA").length
-      const reprobados = nextRows.filter((x) => String(x.status).toUpperCase() === "REPROBADA").length
-      return { ...prev, total, aprobados, reprobados }
-    })
-  }
-
-  // Cuando el modal termina, actualizamos local y refrescamos
+  // Cuando el modal termina, QUITAMOS la fila localmente
   async function handleBajaRegistrada(payload?: { id_inscripcion?: number }) {
     if (payload?.id_inscripcion) {
-      setInscripcionStatusLocal(payload.id_inscripcion, "BAJA")
+      setAlumnos((prev) => ({
+        ...prev,
+        rows: (prev.rows || []).filter((r) => r.id_inscripcion !== payload.id_inscripcion),
+      }))
+      // opcional: ajustar contador total del resumen si lo necesitas
+      setGrupo((prev) => {
+        if (!prev) return prev
+        const total = Math.max(0, Number((prev.total ?? (activeRows.length ?? 0)) - 1))
+        return { ...prev, total }
+      })
     }
-    loadAlumnos(id_grupo)
     setMsgKind("ok")
-    setMsgAlu("Inscripción dada de baja")
+    setMsgAlu("Inscripción dada de baja y removida de la clase")
     cerrarModalBaja()
+    // Si quisieras recalcular promedios y gráficas, descomenta:
+    // await loadAlumnos(id_grupo)
   }
 
+  // === Importar INSCRIPCIONES
   async function handleImportFile(file: File) {
     if (!file) return
     try {
@@ -281,7 +307,7 @@ export default function GrupoAulaDetalle() {
     }
   }
 
-  // === Elegibles para plantilla ===
+  // === Elegibles para plantilla de inscripciones
   async function fetchElegiblesParaGrupo(id: number): Promise<Elegible[]> {
     try {
       const r1 = await api.get(`/grupos/${id}/elegibles`)
@@ -374,7 +400,7 @@ export default function GrupoAulaDetalle() {
     }
   }
 
-  // ====== Exportar calificaciones a PDF ======
+  // ====== Exportar calificaciones a PDF
   function exportarPDF(opts?: { incluirAsistencia?: boolean }) {
     const incluirAsistencia = !!opts?.incluirAsistencia
     const unidades = Math.max(0, Number(alumnos?.unidades || 0))
@@ -521,8 +547,10 @@ export default function GrupoAulaDetalle() {
       cloned.setAttribute("width", String(w))
       cloned.setAttribute("height", String(h))
       const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect")
-      bg.setAttribute("x", "0"); bg.setAttribute("y", "0")
-      bg.setAttribute("width", String(w)); bg.setAttribute("height", String(h))
+      bg.setAttribute("x", "0")
+      bg.setAttribute("y", "0")
+      bg.setAttribute("width", String(w))
+      bg.setAttribute("height", String(h))
       bg.setAttribute("fill", "#ffffff")
       cloned.insertBefore(bg, cloned.firstChild)
 
@@ -560,18 +588,72 @@ export default function GrupoAulaDetalle() {
   }
 
   function forceLightThemeForExport() {
+    // Guardar el tema actual
+    const wasDark = document.documentElement.classList.contains('dark')
+    const originalBodyFilter = document.body.style.filter
+
+    // Remover temporalmente la clase dark
+    document.documentElement.classList.remove('dark')
+
+    // Crear estilos para forzar modo claro en la exportación
     const style = document.createElement("style")
     style.setAttribute("data-export-theme", "true")
     style.textContent = `
-      :root { --text: #111; --surface: #ffffff; }
-      .recharts-wrapper, .recharts-surface { background: #ffffff !important; }
+      :root {
+        --text: #1e293b !important;
+        --muted: #64748b !important;
+        --surface: #ffffff !important;
+        --card: #ffffff !important;
+        --border: #e2e8f0 !important;
+      }
+      .recharts-wrapper, .recharts-surface { 
+        background: #ffffff !important; 
+      }
+      .recharts-cartesian-axis-tick-value {
+        fill: #64748b !important;
+      }
+      .recharts-legend-item-text {
+        fill: #1e293b !important;
+      }
+      .recharts-cartesian-grid-horizontal line,
+      .recharts-cartesian-grid-vertical line {
+        stroke: #e2e8f0 !important;
+      }
+      .recharts-cartesian-axis-line {
+        stroke: #cbd5e1 !important;
+      }
+      .recharts-cartesian-axis-tick-line {
+        stroke: #cbd5e1 !important;
+      }
+      .recharts-legend-wrapper {
+        color: #1e293b !important;
+      }
+      text {
+        fill: #1e293b !important;
+      }
+      .recharts-pie-label-text {
+        fill: #1e293b !important;
+      }
     `
     document.head.appendChild(style)
-    const prev = document.body.style.filter
-    document.body.style.filter = "none"
+
+    // Remover cualquier filtro del body
+    document.body.style.filter = 'none'
+
     return () => {
-      document.body.style.filter = prev
-      document.head.removeChild(style)
+      // Restaurar tema original
+      if (wasDark) {
+        document.documentElement.classList.add('dark')
+      }
+
+      // Limpiar estilos
+      const exportStyle = document.head.querySelector('style[data-export-theme="true"]')
+      if (exportStyle) {
+        document.head.removeChild(exportStyle)
+      }
+
+      // Restaurar filtro original del body
+      document.body.style.filter = originalBodyFilter
     }
   }
 
@@ -581,6 +663,9 @@ export default function GrupoAulaDetalle() {
       setExportingCharts(true)
       const unlock = lockScroll()
       const undoTheme = forceLightThemeForExport()
+
+      // Esperar un momento para que los cambios de tema se apliquen
+      await new Promise(resolve => setTimeout(resolve, 300))
 
       const bloques: Array<{ ref: React.RefObject<HTMLDivElement>; titulo: string }> = [
         { ref: pieRef, titulo: "Pastel (Aprobados vs Reprobados)" },
@@ -666,7 +751,7 @@ export default function GrupoAulaDetalle() {
     }
   }
 
-  // Reactivar / Eliminar definitiva
+  // Reactivar (se mantiene; Eliminar ya no existe)
   async function reactivarInscripcion(id: number) {
     try {
       setMsgAlu(null)
@@ -677,21 +762,6 @@ export default function GrupoAulaDetalle() {
     } catch (e: any) {
       setMsgKind("error")
       setMsgAlu(e?.response?.data?.message || e.message || "Error al reactivar")
-    }
-  }
-
-  async function eliminarInscripcion(id: number) {
-    try {
-      setMsgAlu(null)
-      await api.delete(`/baja-materia/by-inscripcion/${id}`).catch(() => { })
-      await api.delete(`/baja-materia?inscripcion=${id}`).catch(() => { })
-      await api.delete(`/inscripciones/${id}`)
-      await loadAlumnos(id_grupo)
-      setMsgKind("ok")
-      setMsgAlu("Inscripción eliminada")
-    } catch (e: any) {
-      setMsgKind("error")
-      setMsgAlu(e?.response?.data?.message || e.message || "No se pudo eliminar la inscripción")
     }
   }
 
@@ -711,6 +781,203 @@ export default function GrupoAulaDetalle() {
         {label}
       </span>
     )
+  }
+
+  // ===== Descargar plantilla de calificaciones (XLSX/CSV)
+  async function downloadGradesTemplateXLSX() {
+    try {
+      const unidades = Number(alumnos.unidades || 0)
+      const head = buildGradesHeaders(unidades)
+      const data = activeRows.map((r) => {
+        const base = [
+          String(r?.estudiante?.no_control ?? ""),
+          `${r?.estudiante?.nombre ?? ""} ${r?.estudiante?.ap_paterno ?? ""}`.trim(),
+        ]
+        const cells: (number | string)[] = []
+        for (let u = 1; u <= unidades; u++) {
+          const unit = r?.unidades?.find((x) => x.unidad === u)
+          cells.push(unit?.calificacion ?? "")
+          cells.push(unit?.asistencia ?? "")
+        }
+        return [...base, ...cells]
+      })
+
+      const aoa = [head, ...data]
+      const ws = XLSX.utils.aoa_to_sheet(aoa)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Calificaciones")
+      XLSX.writeFile(wb, `plantilla_calificaciones_grupo_${id_grupo}.xlsx`)
+
+      setMsgKind("ok")
+      setMsgAlu(`Plantilla de calificaciones generada (${data.length} alumnos).`)
+    } catch (err: any) {
+      setMsgKind("error")
+      setMsgAlu(err?.message || "No se pudo generar la plantilla de calificaciones")
+    }
+  }
+
+  async function downloadGradesTemplateCSV() {
+    try {
+      const unidades = Number(alumnos.unidades || 0)
+      const head = buildGradesHeaders(unidades)
+      const rows: string[][] = activeRows.map((r) => {
+        const base = [
+          String(r?.estudiante?.no_control ?? ""),
+          `${r?.estudiante?.nombre ?? ""} ${r?.estudiante?.ap_paterno ?? ""}`.trim(),
+        ]
+        const cells: (number | string)[] = []
+        for (let u = 1; u <= unidades; u++) {
+          const unit = r?.unidades?.find((x) => x.unidad === u)
+          cells.push(unit?.calificacion ?? "")
+          cells.push(unit?.asistencia ?? "")
+        }
+        return [...base, ...cells].map((v) => String(v ?? ""))
+      })
+
+      const lines = [
+        head.join(","),
+        ...rows.map((r) =>
+          r.map((s) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s)).join(",")
+        ),
+      ]
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `plantilla_calificaciones_grupo_${id_grupo}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+
+      setMsgKind("ok")
+      setMsgAlu(`CSV de calificaciones generado (${rows.length} alumnos).`)
+    } catch (err: any) {
+      setMsgKind("error")
+      setMsgAlu(err?.message || "No se pudo generar el CSV de calificaciones")
+    }
+  }
+
+  // ===== Importar calificaciones y asistencias desde XLSX/CSV
+  async function handleImportGrades(file: File) {
+    if (!file) return
+    try {
+      setImportingGrades(true)
+      setMsgAlu(null)
+
+      // 1) Parse
+      let rows: Record<string, unknown>[] = []
+      if (file.name.toLowerCase().endsWith(".csv")) {
+        const text = await file.text()
+        const lines = text.split(/\r?\n/).filter(Boolean)
+        const headers = lines[0].split(",").map((h) => normalizeKey(h))
+        rows = lines.slice(1).map((line) => {
+          const values = line.split(",")
+          return headers.reduce((obj: Record<string, string>, header, i) => {
+            const raw = values[i] ?? ""
+            obj[header] = raw.replace(/^"|"$/g, "").replace(/""/g, '"').trim()
+            return obj
+          }, {})
+        })
+      } else {
+        const buf = await file.arrayBuffer()
+        const wb = XLSX.read(buf, { type: "array" })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" })
+        rows = json.map((r) => {
+          const m: Record<string, unknown> = {}
+          Object.keys(r).forEach((k) => (m[normalizeKey(k)] = r[k]))
+          return m
+        })
+      }
+
+      // 2) Dedup por no_control
+      const unidades = Number(alumnos.unidades || 0)
+      const byNC = new Map<
+        string,
+        { nc: string; units: Array<{ unidad: number; calificacion?: number; asistencia?: number }> }
+      >()
+      for (const r of rows) {
+        // tolera "no_control" y variantes
+        let nc = String(
+          (r["NO_CONTROL"] ??
+            (r as any)["NO CONTROL"] ??
+            (r as any)["NO._CONTROL"] ??
+            (r as any)["NO. CONTROL"] ??
+            (r as any)["NO"] ??
+            (r as any)["NO_"] ??
+            (r as any)["NOCONTROL"] ??
+            (r as any)["NO CONTROL "] ??
+            (r as any)["NO_CONTROL "] ??
+            (r as any)["NO_CONTROL."] ??
+            (r as any)["NO_CONTROL__"] ??
+            (r as any)["NO."] ??
+            (r as any)["NO_CONTROL"] ??
+            (r as any)["NO.CONTROL"] ??
+            (r as any)["no_control"] ??
+            (r as any)["No. control"] ??
+            "") as string
+        ).trim()
+        if (!nc) continue
+
+        const units: Array<{ unidad: number; calificacion?: number; asistencia?: number }> = []
+        for (let u = 1; u <= unidades; u++) {
+          const c = normPct((r as any)[`U${u}_CAL`])
+          const a = normPct((r as any)[`U${u}_ASIST`])
+          if (c === null && a === null) continue
+          const entry: any = { unidad: u }
+          if (c !== null) entry.calificacion = c
+          if (a !== null) entry.asistencia = a
+          units.push(entry)
+        }
+        if (units.length === 0) continue
+        byNC.set(nc, { nc, units }) // último gana
+      }
+
+      if (byNC.size === 0) {
+        setMsgKind("error")
+        setMsgAlu("Archivo sin calificaciones/asistencias válidas.")
+        return
+      }
+
+      // 3) Mapa no_control → id_inscripcion del grupo
+      const mapIns = new Map<string, number>()
+      for (const r of alumnos.rows || []) { // usamos todas las filas para mapear
+        const nc = String(r?.estudiante?.no_control ?? "").trim()
+        if (nc) mapIns.set(nc, r.id_inscripcion)
+      }
+
+      let ok = 0,
+        bad = 0,
+        skipped = 0
+      const tasks: Promise<any>[] = []
+
+      byNC.forEach(({ nc, units }) => {
+        const id = mapIns.get(nc)
+        if (!id) {
+          skipped++
+          return
+        }
+        const payload = { unidades: units }
+        tasks.push(
+          api
+            .put(`/inscripciones/${id}/unidades`, payload)
+            .then(() => ok++)
+            .catch(() => bad++)
+        )
+      })
+
+      await Promise.allSettled(tasks)
+      await loadAlumnos(id_grupo)
+
+      const msg = `Calificaciones importadas: ${ok} ok, ${bad} con error, ${skipped} omitidos (no inscritos).`
+      setMsgKind(bad === 0 ? "ok" : "error")
+      setMsgAlu(msg)
+    } catch (e: any) {
+      setMsgKind("error")
+      setMsgAlu(e?.message || "Error al importar calificaciones")
+    } finally {
+      setImportingGrades(false)
+      if (gradesFileRef.current) gradesFileRef.current.value = ""
+    }
   }
 
   return (
@@ -749,12 +1016,12 @@ export default function GrupoAulaDetalle() {
         <div className={`text-sm ${msgKind === "ok" ? "text-emerald-600" : "text-red-600"}`}>{msgAlu}</div>
       )}
 
-      {/* ====== Tabla alumnos (SIN columna de Estado) ====== */}
+      {/* ====== Tabla alumnos ====== */}
       <div className="rounded-2xl bg-white border p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-600">
-            Cupo: {(alumnos.rows || []).length} / {alumnos.cupo} • Unidades: {alumnos.unidades}{" "}
-            {(alumnos.rows || []).length >= (alumnos.cupo || 0) && (
+            Cupo: {activeRows.length} / {alumnos.cupo} • Unidades: {alumnos.unidades}{" "}
+            {activeRows.length >= (alumnos.cupo || 0) && (
               <span className="ml-2 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-700 ring-1 ring-red-100">
                 Cupo lleno
               </span>
@@ -762,15 +1029,16 @@ export default function GrupoAulaDetalle() {
           </div>
 
           <div className="flex gap-2 items-center">
+            {/* Agregar por No. control */}
             <input
               id="alu_noctrl"
               placeholder="No. control"
               className="h-9 rounded-md border px-3 text-sm"
-              disabled={(alumnos.rows || []).length >= (alumnos.cupo || 0)}
+              disabled={activeRows.length >= (alumnos.cupo || 0)}
             />
             <button
               className="h-9 rounded-md border px-3 text-sm"
-              disabled={(alumnos.rows || []).length >= (alumnos.cupo || 0)}
+              disabled={activeRows.length >= (alumnos.cupo || 0)}
               onClick={() => {
                 const el = document.getElementById("alu_noctrl") as HTMLInputElement
                 if (el?.value) agregarPorNoControl(el.value)
@@ -779,6 +1047,7 @@ export default function GrupoAulaDetalle() {
               Agregar
             </button>
 
+            {/* Importar INSCRIPCIONES */}
             <input
               ref={fileRef}
               type="file"
@@ -789,17 +1058,40 @@ export default function GrupoAulaDetalle() {
                 if (f) handleImportFile(f)
               }}
             />
-
             <button
               className="h-9 rounded-md border px-3 text-sm font-medium transition-colors
                        bg-[var(--surface)] hover:bg-[color-mix(in_oklab,var(--text),transparent_92%)]
                        disabled:opacity-50"
               disabled={importing}
               onClick={() => fileRef.current?.click()}
+              title="Importar inscripciones por No. control"
             >
               {importing ? "Importando…" : "Importar"}
             </button>
 
+            {/* Subir Calificaciones */}
+            <input
+              ref={gradesFileRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.currentTarget.files?.[0]
+                if (f) handleImportGrades(f)
+              }}
+            />
+            <button
+              className="h-9 rounded-md border px-3 text-sm font-medium transition-colors
+                       bg-[var(--surface)] hover:bg-[color-mix(in_oklab,var(--text),transparent_92%)]
+                       disabled:opacity-50"
+              disabled={importingGrades}
+              onClick={() => gradesFileRef.current?.click()}
+              title="Importar calificaciones y asistencias por unidad"
+            >
+              {importingGrades ? "Subiendo califs…" : "Subir calificaciones"}
+            </button>
+
+            {/* Menú de plantillas */}
             <div ref={templateButtonRef} className="relative">
               <button
                 className="h-9 rounded-md border px-3 text-sm font-medium transition-colors
@@ -810,8 +1102,10 @@ export default function GrupoAulaDetalle() {
               </button>
 
               {showTemplateOptions && (
-                <div className="absolute right-0 mt-1 w-44 z-30 overflow-hidden dropdown-menu">
+                <div className="absolute right-0 mt-1 w-56 z-30 overflow-hidden dropdown-menu">
                   <ul className="py-1">
+                    {/* Inscripciones */}
+                    <li className="px-3 py-1 text-[11px] text-slate-500">Inscripciones</li>
                     <li>
                       <a
                         className="dropdown-item"
@@ -826,8 +1120,6 @@ export default function GrupoAulaDetalle() {
                       </a>
                     </li>
 
-                    <div className="dropdown-sep" />
-
                     <li>
                       <a
                         className="dropdown-item"
@@ -839,6 +1131,37 @@ export default function GrupoAulaDetalle() {
                         }}
                       >
                         CSV (.csv)
+                      </a>
+                    </li>
+
+                    <div className="dropdown-sep" />
+
+                    {/* Calificaciones */}
+                    <li className="px-3 py-1 text-[11px] text-slate-500">Calificaciones</li>
+                    <li>
+                      <a
+                        className="dropdown-item"
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          void downloadGradesTemplateXLSX()
+                          setShowTemplateOptions(false)
+                        }}
+                      >
+                        Calificaciones Excel (.xlsx)
+                      </a>
+                    </li>
+                    <li>
+                      <a
+                        className="dropdown-item"
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          void downloadGradesTemplateCSV()
+                          setShowTemplateOptions(false)
+                        }}
+                      >
+                        Calificaciones CSV (.csv)
                       </a>
                     </li>
                   </ul>
@@ -901,10 +1224,8 @@ export default function GrupoAulaDetalle() {
                       </td>
 
                       {Array.from({ length: alumnos.unidades || 0 }, (_, i) => i + 1).map((u) => {
-                        const cal =
-                          r.unidades?.find((x) => x.unidad === u)?.calificacion ?? ""
-                        const asi =
-                          r.unidades?.find((x) => x.unidad === u)?.asistencia ?? ""
+                        const cal = r.unidades?.find((x) => x.unidad === u)?.calificacion ?? ""
+                        const asi = r.unidades?.find((x) => x.unidad === u)?.asistencia ?? ""
                         return (
                           <Fragment key={`u_row_${r.id_inscripcion}-${u}`}>
                             <td className="text-center">
@@ -965,13 +1286,7 @@ export default function GrupoAulaDetalle() {
                             Baja
                           </button>
                         )}
-                        <button
-                          className="rounded-md border px-3 py-1 text-xs text-red-600 hover:bg-red-50"
-                          onClick={() => eliminarInscripcion(r.id_inscripcion)}
-                          title="Eliminar inscripción"
-                        >
-                          Eliminar
-                        </button>
+                        {/* Botón Eliminar removido definitivamente */}
                       </td>
                     </tr>
                   )
@@ -1009,37 +1324,32 @@ export default function GrupoAulaDetalle() {
         <div
           ref={pieRef}
           data-export-title="Pastel (Aprobados vs Reprobados)"
-          className="rounded-xl bg-white border shadow p-4"
+          className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
-          <div className="h-[420px]">
-            <PieChartPage grupo={grupo} />
-          </div>
+          <PieChartPage grupo={grupo} />
         </div>
 
         <div
           ref={scatterRef}
           data-export-title="Dispersión (Asistencia vs Promedio)"
-          className="rounded-xl bg-white border shadow p-4"
+          className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
-          <div className="h-[420px]">
-            <ScatterChartPage alumnos={alumnos?.rows} />
-          </div>
+          {/* Sólo alumnos activos para la dispersión */}
+          <ScatterChartPage alumnos={activeRows} />
         </div>
 
         <div
           ref={controlRef}
           data-export-title="Carta de Control (Promedios)"
-          className="rounded-xl bg-white border shadow p-4"
+          className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
-          <div className="h-[440px]">
-            <ControlChart promedio={promedio} />
-          </div>
+          <ControlChart promedio={promedio} />
         </div>
 
         <div
           ref={paretoRef}
           data-export-title="Pareto (Motivo de bajas)"
-          className="rounded-xl bg-white border shadow p-4"
+          className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
           <div className="h-[440px]">
             <ParetoChart id_grupo={id_grupo} />
