@@ -319,14 +319,14 @@ export function obtenerReporteAprobadosReprobados(alumnos: any) {
     const tieneCalificaciones = alumno.unidades?.some((u: any) => u.calificacion != null);
 
     if (tieneCalificaciones) {
-      if (promedio >= 70 && promedioAsistencia >= 85) {
+      if (promedio >= 70 && promedioAsistencia >= 70) {
         aprobados += 1;
       } else {
         reprobados += 1;
       }
     }
 
-    if (promedioAsistencia < 85) {
+    if (promedioAsistencia < 70) {
       desercion += 1;
     }
   }
