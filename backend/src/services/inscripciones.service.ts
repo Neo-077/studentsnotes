@@ -42,6 +42,36 @@ export async function eliminarInscripcion(id_inscripcion: number) {
   return { success: true }
 }
 
+export async function actualizarInscripcion(id_inscripcion: number, updates: { status?: string }) {
+  const id = Number(id_inscripcion)
+  if (!id) throw new Error('id_inscripcion inválido')
+
+  const updateData: { status?: string } = {}
+  if (updates.status) {
+    const status = String(updates.status).toUpperCase()
+    // Validar que el status sea uno de los valores permitidos
+    const statusPermitidos = ['ACTIVA', 'BAJA', 'APROBADA', 'REPROBADA']
+    if (!statusPermitidos.includes(status)) {
+      throw new Error(`Status inválido. Debe ser uno de: ${statusPermitidos.join(', ')}`)
+    }
+    updateData.status = status
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    throw new Error('No se proporcionaron campos para actualizar')
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('inscripcion')
+    .update(updateData)
+    .eq('id_inscripcion', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function listarInscripcionesPorGrupo(id_grupo: number) {
   // obtener grupo + unidades de la materia
   const gq = await supabaseAdmin

@@ -3,12 +3,12 @@ import { getUserIdFromLocalStorage } from '../../utils/func'
 import api from '../../lib/api'
 
 const motivos = [
-  { value: 'academico',  label: 'Deserción académica' },
+  { value: 'academico', label: 'Deserción académica' },
   { value: 'conductual', label: 'Faltas excesivas' },
-  { value: 'salud',      label: 'Problemas de salud' },
-  { value: 'personal',   label: 'Situación familiar o personal' },
-  { value: 'economico',  label: 'Problemas económicos' },
-  { value: 'otro',       label: 'Otro' },
+  { value: 'salud', label: 'Problemas de salud' },
+  { value: 'personal', label: 'Situación familiar o personal' },
+  { value: 'economico', label: 'Problemas económicos' },
+  { value: 'otro', label: 'Otro' },
 ]
 
 type LogFormData = {
@@ -84,24 +84,28 @@ export default function ModalBaja({
     }
 
     try {
-      // 1) Intentar crear el registro de baja (si falla, seguimos)
+      // 1) Crear el registro de baja
       try {
         await api.post('/baja-materia', payload)
       } catch (err) {
         console.warn('POST /baja-materia falló (continuando):', err)
+        // No fallamos la operación principal si falla el registro de baja
       }
 
-      // 2) Intentar marcar la inscripción como BAJA (si falla, igual seguimos)
-      try {
-        await api.put(`/inscripciones/${form.id_inscripcion}`, { status: 'BAJA' })
-      } catch (err) {
-        console.warn('PUT /inscripciones/:id falló (continuando):', err)
-      }
+      // 2) Marcar la inscripción como BAJA - esto es crítico, debe funcionar
+      await api.put(`/inscripciones/${form.id_inscripcion}`, { status: 'BAJA' })
+    } catch (err: any) {
+      setSaving(false)
+      // Si falla la actualización del status, mostramos error y no cerramos el modal
+      console.error('Error al dar de baja:', err)
+      alert(err?.response?.data?.error?.message || err?.message || 'Error al dar de baja. Por favor, intenta de nuevo.')
+      return
     } finally {
       setSaving(false)
-      // 3) Siempre cerramos y avisamos al padre para que refresque y muestre el OK
-      await onConfirm(payload)
     }
+
+    // 3) Solo si todo salió bien, cerramos y avisamos al padre
+    await onConfirm(payload)
   }
 
   if (!open) return null
