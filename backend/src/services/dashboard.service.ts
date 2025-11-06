@@ -37,7 +37,7 @@ export async function getDashboardData(id_docente: number | null): Promise<Dashb
     // 2. Obtener inscripciones de esos grupos
     const { data: inscripciones, error: errInsc } = await supabaseAdmin
         .from('inscripcion')
-        .select('id_inscripcion, id_estudiante, status')
+        .select('id_inscripcion, id_estudiante, id_grupo, status')
         .in('id_grupo', idGrupos)
 
     if (errInsc) throw new Error(`Error al obtener inscripciones: ${errInsc.message}`)
