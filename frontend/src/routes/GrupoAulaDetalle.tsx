@@ -230,25 +230,15 @@ export default function GrupoAulaDetalle() {
     setIdInscripcion(undefined)
   }
 
-  // Cuando el modal termina, QUITAMOS la fila localmente
+  // Cuando el modal termina, recargamos los datos del servidor
   async function handleBajaRegistrada(payload?: { id_inscripcion?: number }) {
-    if (payload?.id_inscripcion) {
-      setAlumnos((prev) => ({
-        ...prev,
-        rows: (prev.rows || []).filter((r) => r.id_inscripcion !== payload.id_inscripcion),
-      }))
-      // opcional: ajustar contador total del resumen si lo necesitas
-      setGrupo((prev) => {
-        if (!prev) return prev
-        const total = Math.max(0, Number((prev.total ?? (activeRows.length ?? 0)) - 1))
-        return { ...prev, total }
-      })
-    }
-    setMsgKind("ok")
-    setMsgAlu("Inscripción dada de baja y removida de la clase")
     cerrarModalBaja()
-    // Si quisieras recalcular promedios y gráficas, descomenta:
-    // await loadAlumnos(id_grupo)
+
+    // Recargar los datos del servidor para asegurar consistencia
+    await loadAlumnos(id_grupo)
+
+    setMsgKind("ok")
+    setMsgAlu("Inscripción dada de baja correctamente")
   }
 
   // === Importar INSCRIPCIONES
