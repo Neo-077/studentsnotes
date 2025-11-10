@@ -23,6 +23,7 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "pdf-lib": "^1.17.1",
+    "pg": "^8.16.3",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
@@ -32,6 +33,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/morgan": "^1.9.9",
     "@types/multer": "^2.0.0",
+    "@types/pg": "^8.15.6",
     "@types/xlsx": "^0.0.35",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
