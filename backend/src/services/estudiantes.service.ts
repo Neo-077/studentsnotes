@@ -253,6 +253,154 @@ export async function listEstudiantes(params: {
   return { rows: (data ?? []) as Estudiante[], page, pageSize, total: count ?? 0 }
 }
 
+/** ========= Obtener estudiantes elegibles para un docente ========= **/
+/**
+ * Obtiene los estudiantes que pueden tomar materias que imparte un docente.
+ * Un estudiante es elegible si pertenece a una carrera que tiene materias que el docente imparte.
+ */
+export async function listEstudiantesElegiblesPorDocente(id_docente: number, params?: {
+  q?: string
+  page?: number
+  pageSize?: number
+}) {
+  const page = Math.max(1, Number(params?.page ?? 1))
+  const pageSize = Math.min(100, Math.max(10, Number(params?.pageSize ?? 50)))
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  // 1. Obtener todas las materias que imparte el docente (a través de grupos)
+  const { data: grupos, error: errorGrupos } = await supabaseAdmin
+    .from('grupo')
+    .select('id_materia')
+    .eq('id_docente', id_docente)
+
+  if (errorGrupos) throw new Error(`Error al obtener grupos del docente: ${errorGrupos.message}`)
+
+  if (!grupos || grupos.length === 0) {
+    return { rows: [] as Estudiante[], page, pageSize, total: 0 }
+  }
+
+  const idMaterias = Array.from(new Set(grupos.map(g => g.id_materia).filter(Boolean) as number[]))
+  if (idMaterias.length === 0) {
+    return { rows: [] as Estudiante[], page, pageSize, total: 0 }
+  }
+
+  // 2. Obtener todas las carreras relacionadas a esas materias
+  const { data: materiaCarreras, error: errorMC } = await supabaseAdmin
+    .from('materia_carrera')
+    .select('id_carrera')
+    .in('id_materia', idMaterias)
+
+  if (errorMC) throw new Error(`Error al obtener carreras: ${errorMC.message}`)
+
+  if (!materiaCarreras || materiaCarreras.length === 0) {
+    return { rows: [] as Estudiante[], page, pageSize, total: 0 }
+  }
+
+  const idCarreras = Array.from(new Set(materiaCarreras.map(mc => mc.id_carrera).filter(Boolean) as number[]))
+  if (idCarreras.length === 0) {
+    return { rows: [] as Estudiante[], page, pageSize, total: 0 }
+  }
+
+  // 3. Obtener estudiantes de esas carreras
+  let q = supabaseAdmin
+    .from('estudiante')
+    .select(
+      'id_estudiante,no_control,nombre,ap_paterno,ap_materno,id_carrera,id_genero,fecha_nacimiento,fecha_ingreso,activo,carrera:id_carrera(id_carrera,clave,nombre),genero:id_genero(id_genero,descripcion)',
+      { count: 'exact' }
+    )
+    .in('id_carrera', idCarreras)
+    .eq('activo', true) // Solo estudiantes activos
+    .order('ap_paterno', { ascending: true })
+    .order('ap_materno', { ascending: true })
+    .order('nombre', { ascending: true })
+
+  // Búsqueda por texto si se proporciona
+  if (params?.q?.trim()) {
+    const like = `%${params.q.trim()}%`
+    q = q.or(
+      `no_control.ilike.${like},nombre.ilike.${like},ap_paterno.ilike.${like},ap_materno.ilike.${like}`
+    )
+  }
+
+  const { data, error, count } = await q.range(from, to)
+  if (error) throw new Error(error.message)
+
+  return { rows: (data ?? []) as Estudiante[], page, pageSize, total: count ?? 0 }
+}
+
+/** ========= Obtener estudiantes elegibles para un grupo específico ========= **/
+/**
+ * Obtiene los estudiantes que pueden tomar un grupo específico.
+ * Un estudiante es elegible si pertenece a una carrera que tiene la materia del grupo.
+ */
+export async function listEstudiantesElegiblesPorGrupo(id_grupo: number, params?: {
+  q?: string
+  page?: number
+  pageSize?: number
+}) {
+  // 1. Obtener el grupo y su materia
+  const { data: grupo, error: errorGrupo } = await supabaseAdmin
+    .from('grupo')
+    .select('id_materia')
+    .eq('id_grupo', id_grupo)
+    .single()
+
+  if (errorGrupo) throw new Error(`Error al obtener grupo: ${errorGrupo.message}`)
+  if (!grupo) throw new Error('Grupo no encontrado')
+
+  const idMateria = grupo.id_materia
+  if (!idMateria) throw new Error('Grupo sin materia asignada')
+
+  // 2. Obtener todas las carreras relacionadas a esa materia
+  const { data: materiaCarreras, error: errorMC } = await supabaseAdmin
+    .from('materia_carrera')
+    .select('id_carrera')
+    .eq('id_materia', idMateria)
+
+  if (errorMC) throw new Error(`Error al obtener carreras: ${errorMC.message}`)
+
+  if (!materiaCarreras || materiaCarreras.length === 0) {
+    return { rows: [] as Estudiante[], page: 1, pageSize: 50, total: 0 }
+  }
+
+  const idCarreras = Array.from(new Set(materiaCarreras.map(mc => mc.id_carrera).filter(Boolean) as number[]))
+  if (idCarreras.length === 0) {
+    return { rows: [] as Estudiante[], page: 1, pageSize: 50, total: 0 }
+  }
+
+  // 3. Obtener estudiantes de esas carreras
+  const page = Math.max(1, Number(params?.page ?? 1))
+  const pageSize = Math.min(100, Math.max(10, Number(params?.pageSize ?? 50)))
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let q = supabaseAdmin
+    .from('estudiante')
+    .select(
+      'id_estudiante,no_control,nombre,ap_paterno,ap_materno,id_carrera,id_genero,fecha_nacimiento,fecha_ingreso,activo,carrera:id_carrera(id_carrera,clave,nombre),genero:id_genero(id_genero,descripcion)',
+      { count: 'exact' }
+    )
+    .in('id_carrera', idCarreras)
+    .eq('activo', true) // Solo estudiantes activos
+    .order('ap_paterno', { ascending: true })
+    .order('ap_materno', { ascending: true })
+    .order('nombre', { ascending: true })
+
+  // Búsqueda por texto si se proporciona
+  if (params?.q?.trim()) {
+    const like = `%${params.q.trim()}%`
+    q = q.or(
+      `no_control.ilike.${like},nombre.ilike.${like},ap_paterno.ilike.${like},ap_materno.ilike.${like}`
+    )
+  }
+
+  const { data, error, count } = await q.range(from, to)
+  if (error) throw new Error(error.message)
+
+  return { rows: (data ?? []) as Estudiante[], page, pageSize, total: count ?? 0 }
+}
+
 /** ========= Tipos para el import ========= **/
 type BulkResult = {
   summary: { received: number; valid: number; inserted: number; errors: number }

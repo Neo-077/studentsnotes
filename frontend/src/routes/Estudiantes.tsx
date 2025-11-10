@@ -42,14 +42,27 @@ export default function Estudiantes() {
     if (!silent) setLoading(true)
     setMsg(null)
     try {
+      // Si es docente, usar el endpoint de estudiantes elegibles (sin filtrar por carrera)
+      // Si es admin, usar el endpoint normal con filtros
+      let path = '/estudiantes'
       const qs = new URLSearchParams({
         q,
         page: String(page),
         pageSize: String(pageSize),
-        ...(idCarrera ? { id_carrera: String(idCarrera) } : {}),
       })
-      const path = qs.toString() ? `/estudiantes?${qs.toString()}` : '/estudiantes'
-      const data = await api.get(path)
+
+      if (role === 'maestro') {
+        path = `/estudiantes/elegibles/docente`
+        // Los elegibles ya están filtrados por las carreras de las materias del docente
+      } else {
+        // Solo admin puede filtrar por carrera manualmente
+        if (idCarrera) {
+          qs.append('id_carrera', String(idCarrera))
+        }
+      }
+
+      const fullPath = qs.toString() ? `${path}?${qs.toString()}` : path
+      const data = await api.get(fullPath)
       if (reqRef.current === my) {
         setRows(data.rows || [])
         setTotal(data.total || 0)
@@ -63,11 +76,11 @@ export default function Estudiantes() {
 
   useEffect(() => { if (initialized) load(false) }, [initialized, page, pageSize])
 
-  // Búsqueda reactiva (debounce) al escribir o cambiar carrera
+  // Búsqueda reactiva (debounce) al escribir o cambiar carrera (solo para admin)
   useEffect(() => {
     const t = setTimeout(() => { if (initialized) { setPage(1); load(false) } }, 250)
     return () => clearTimeout(t)
-  }, [initialized, q, idCarrera])
+  }, [initialized, q, ...(role === 'admin' ? [idCarrera] : [])])
 
   // Recarga silenciosa al volver del background/enfocar/reconectar
   useEffect(() => {
@@ -289,23 +302,29 @@ export default function Estudiantes() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold">Estudiantes</h2>
-          <p className="text-sm text-slate-600">Consulta, busca y carga estudiantes por archivo.</p>
+          <p className="text-sm text-slate-600">
+            {role === 'maestro'
+              ? 'Estudiantes elegibles para las materias que impartes (solo carreras relacionadas).'
+              : 'Consulta, busca y carga estudiantes por archivo.'}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button onClick={downloadTemplateXLSX} className="rounded-lg border px-3 py-2 text-sm">
-            Descargar plantilla (XLSX)
-          </button>
-          <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
-            Importar (.xlsx/.xls/.csv)
-            <input
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
-            />
-          </label>
-        </div>
+        {role === 'admin' && (
+          <div className="flex items-center gap-2">
+            <button onClick={downloadTemplateXLSX} className="rounded-lg border px-3 py-2 text-sm">
+              Descargar plantilla (XLSX)
+            </button>
+            <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
+              Importar (.xlsx/.xls/.csv)
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
+              />
+            </label>
+          </div>
+        )}
       </div>
 
       <form onSubmit={onSearch} className="flex flex-wrap items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm">
@@ -315,18 +334,20 @@ export default function Estudiantes() {
           placeholder="Buscar (no_control, nombre, apellidos)"
           className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         />
-        <select
-          value={idCarrera}
-          onChange={(e) => setIdCarrera(e.target.value ? Number(e.target.value) : '')}
-          className="h-10 rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        >
-          <option value="">Todas las carreras</option>
-          {carreras.map((c) => (
-            <option key={c.id_carrera} value={c.id_carrera}>
-              {c.clave ? `${c.clave} — ` : ''}{c.nombre}
-            </option>
-          ))}
-        </select>
+        {role === 'admin' && (
+          <select
+            value={idCarrera}
+            onChange={(e) => setIdCarrera(e.target.value ? Number(e.target.value) : '')}
+            className="h-10 rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <option value="">Todas las carreras</option>
+            {carreras.map((c) => (
+              <option key={c.id_carrera} value={c.id_carrera}>
+                {c.clave ? `${c.clave} — ` : ''}{c.nombre}
+              </option>
+            ))}
+          </select>
+        )}
         <button type="submit" className="h-10 rounded-lg bg-blue-600 px-4 text-white shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500">Buscar</button>
       </form>
 
@@ -344,14 +365,14 @@ export default function Estudiantes() {
                 <th>Nacimiento</th>
                 <th>Ingreso</th>
                 <th>Estado</th>
-                <th></th>
+                {role === 'admin' && <th></th>}
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading && rows.length === 0 ? (
-                <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">Cargando…</td></tr>
+                <tr><td colSpan={role === 'admin' ? 10 : 9} className="px-3 py-6 text-center text-slate-500">Cargando…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
+                <tr><td colSpan={role === 'admin' ? 10 : 9} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
               ) : (
                 [...rows].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
                   || (a.ap_paterno || '').localeCompare(b.ap_paterno || '', 'es', { sensitivity: 'base' })
@@ -367,18 +388,20 @@ export default function Estudiantes() {
                     <td>{r.fecha_nacimiento ?? '—'}</td>
                     <td>{r.fecha_ingreso ?? '—'}</td>
                     <td><span>{r.activo ? 'Activo' : 'Inactivo'}</span></td>
-                    <td>
-                      {r.activo ? (
-                        <button
-                          type="button"
-                          className="inline-flex items-center px-3 py-1.5 text-xs text-orange-700 hover:bg-orange-50 rounded-md border"
-                          onClick={() => askBaja(r)}
-                          title="Dar de baja al estudiante"
-                        >Dar de baja</button>
-                      ) : (
-                        <span className="text-xs text-slate-500">Dado de baja</span>
-                      )}
-                    </td>
+                    {role === 'admin' && (
+                      <td>
+                        {r.activo ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center px-3 py-1.5 text-xs text-orange-700 hover:bg-orange-50 rounded-md border"
+                            onClick={() => askBaja(r)}
+                            title="Dar de baja al estudiante"
+                          >Dar de baja</button>
+                        ) : (
+                          <span className="text-xs text-slate-500">Dado de baja</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -401,12 +424,14 @@ export default function Estudiantes() {
 
       {msg && <div className="text-sm">{msg}</div>}
 
-      <ModalBajaEstudiante
-        open={modalBaja.open}
-        idEstudiante={modalBaja.id}
-        onConfirm={handleConfirmBaja}
-        onCancel={() => setModalBaja({ open: false })}
-      />
+      {role === 'admin' && (
+        <ModalBajaEstudiante
+          open={modalBaja.open}
+          idEstudiante={modalBaja.id}
+          onConfirm={handleConfirmBaja}
+          onCancel={() => setModalBaja({ open: false })}
+        />
+      )}
     </div>
   )
 }
