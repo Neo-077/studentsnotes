@@ -1,195 +1,155 @@
-import { useState } from 'react';
-import { Pie, PieChart, ResponsiveContainer, Sector, Tooltip, Legend, Cell } from 'recharts';
-import { isDark } from '../lib/theme';
+import React, { useMemo } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
-type PieSectorData = {
-  cx: number;
-  cy: number;
-  midAngle: number;
-  innerRadius: number;
-  outerRadius: number;
-  startAngle: number;
-  endAngle: number;
-  fill: string;
-  payload: {
-    name: string;
-    value: number;
-    fill: string;
-  };
-  percent: number;
-  value: number;
+type GrupoResumen = {
+  total?: number;
+  aprobados?: number;
+  reprobados?: number;
+  [k: string]: any;
 };
 
-const renderActiveShape = (props: PieSectorData) => {
-  const {
-    cx,
-    cy,
-    innerRadius,
-    outerRadius,
-    startAngle,
-    endAngle,
-    fill,
-    payload,
-    percent
-  } = props;
-
-  const darkMode = isDark();
-  const textColor = darkMode ? '#EAF2FB' : '#1e293b';
-  const secondaryColor = darkMode ? '#B7C7D9' : '#64748b';
-
-  return (
-    <g>
-      <Sector
-        cx={cx}
-        cy={cy}
-        innerRadius={innerRadius}
-        outerRadius={outerRadius + 12}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
-        stroke={fill}
-        strokeWidth={2}
-      />
-      <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
-        fill={textColor}
-        style={{
-          fontSize: '1.1rem',
-          fontWeight: 'bold'
-        }}
-      >
-        {payload.name}
-      </text>
-      <text
-        x={cx}
-        y={cy + 22}
-        textAnchor="middle"
-        fill={secondaryColor}
-        style={{ fontSize: '0.9rem' }}
-      >
-        {`${payload.value} estudiantes`}
-      </text>
-      <text
-        x={cx}
-        y={cy + 40}
-        textAnchor="middle"
-        fill={secondaryColor}
-        style={{ fontSize: '0.85rem' }}
-      >
-        {`${(percent * 100).toFixed(1)}%`}
-      </text>
-    </g>
-  );
+type AlumnoRow = {
+  id_inscripcion: number;
+  status?: string;
+  unidades?: Array<{ unidad: number; calificacion?: number; asistencia?: number }>;
 };
 
-export default function PieChartPage({ grupo }: { grupo: any }) {
-  const [activeIndex, setActiveIndex] = useState<number>();
-  const darkMode = isDark();
+export default function PieChartPage({
+  grupo,
+  alumnos
+}: {
+  grupo: GrupoResumen
+  alumnos?: AlumnoRow[]
+}) {
+  // Calcular aprobados y reprobados dinámicamente desde los datos de alumnos
+  const { aprobados, reprobados, total } = useMemo(() => {
+    if (!alumnos || alumnos.length === 0) {
+      return {
+        aprobados: grupo?.aprobados ?? 0,
+        reprobados: grupo?.reprobados ?? 0,
+        total: grupo?.total ?? 0
+      }
+    }
 
-  const aprobados = grupo?.aprobados ?? 0;
-  const reprobados = grupo?.reprobados ?? 0;
-  const total = aprobados + reprobados;
+    // Filtrar solo alumnos activos (no BAJA)
+    const alumnosActivos = alumnos.filter((alumno) => {
+      const status = String(alumno?.status ?? "ACTIVA").toUpperCase()
+      return status !== "BAJA"
+    })
+
+    let aprobadosCount = 0
+    let reprobadosCount = 0
+
+    alumnosActivos.forEach((alumno) => {
+      // Obtener todas las calificaciones del alumno
+      const calificaciones = (alumno.unidades || [])
+        .map((u) => u.calificacion)
+        .filter((c) => c !== null && c !== undefined && !isNaN(c as number)) as number[]
+
+      // Solo considerar si tiene al menos una calificación registrada
+      if (calificaciones.length === 0) {
+        return
+      }
+
+      // Calcular promedio
+      const promedio = calificaciones.reduce((sum, cal) => sum + cal, 0) / calificaciones.length
+
+      // Verificar si todas las calificaciones son >= 70
+      const todasAprobadas = calificaciones.every((cal) => cal >= 70)
+
+      if (todasAprobadas && promedio >= 70) {
+        aprobadosCount++
+      } else {
+        reprobadosCount++
+      }
+    })
+
+    return {
+      aprobados: aprobadosCount,
+      reprobados: reprobadosCount,
+      total: alumnosActivos.length
+    }
+  }, [alumnos, grupo])
 
   const data = [
-    {
-      name: 'Aprobados',
-      value: aprobados,
-      fill: '#10b981'
-    },
-    {
-      name: 'Reprobados',
-      value: reprobados,
-      fill: '#ef4444'
-    }
-  ];
+    { name: "Aprobados", value: aprobados, color: "#10b981" },
+    { name: "Reprobados", value: reprobados, color: "#ef4444" },
+  ]
 
-  const onPieEnter = (_: React.MouseEvent<SVGElement>, index: number) => {
-    setActiveIndex(index);
-  };
-
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white dark:bg-[var(--card)] p-3 rounded-lg shadow-lg border border-slate-200 dark:border-[var(--border)]">
-          <p className="font-semibold text-slate-900 dark:text-[var(--text)] mb-1">{data.name}</p>
-          <p className="text-sm" style={{ color: data.fill }}>
-            <span className="font-bold">{data.value}</span> estudiantes
-          </p>
-          <p className="text-xs text-slate-500 dark:text-[var(--muted)] mt-1">
-            {total > 0 ? `${((data.value / total) * 100).toFixed(1)}% del total` : '0%'}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  if (total === 0) {
+  if (total === 0 || (aprobados === 0 && reprobados === 0)) {
     return (
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold text-slate-900 dark:text-[var(--text)]">Aprobados vs Reprobados</h3>
-        <div className="h-80 bg-white dark:bg-[var(--card)] p-4 rounded-xl border border-slate-200 dark:border-[var(--border)] shadow-sm flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-slate-500 dark:text-[var(--muted)]">No hay datos disponibles</p>
-            <p className="text-sm text-slate-400 dark:text-[var(--muted)] mt-1">Aún no hay estudiantes con calificaciones completas</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <p className="text-slate-500 dark:text-slate-400 text-sm">
+          No hay datos suficientes para mostrar
+        </p>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-xl font-bold text-slate-900 dark:text-[var(--text)] mb-1">Aprobados vs Reprobados</h3>
-        <p className="text-sm text-slate-600 dark:text-[var(--muted)]">Distribución de estudiantes por resultado</p>
-      </div>
-      <div className="h-80 bg-white dark:bg-[var(--card)] p-4 rounded-xl border border-slate-200 dark:border-[var(--border)] shadow-sm">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <defs>
-              <linearGradient id="gradientAprobados" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
-                <stop offset="100%" stopColor="#059669" stopOpacity={0.8} />
-              </linearGradient>
-              <linearGradient id="gradientReprobados" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
-                <stop offset="100%" stopColor="#dc2626" stopOpacity={0.8} />
-              </linearGradient>
-            </defs>
-            <Pie
-              activeIndex={activeIndex}
-              activeShape={renderActiveShape}
-              data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={70}
-              outerRadius={100}
-              dataKey="value"
-              onMouseEnter={onPieEnter}
-              labelLine={false}
-              label={false}
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={index === 0 ? 'url(#gradientAprobados)' : 'url(#gradientReprobados)'} />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-            <Legend
-              wrapperStyle={{ paddingTop: '20px' }}
-              iconType="circle"
-              formatter={(value) => {
-                const item = data.find(d => d.name === value);
-                return `${value}: ${item?.value ?? 0}`;
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+    <div className="w-full h-full">
+      <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4">
+        Aprobados vs Reprobados
+      </h3>
+      <ResponsiveContainer width="100%" height={350}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            label={(entry: any) => `${entry.name}: ${((entry.percent || 0) * 100).toFixed(0)}%`}
+            outerRadius={100}
+            fill="#8884d8"
+            dataKey="value"
+          >
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const data = payload[0]
+                return (
+                  <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700">
+                    <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                      {data.name}
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Total: <span className="font-semibold">{data.value}</span>
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Porcentaje:{" "}
+                      <span className="font-semibold">
+                        {((Number(data.value) / total) * 100).toFixed(1)}%
+                      </span>
+                    </p>
+                  </div>
+                )
+              }
+              return null
+            }}
+          />
+          <Legend
+            verticalAlign="bottom"
+            height={36}
+            formatter={(value) => (
+              <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 500 }}>
+                {value}
+              </span>
+            )}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">
+        <p>
+          Total de alumnos activos: <span className="font-semibold">{total}</span>
+        </p>
+        <p className="italic mt-1">
+          * Se consideran aprobados los alumnos con todas las calificaciones ≥ 70
+        </p>
       </div>
     </div>
-  );
-};
+  )
+}

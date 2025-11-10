@@ -153,34 +153,12 @@ export default function Dashboard() {
         }
     }
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="text-slate-500">Cargando datos del dashboard...</div>
-            </div>
-        )
-    }
-
-    if (error) {
-        return (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-                <div className="text-red-700">{error}</div>
-            </div>
-        )
-    }
-
-    if (!data) {
-        return (
-            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-                <div className="text-yellow-700">No hay datos disponibles</div>
-            </div>
-        )
-    }
+    const isAdmin = role === 'admin'
 
     const chartData = [
         {
             name: 'Registrados',
-            cantidad: data.registrados,
+            cantidad: data?.registrados ?? 0,
             fill: '#3b82f6',
             gradientFrom: '#3b82f6',
             gradientTo: '#2563eb',
@@ -193,7 +171,7 @@ export default function Dashboard() {
         },
         {
             name: 'Reprobados',
-            cantidad: data.reprobados,
+            cantidad: data?.reprobados ?? 0,
             fill: '#ef4444',
             gradientFrom: '#ef4444',
             gradientTo: '#dc2626',
@@ -206,7 +184,7 @@ export default function Dashboard() {
         },
         {
             name: 'Bajas',
-            cantidad: data.bajas,
+            cantidad: data?.bajas ?? 0,
             fill: '#f59e0b',
             gradientFrom: '#f59e0b',
             gradientTo: '#ea580c',
@@ -219,7 +197,6 @@ export default function Dashboard() {
         }
     ]
 
-    const isAdmin = role === 'admin'
     const darkMode = isDark()
 
     // Colores para modo oscuro
@@ -266,7 +243,7 @@ export default function Dashboard() {
                 </button>
             </div>
 
-            {/* Tarjetas de resumen mejoradas */}
+            {/* Tarjetas de resumen */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {chartData.map((item, index) => (
                     <div
@@ -308,7 +285,7 @@ export default function Dashboard() {
 
                             <div className="text-xs text-slate-500 dark:text-[var(--muted)] mt-1">
                                 {index === 0 && (isAdmin ? 'En toda la institución' : 'En tus grupos')}
-                                {index === 1 && 'Promedio < 70 en todas las unidades'}
+                                {index === 1 && (isAdmin ? 'Promedio < 70 en todas las unidades' : 'En tus grupos')}
                                 {index === 2 && (isAdmin ? 'Baja definitiva' : 'Inscripciones en baja')}
                             </div>
                         </div>
@@ -317,7 +294,7 @@ export default function Dashboard() {
             </div>
 
             {/* Razón más común de baja mejorada */}
-            {data.motivoBajaMasComun && (
+            {data?.motivoBajaMasComun && (
                 <div className="rounded-xl border border-slate-200 dark:border-[var(--border)] bg-white dark:bg-gradient-to-r dark:from-[var(--surface)] dark:to-[var(--card)] p-5 shadow-sm">
                     <div className="flex items-start gap-4">
                         <div className="flex-shrink-0 mt-0.5">

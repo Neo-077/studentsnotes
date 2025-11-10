@@ -95,7 +95,7 @@ export async function listarInscripcionesPorGrupo(id_grupo: number) {
   if (ids.length) {
     const [e1, e2] = await Promise.all([
       supabaseAdmin.from('evaluacion_unidad').select('id_inscripcion,unidad,calificacion').in('id_inscripcion', ids),
-      supabaseAdmin.from('asistencia').select('id_inscripcion,unidad,porcentaje').in('id_inscripcion', ids),
+      supabaseAdmin.from('asistencia').select('id_inscripcion,unidad,numero_asistencias').in('id_inscripcion', ids),
     ])
     if (e1.error) throw e1.error
     if (e2.error) throw e2.error
@@ -107,7 +107,7 @@ export async function listarInscripcionesPorGrupo(id_grupo: number) {
   const calByKey = new Map<string, number>()
   for (const r of evals) calByKey.set(`${r.id_inscripcion}|${r.unidad}`, Number(r.calificacion))
   const asiByKey = new Map<string, number>()
-  for (const r of asists) asiByKey.set(`${r.id_inscripcion}|${r.unidad}`, Number(r.porcentaje))
+  for (const r of asists) asiByKey.set(`${r.id_inscripcion}|${r.unidad}`, Number(r.numero_asistencias))
 
   const rows = (insc ?? []).map((r: any) => {
     const unidadesArr = [] as Array<{ unidad: number; calificacion: number | null; asistencia: number | null }>
@@ -188,10 +188,11 @@ export async function actualizarUnidades(input: { id_inscripcion: number; unidad
       }
     }
 
-    // asistencia (porcentaje)
+    // asistencia (numero_asistencias sin límite de 100)
     if (u.asistencia != null && u.asistencia !== undefined) {
-      const pct = Number(u.asistencia)
-      if (isFinite(pct) && pct >= 0 && pct <= 100) {
+      const num = Number(u.asistencia)
+      // Solo validar que sea >= 0, sin máximo de 100
+      if (isFinite(num) && num >= 0) {
         const exa = await supabaseAdmin
           .from('asistencia')
           .select('id_asistencia')
@@ -200,15 +201,17 @@ export async function actualizarUnidades(input: { id_inscripcion: number; unidad
           .maybeSingle()
         if (exa.error) throw exa.error
         if (exa.data) {
+          // CAMBIADO: numero_asistencias en lugar de porcentaje
           const upa = await supabaseAdmin
             .from('asistencia')
-            .update({ porcentaje: pct })
+            .update({ numero_asistencias: num })
             .eq('id_asistencia', (exa.data as any).id_asistencia)
           if (upa.error) throw upa.error
         } else {
+          // CAMBIADO: numero_asistencias en lugar de porcentaje
           const insa = await supabaseAdmin
             .from('asistencia')
-            .insert({ id_inscripcion: id, unidad, porcentaje: pct })
+            .insert({ id_inscripcion: id, unidad, numero_asistencias: num })
           if (insa.error) throw insa.error
         }
       }

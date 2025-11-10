@@ -66,8 +66,43 @@ function normPct(v: unknown): number | null {
   return Math.max(0, Math.min(100, n))
 }
 
+// Nueva función para normalizar asistencias (sin límite de 100)
+function normAsist(v: unknown): number | null {
+  if (v === null || v === undefined) return null
+  const s = String(v).trim()
+  if (s === "") return null
+  const n = Math.round(Number(s))
+  if (!Number.isFinite(n)) return null
+  return Math.max(0, n) // Solo mínimo 0, sin máximo
+}
+
 function normalizeKey(k: string) {
   return k.toUpperCase().replace(/\s+/g, "_").replace(/[.%]/g, "_").replace(/__+/g, "_")
+}
+
+function calcularPromedioAlumno(unidades?: Array<{ unidad: number; calificacion?: number }>): number | null {
+  if (!unidades || unidades.length === 0) return null
+  const calificaciones = unidades
+    .map(u => u.calificacion)
+    .filter(c => c !== null && c !== undefined && !isNaN(c as number)) as number[]
+
+  if (calificaciones.length === 0) return null
+  const suma = calificaciones.reduce((acc, cal) => acc + cal, 0)
+  return Math.round((suma / calificaciones.length) * 100) / 100
+}
+
+// Nueva función para determinar si está aprobado
+function estaAprobado(unidades?: Array<{ unidad: number; calificacion?: number }>): boolean {
+  if (!unidades || unidades.length === 0) return false
+
+  const calificaciones = unidades
+    .map(u => u.calificacion)
+    .filter(c => c !== null && c !== undefined && !isNaN(c as number)) as number[]
+
+  if (calificaciones.length === 0) return false
+
+  // Todas las calificaciones deben ser >= 70
+  return calificaciones.every(cal => cal >= 70)
 }
 
 export default function GrupoAulaDetalle() {
@@ -117,14 +152,31 @@ export default function GrupoAulaDetalle() {
     [alumnos]
   )
 
+  // === Ordenar alumnos alfabéticamente por apellido paterno, materno y nombre ===
+  const sortedActiveRows = useMemo(() => {
+    return [...activeRows].sort((a, b) => {
+      const aPaterno = (a.estudiante?.ap_paterno || "").toUpperCase()
+      const bPaterno = (b.estudiante?.ap_paterno || "").toUpperCase()
+      if (aPaterno !== bPaterno) return aPaterno.localeCompare(bPaterno)
+
+      const aMaterno = (a.estudiante?.ap_materno || "").toUpperCase()
+      const bMaterno = (b.estudiante?.ap_materno || "").toUpperCase()
+      if (aMaterno !== bMaterno) return aMaterno.localeCompare(bMaterno)
+
+      const aNombre = (a.estudiante?.nombre || "").toUpperCase()
+      const bNombre = (b.estudiante?.nombre || "").toUpperCase()
+      return aNombre.localeCompare(bNombre)
+    })
+  }, [activeRows])
+
   const totalPagesAlu = useMemo(
-    () => Math.max(1, Math.ceil((activeRows.length || 0) / pageSizeAlu)),
-    [activeRows]
+    () => Math.max(1, Math.ceil((sortedActiveRows.length || 0) / pageSizeAlu)),
+    [sortedActiveRows]
   )
   const pageSafeAlu = Math.min(pageAlu, totalPagesAlu)
   const startAlu = (pageSafeAlu - 1) * pageSizeAlu
   const endAlu = startAlu + pageSizeAlu
-  const pagedAlu = useMemo(() => activeRows.slice(startAlu, endAlu), [activeRows, startAlu, endAlu])
+  const pagedAlu = useMemo(() => sortedActiveRows.slice(startAlu, endAlu), [sortedActiveRows, startAlu, endAlu])
 
   useEffect(() => {
     if (!Number.isFinite(id_grupo)) {
@@ -395,7 +447,7 @@ export default function GrupoAulaDetalle() {
     const incluirAsistencia = !!opts?.incluirAsistencia
     const unidades = Math.max(0, Number(alumnos?.unidades || 0))
 
-    const colsCount = incluirAsistencia ? unidades * 2 + 2 : unidades + 2
+    const colsCount = incluirAsistencia ? unidades * 2 + 3 : unidades + 3 // +1 por columna promedio
     const needLandscape = colsCount > 8
 
     const doc = new jsPDF({
@@ -427,6 +479,7 @@ export default function GrupoAulaDetalle() {
       if (incluirAsistencia) headRow.push(`U${i} Cal`, `U${i} %`)
       else headRow.push(`U${i}`)
     }
+    headRow.push("Promedio") // Añadir columna de promedio
     const head = [headRow]
 
     const body = (alumnos?.rows || []).map((r) => {
@@ -442,6 +495,11 @@ export default function GrupoAulaDetalle() {
         if (incluirAsistencia) cells.push(cal === "" ? "" : Number(cal), asi === "" ? "" : Number(asi))
         else cells.push(cal === "" ? "" : Number(cal))
       }
+
+      // Calcular y añadir promedio
+      const promedio = calcularPromedioAlumno(r?.unidades)
+      cells.push(promedio !== null ? promedio : "")
+
       return [...base, ...cells]
     })
 
@@ -450,7 +508,9 @@ export default function GrupoAulaDetalle() {
       0: { cellWidth: 28, halign: "center", font: "courier" },
       1: { cellWidth: 62, halign: "left" },
     }
-    for (let i = 2; i < headRow.length; i++) columnStyles[i] = { cellWidth: 16, halign: "center" }
+    for (let i = 2; i < headRow.length - 1; i++) columnStyles[i] = { cellWidth: 16, halign: "center" }
+    // Estilo para columna de promedio (última columna)
+    columnStyles[headRow.length - 1] = { cellWidth: 20, halign: "center", fontStyle: "bold" }
 
     autoTable(doc, {
       head,
@@ -694,7 +754,6 @@ export default function GrupoAulaDetalle() {
         doc.text(`${tituloGraf} — ${titulo || `Grupo ${id_grupo}`}`, margin, margin)
 
         const ratio = w / h
-        const topImg = margin + 8
         let drawW = areaW
         let drawH = drawW / ratio
         if (drawH > areaH - 8) {
@@ -702,6 +761,7 @@ export default function GrupoAulaDetalle() {
           drawW = drawH * ratio
         }
         const x = margin + (areaW - drawW) / 2
+        const topImg = margin + 8
         doc.addImage(dataUrl, "PNG", x, topImg, drawW, drawH)
       }
 
@@ -911,7 +971,7 @@ export default function GrupoAulaDetalle() {
         const units: Array<{ unidad: number; calificacion?: number; asistencia?: number }> = []
         for (let u = 1; u <= unidades; u++) {
           const c = normPct((r as any)[`U${u}_CAL`])
-          const a = normPct((r as any)[`U${u}_ASIST`])
+          const a = normAsist((r as any)[`U${u}_ASIST`]) // Usar normAsist en lugar de normPct
           if (c === null && a === null) continue
           const entry: any = { unidad: u }
           if (c !== null) entry.calificacion = c
@@ -972,6 +1032,46 @@ export default function GrupoAulaDetalle() {
 
   return (
     <div className="space-y-4">
+      {/* Estilos para scrollbar personalizada */}
+      <style>{`
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #94a3b8 #e2e8f0;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 14px;
+          height: 14px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: linear-gradient(to right, #f1f5f9, #e2e8f0);
+          border-radius: 10px;
+          margin: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, #94a3b8, #64748b);
+          border-radius: 10px;
+          border: 3px solid #f1f5f9;
+          box-shadow: inset 0 0 6px rgba(0,0,0,0.1);
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, #64748b, #475569);
+          border-color: #e2e8f0;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:active {
+          background: linear-gradient(135deg, #475569, #334155);
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-corner {
+          background: #f1f5f9;
+          border-radius: 10px;
+        }
+      `}</style>
+
       {/* ====== Header / acciones ====== */}
       <div className="flex items-center justify-between">
         <div className="font-semibold text-lg">Alumnos — {titulo || `Grupo ${id_grupo}`}</div>
@@ -1010,8 +1110,8 @@ export default function GrupoAulaDetalle() {
       <div className="rounded-2xl bg-white border p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-600">
-            Cupo: {activeRows.length} / {alumnos.cupo} • Unidades: {alumnos.unidades}{" "}
-            {activeRows.length >= (alumnos.cupo || 0) && (
+            Cupo: {sortedActiveRows.length} / {alumnos.cupo} • Unidades: {alumnos.unidades}{" "}
+            {sortedActiveRows.length >= (alumnos.cupo || 0) && (
               <span className="ml-2 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-700 ring-1 ring-red-100">
                 Cupo lleno
               </span>
@@ -1024,11 +1124,11 @@ export default function GrupoAulaDetalle() {
               id="alu_noctrl"
               placeholder="No. control"
               className="h-9 rounded-md border px-3 text-sm"
-              disabled={activeRows.length >= (alumnos.cupo || 0)}
+              disabled={sortedActiveRows.length >= (alumnos.cupo || 0)}
             />
             <button
               className="h-9 rounded-md border px-3 text-sm"
-              disabled={activeRows.length >= (alumnos.cupo || 0)}
+              disabled={sortedActiveRows.length >= (alumnos.cupo || 0)}
               onClick={() => {
                 const el = document.getElementById("alu_noctrl") as HTMLInputElement
                 if (el?.value) agregarPorNoControl(el.value)
@@ -1161,19 +1261,22 @@ export default function GrupoAulaDetalle() {
           </div>
         </div>
 
-        <div className="overflow-auto rounded-xl border">
-          <table className="min-w-full text-sm">
+        <div className="overflow-auto rounded-xl border custom-scrollbar">
+          <table className="min-w-full text-xs">
             <thead className="bg-slate-50">
-              <tr className="[&>th]:px-3 [&>th]:py-2 text-left">
-                <th>No. control</th>
-                <th>Nombre</th>
+              <tr className="[&>th]:px-2 [&>th]:py-1.5 text-left">
+                <th className="text-[10px] font-semibold">No. Control</th>
+                <th className="text-[10px] font-semibold">Nombre</th>
+                <th className="text-[10px] font-semibold">Ap. Paterno</th>
+                <th className="text-[10px] font-semibold">Ap. Materno</th>
                 {Array.from({ length: alumnos.unidades || 0 }, (_, i) => i + 1).map((u) => (
                   <Fragment key={`u_head_${u}`}>
-                    <th className="text-center">U{u} Cal</th>
-                    <th className="text-center">U{u} Asist%</th>
+                    <th className="text-center text-[10px] font-semibold">U{u} Cal</th>
+                    <th className="text-center text-[10px] font-semibold">U{u} Asist</th>
                   </Fragment>
                 ))}
-                <th className="text-right">Acciones</th>
+                <th className="text-center font-bold text-[10px]">Prom</th>
+                <th className="text-right text-[10px] font-semibold">Acciones</th>
               </tr>
             </thead>
 
@@ -1181,7 +1284,7 @@ export default function GrupoAulaDetalle() {
               {loadingAlu && (
                 <tr>
                   <td
-                    colSpan={3 + (alumnos.unidades || 0) * 2}
+                    colSpan={6 + (alumnos.unidades || 0) * 2}
                     className="px-3 py-6 text-center text-slate-500"
                   >
                     Cargando…
@@ -1192,7 +1295,7 @@ export default function GrupoAulaDetalle() {
               {!loadingAlu && pagedAlu.length === 0 && (
                 <tr>
                   <td
-                    colSpan={3 + (alumnos.unidades || 0) * 2}
+                    colSpan={6 + (alumnos.unidades || 0) * 2}
                     className="px-3 py-6 text-center text-slate-500"
                   >
                     Sin alumnos.
@@ -1205,12 +1308,21 @@ export default function GrupoAulaDetalle() {
                 pagedAlu.map((r) => {
                   const estado = getEstado(r)
                   const esBaja = estado === "BAJA"
+                  const promedio = calcularPromedioAlumno(r?.unidades)
 
                   return (
-                    <tr key={r.id_inscripcion} className="[&>td]:px-3 [&>td]:py-2">
-                      <td className="whitespace-nowrap">{r.estudiante?.no_control}</td>
-                      <td className="whitespace-nowrap">
-                        {`${r.estudiante?.nombre ?? ""} ${r.estudiante?.ap_paterno ?? ""}`}
+                    <tr key={r.id_inscripcion} className="[&>td]:px-2 [&>td]:py-1 hover:bg-slate-50">
+                      <td className="whitespace-nowrap font-mono text-[11px]">
+                        {r.estudiante?.no_control}
+                      </td>
+                      <td className="whitespace-nowrap text-[11px]">
+                        {r.estudiante?.nombre}
+                      </td>
+                      <td className="whitespace-nowrap text-[11px]">
+                        {r.estudiante?.ap_paterno}
+                      </td>
+                      <td className="whitespace-nowrap text-[11px]">
+                        {r.estudiante?.ap_materno}
                       </td>
 
                       {Array.from({ length: alumnos.unidades || 0 }, (_, i) => i + 1).map((u) => {
@@ -1225,7 +1337,7 @@ export default function GrupoAulaDetalle() {
                                 max={100}
                                 defaultValue={cal as any}
                                 disabled={esBaja}
-                                className="h-9 w-20 rounded-md border px-2 text-sm text-center disabled:opacity-60"
+                                className="h-7 w-12 rounded border px-1 text-[11px] text-center disabled:opacity-60 disabled:bg-slate-50"
                                 onBlur={(e) =>
                                   actualizarUnidad(
                                     r.id_inscripcion,
@@ -1240,10 +1352,10 @@ export default function GrupoAulaDetalle() {
                               <input
                                 type="number"
                                 min={0}
-                                max={100}
                                 defaultValue={asi as any}
                                 disabled={esBaja}
-                                className="h-9 w-20 rounded-md border px-2 text-sm text-center disabled:opacity-60"
+                                placeholder="0"
+                                className="h-7 w-12 rounded border px-1 text-[11px] text-center disabled:opacity-60 disabled:bg-slate-50"
                                 onBlur={(e) =>
                                   actualizarUnidad(
                                     r.id_inscripcion,
@@ -1258,10 +1370,20 @@ export default function GrupoAulaDetalle() {
                         )
                       })}
 
-                      <td className="text-right space-x-2 whitespace-nowrap">
+                      <td className="text-center font-semibold text-[11px]">
+                        {promedio !== null ? (
+                          <span className={estaAprobado(r?.unidades) ? "text-emerald-600" : "text-red-600"}>
+                            {promedio}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+
+                      <td className="text-right whitespace-nowrap">
                         {esBaja ? (
                           <button
-                            className="rounded-md border px-3 py-1 text-xs text-emerald-700 hover:bg-emerald-50"
+                            className="rounded border px-2 py-0.5 text-[10px] text-emerald-700 hover:bg-emerald-50"
                             onClick={() => reactivarInscripcion(r.id_inscripcion)}
                             title="Reactivar inscripción"
                           >
@@ -1269,14 +1391,13 @@ export default function GrupoAulaDetalle() {
                           </button>
                         ) : (
                           <button
-                            className="rounded-md border px-3 py-1 text-xs text-orange-700 hover:bg-orange-50"
+                            className="rounded border px-2 py-0.5 text-[10px] text-orange-700 hover:bg-orange-50"
                             onClick={() => bajaInscripcion(r.id_inscripcion)}
                             title="Dar de baja"
                           >
                             Baja
                           </button>
                         )}
-                        {/* Botón Eliminar removido definitivamente */}
                       </td>
                     </tr>
                   )
@@ -1316,7 +1437,8 @@ export default function GrupoAulaDetalle() {
           data-export-title="Pastel (Aprobados vs Reprobados)"
           className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
-          <PieChartPage grupo={grupo} />
+          {/* CAMBIADO: Pasar activeRows para cálculo dinámico */}
+          <PieChartPage grupo={grupo} alumnos={activeRows} />
         </div>
 
         <div

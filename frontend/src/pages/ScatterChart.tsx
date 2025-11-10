@@ -1,143 +1,170 @@
-import { useEffect, useState } from 'react'
-import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts'
-import { isDark } from '../lib/theme'
+import React, { useMemo } from "react"
+import {
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  Label,
+} from "recharts"
 
-export default function ScatterChartPage({ alumnos }: { alumnos: any }) {
-  const [points, setPoints] = useState<any[]>([])
-  const darkMode = isDark()
+type AlumnoRow = {
+  id_inscripcion: number
+  estudiante?: {
+    nombre?: string
+    ap_paterno?: string
+    ap_materno?: string
+  }
+  unidades?: Array<{ unidad: number; calificacion?: number; asistencia?: number }>
+}
 
-  useEffect(() => {
-    const data = (alumnos || []).map((alumno: any) => {
-      const asistencia = Number(alumno.asistencia) || 0
-      const promedio = Number(alumno.promedio) || 0
-      const nombre = `${alumno?.estudiante?.nombre || ''} ${alumno?.estudiante?.ap_paterno || ''}`.trim()
+export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) {
+  // Calcular el máximo de asistencias por unidad para convertir a porcentaje
+  const maxAsistenciasPorUnidad = useMemo(() => {
+    const maxPorUnidad: { [key: number]: number } = {}
 
-      // Determinar color según rendimiento
-      let color = '#3b82f6' // azul por defecto
-      if (promedio >= 70 && asistencia >= 85) {
-        color = '#10b981' // verde - aprobado
-      } else if (promedio < 70 || asistencia < 85) {
-        color = '#ef4444' // rojo - riesgo
-      }
-
-      return {
-        x: asistencia,
-        y: promedio,
-        name: nombre,
-        color
-      }
+    alumnos.forEach((alumno) => {
+      alumno.unidades?.forEach((unidad) => {
+        const asistencia = Number(unidad.asistencia) || 0
+        if (!maxPorUnidad[unidad.unidad] || asistencia > maxPorUnidad[unidad.unidad]) {
+          maxPorUnidad[unidad.unidad] = asistencia
+        }
+      })
     })
-    setPoints(data)
+
+    return maxPorUnidad
   }, [alumnos])
 
-  const gridColor = darkMode ? 'rgba(36, 52, 74, 0.8)' : '#e2e8f0'
-  const textColor = darkMode ? '#B7C7D9' : '#64748b'
-  const axisLineColor = darkMode ? 'rgba(36, 52, 74, 0.8)' : '#cbd5e1'
+  // Preparar datos con porcentajes de asistencia calculados
+  const data = useMemo(() => {
+    return alumnos
+      .map((alumno) => {
+        // Calcular promedio de calificaciones
+        const calificaciones = (alumno.unidades || [])
+          .map((u) => u.calificacion)
+          .filter((c) => c !== null && c !== undefined && !isNaN(c as number)) as number[]
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      return (
-        <div className="bg-white dark:bg-[var(--card)] p-3 rounded-lg shadow-lg border border-slate-200 dark:border-[var(--border)]">
-          <p className="font-semibold text-slate-900 dark:text-[var(--text)] mb-2">{data.name}</p>
-          <div className="space-y-1 text-sm">
-            <p className="text-slate-600 dark:text-[var(--muted)]">
-              <span className="font-medium">Asistencia:</span> <span className="font-bold text-blue-600">{data.x.toFixed(1)}%</span>
-            </p>
-            <p className="text-slate-600 dark:text-[var(--muted)]">
-              <span className="font-medium">Promedio:</span> <span className="font-bold text-blue-600">{data.y.toFixed(1)}</span>
-            </p>
-          </div>
-        </div>
-      )
-    }
-    return null
-  }
+        const promedio =
+          calificaciones.length > 0
+            ? calificaciones.reduce((a, b) => a + b, 0) / calificaciones.length
+            : 0
 
-  if (!alumnos || alumnos.length === 0) {
+        // Calcular porcentaje promedio de asistencias
+        const asistenciasPorcentaje = (alumno.unidades || [])
+          .map((u) => {
+            const asist = Number(u.asistencia) || 0
+            const maxAsist = maxAsistenciasPorUnidad[u.unidad] || 1
+            return (asist / maxAsist) * 100
+          })
+          .filter((p) => !isNaN(p))
+
+        const promedioAsistencia =
+          asistenciasPorcentaje.length > 0
+            ? asistenciasPorcentaje.reduce((a, b) => a + b, 0) / asistenciasPorcentaje.length
+            : 0
+
+        return {
+          nombre: `${alumno.estudiante?.nombre || ""} ${alumno.estudiante?.ap_paterno || ""}`.trim(),
+          promedio: Math.round(promedio * 100) / 100,
+          asistencia: Math.round(promedioAsistencia * 100) / 100,
+        }
+      })
+      .filter((d) => d.promedio > 0 || d.asistencia > 0)
+  }, [alumnos, maxAsistenciasPorUnidad])
+
+  if (data.length === 0) {
     return (
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-xl font-bold text-slate-900 dark:text-[var(--text)] mb-1">Asistencia vs Promedio</h3>
-          <p className="text-sm text-slate-600 dark:text-[var(--muted)]">Dispersión de estudiantes</p>
-        </div>
-        <div className="h-80 bg-white dark:bg-[var(--card)] p-4 rounded-xl border border-slate-200 dark:border-[var(--border)] shadow-sm flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-slate-500 dark:text-[var(--muted)]">No hay datos disponibles</p>
-            <p className="text-sm text-slate-400 dark:text-[var(--muted)] mt-1">No hay estudiantes activos en este grupo</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <p className="text-slate-500 dark:text-slate-400 text-sm">No hay datos para mostrar</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-xl font-bold text-slate-900 dark:text-[var(--text)] mb-1">Asistencia vs Promedio</h3>
-        <p className="text-sm text-slate-600 dark:text-[var(--muted)]">Dispersión de estudiantes activos</p>
-      </div>
-      <div className="h-80 bg-white dark:bg-[var(--card)] p-4 rounded-xl border border-slate-200 dark:border-[var(--border)] shadow-sm">
-        <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-            <defs>
-              <linearGradient id="scatterGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8} />
-                <stop offset="100%" stopColor="#2563eb" stopOpacity={0.6} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke={gridColor}
+    <div className="w-full h-full">
+      <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4">
+        Dispersión: Asistencia vs Promedio
+      </h3>
+      <ResponsiveContainer width="100%" height={350}>
+        <ScatterChart margin={{ top: 20, right: 30, bottom: 60, left: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+          <XAxis
+            type="number"
+            dataKey="asistencia"
+            name="Asistencia"
+            stroke="var(--muted)"
+            tick={{ fill: "var(--muted)", fontSize: 12 }}
+            domain={[0, 100]}
+          >
+            <Label
+              value="Asistencia (%)"
+              position="bottom"
+              offset={-10}
+              style={{ fill: "var(--text)", fontSize: 14, fontWeight: 600 }}
             />
-            <XAxis
-              type="number"
-              dataKey="x"
-              name="Asistencia"
-              unit="%"
-              domain={[0, 100]}
-              tick={{ fill: textColor, fontSize: 12 }}
-              axisLine={{ stroke: axisLineColor }}
-              tickLine={{ stroke: axisLineColor }}
-              label={{ value: 'Asistencia (%)', position: 'insideBottom', offset: -5, style: { fill: textColor, fontSize: 12 } }}
+          </XAxis>
+          <YAxis
+            type="number"
+            dataKey="promedio"
+            name="Promedio"
+            stroke="var(--muted)"
+            tick={{ fill: "var(--muted)", fontSize: 12 }}
+            domain={[0, 100]}
+          >
+            <Label
+              value="Promedio"
+              angle={-90}
+              position="insideLeft"
+              style={{ fill: "var(--text)", fontSize: 14, fontWeight: 600, textAnchor: "middle" }}
             />
-            <YAxis
-              type="number"
-              dataKey="y"
-              name="Promedio"
-              domain={[0, 100]}
-              tick={{ fill: textColor, fontSize: 12 }}
-              axisLine={{ stroke: axisLineColor }}
-              tickLine={{ stroke: axisLineColor }}
-              label={{ value: 'Promedio', angle: -90, position: 'insideLeft', style: { fill: textColor, fontSize: 12 } }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Scatter
-              data={points}
-              fill="#3b82f6"
-              shape="circle"
-            >
-              {points.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Scatter>
-          </ScatterChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="flex items-center justify-center gap-4 text-xs text-slate-500 dark:text-[var(--muted)]">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-green-500"></div>
-          <span>Aprobado (≥70 y ≥85%)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-          <span>Regular</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <span>En riesgo</span>
-        </div>
-      </div>
+          </YAxis>
+          <Tooltip
+            cursor={{ strokeDasharray: "3 3" }}
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const data = payload[0].payload
+                return (
+                  <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700">
+                    <p className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-1">
+                      {data.nombre}
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Promedio: <span className="font-semibold">{data.promedio}</span>
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Asistencia: <span className="font-semibold">{data.asistencia}%</span>
+                    </p>
+                  </div>
+                )
+              }
+              return null
+            }}
+          />
+          <Legend
+            wrapperStyle={{ paddingTop: 20 }}
+            iconType="circle"
+            formatter={(value) => (
+              <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 500 }}>
+                {value}
+              </span>
+            )}
+          />
+          <Scatter
+            name="Alumnos"
+            data={data}
+            fill="#3b82f6"
+            fillOpacity={0.6}
+            stroke="#2563eb"
+            strokeWidth={2}
+          />
+        </ScatterChart>
+      </ResponsiveContainer>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center italic">
+        * El porcentaje de asistencia se calcula basándose en el máximo de asistencias por unidad
+      </p>
     </div>
   )
 }
