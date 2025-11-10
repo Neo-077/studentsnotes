@@ -15,6 +15,7 @@ type AuthState = {
   id_docente: number | null
   avatarUrl?: string | null
   login: (email: string, password: string) => Promise<boolean>
+  signup: (email: string, password: string, fullName: string) => Promise<boolean>
   logout: () => Promise<void>
   init: () => Promise<void>
   refresh: () => Promise<void>
@@ -76,6 +77,58 @@ const useAuth = create<AuthState>()(
         return true
       },
 
+      async signup(email, password, fullName) {
+        if (!fullName || fullName.trim().length < 3) {
+          throw new Error('El nombre completo debe tener al menos 3 caracteres')
+        }
+
+        if (password.length < 6) {
+          throw new Error('La contraseña debe tener al menos 6 caracteres')
+        }
+
+        try {
+          const response = await api.post('/auth/register-docente', {
+            email: email.trim().toLowerCase(),
+            password: password,
+            full_name: fullName.trim()
+          })
+
+          if (!response || response.error) {
+            throw new Error(response?.error || 'Error al crear la cuenta')
+          }
+
+          // Esperar a que Supabase procese el usuario
+          await new Promise(resolve => setTimeout(resolve, 1500))
+
+          // Login automático
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: email.trim().toLowerCase(),
+            password
+          })
+
+          if (error) {
+            throw new Error('Cuenta creada pero no se pudo iniciar sesión. Intenta iniciar sesión manualmente.')
+          }
+
+          const me = await fetchWhoami(true)
+          set({
+            session: data.session,
+            user: data.user,
+            role: pickAppRole(me),
+            id_docente: pickIdDocente(me),
+            avatarUrl: pickAvatarUrl(me)
+          })
+
+          return true
+        } catch (error: any) {
+          const message = error?.message || 'Error al crear la cuenta'
+          if (message.includes('duplicate') || message.includes('duplicado') || message.includes('ya está registrado')) {
+            throw new Error('Este correo ya está registrado')
+          }
+          throw new Error(message)
+        }
+      },
+
       async logout() {
         await supabase.auth.signOut()
         set({ session: null, user: null, role: null, id_docente: null, avatarUrl: null })
@@ -92,7 +145,7 @@ const useAuth = create<AuthState>()(
             role = pickAppRole(me)
             id_docente = pickIdDocente(me)
             avatarUrl = pickAvatarUrl(me)
-          } catch {}
+          } catch { }
         }
         set({
           session: data.session ?? null,
@@ -113,7 +166,7 @@ const useAuth = create<AuthState>()(
               role = pickAppRole(me)
               id_docente = pickIdDocente(me)
               avatarUrl = pickAvatarUrl(me)
-            } catch {}
+            } catch { }
           }
           set({ session: session ?? null, user: session?.user ?? null, role, id_docente, avatarUrl })
         })

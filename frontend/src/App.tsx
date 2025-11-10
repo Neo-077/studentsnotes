@@ -61,6 +61,7 @@ function Shell() {
             ? [
               { to: '/dashboard', label: 'Página principal' },
               { to: '/grupos/aula', label: 'Grupos (Aula)' },
+              { to: '/estudiantes', label: 'Estudiantes' },
               { to: '/cuenta', label: 'Configuración' }
             ]
             : [
@@ -206,6 +207,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/grupos/aula" element={<GruposAula />} />
           <Route path="/grupos/aula/:id_grupo" element={<GrupoAulaDetalle />} />
+          <Route path="/estudiantes" element={<Estudiantes />} />
           <Route path="/cuenta" element={<Account />} />
           {/* Rutas solo admin */}
           <Route element={<AdminOnly />}>
@@ -213,7 +215,6 @@ export default function App() {
             <Route path="/grupos" element={<Grupos />} />
             <Route path="/docentes" element={<Docentes />} />
             <Route path="/materias" element={<Materias />} />
-            <Route path="/estudiantes" element={<Estudiantes />} />
           </Route>
         </Route>
       </Route>

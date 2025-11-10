@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import multer from 'multer'
-import { createEstudiante, listEstudiantes, bulkUpsertEstudiantes, deleteEstudiante, darBajaEstudiante } from '../services/estudiantes.service.js'
+import { createEstudiante, listEstudiantes, bulkUpsertEstudiantes, deleteEstudiante, darBajaEstudiante, listEstudiantesElegiblesPorDocente } from '../services/estudiantes.service.js'
 import { createBajaEstudianteSchema } from '../schemas/bajaEstudiante.schema.js'
+import { requireAuth as requireSupabaseAuth } from '../middleware/auth.js'
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 const router = Router()
@@ -81,6 +82,25 @@ router.post('/:id/baja', async (req, res, next) => {
   }
 })
 
-//router.get();
+// GET /estudiantes/elegibles/docente — estudiantes elegibles para un docente
+router.get('/elegibles/docente', requireSupabaseAuth, async (req, res, next) => {
+  try {
+    // Obtener id_docente del usuario autenticado
+    const appUsuario = (req as any).appUsuario as { rol?: string, id_docente?: number } | null
+
+    if (!appUsuario || appUsuario.rol !== 'maestro' || !appUsuario.id_docente) {
+      return res.status(403).json({ error: { message: 'Solo docentes pueden acceder a esta ruta' } })
+    }
+
+    const data = await listEstudiantesElegiblesPorDocente(appUsuario.id_docente, {
+      q: req.query.q?.toString(),
+      page: req.query.page ? Number(req.query.page) : undefined,
+      pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined,
+    })
+    res.json(data)
+  } catch (e) {
+    next(e)
+  }
+})
 
 export default router

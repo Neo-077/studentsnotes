@@ -1,6 +1,7 @@
 // src/routes/grupos.route.ts
 import { Router } from 'express'
 import { listGrupos, createGrupo, bulkUpsertGrupos, checkDocenteHorarioConflict, deleteGrupo } from '../services/grupos.service.js'
+import { listEstudiantesElegiblesPorGrupo } from '../services/estudiantes.service.js'
 import multer from 'multer'
 import { requireAuth as requireSupabaseAuth } from '../middleware/auth.js'
 
@@ -10,11 +11,11 @@ const router = Router()
 // GET /grupos  (lista + filtros)  — también sirve para validar conflictos
 router.get('/', requireSupabaseAuth, async (req, res, next) => {
   try {
-    const termino_id  = req.query.termino_id  ? Number(req.query.termino_id)  : undefined
-    const materia_id  = req.query.materia_id  ? Number(req.query.materia_id)  : undefined
-    const carrera_id  = req.query.carrera_id  ? Number(req.query.carrera_id)  : undefined
-    let docente_id  = req.query.docente_id  ? Number(req.query.docente_id)  : undefined
-    const horario     = req.query.horario ? String(req.query.horario) : undefined
+    const termino_id = req.query.termino_id ? Number(req.query.termino_id) : undefined
+    const materia_id = req.query.materia_id ? Number(req.query.materia_id) : undefined
+    const carrera_id = req.query.carrera_id ? Number(req.query.carrera_id) : undefined
+    let docente_id = req.query.docente_id ? Number(req.query.docente_id) : undefined
+    const horario = req.query.horario ? String(req.query.horario) : undefined
 
     // Si es maestro autenticado vía Supabase, limita a sus grupos
     const appUsuario = (req as any).appUsuario as { rol?: string, id_docente?: number } | null
@@ -68,6 +69,23 @@ router.delete('/:id', async (req, res, next) => {
     await deleteGrupo(id)
     res.status(204).end()
   } catch (e) { next(e) }
+})
+
+// GET /grupos/:id/elegibles — estudiantes elegibles para un grupo
+router.get('/:id/elegibles', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id)
+    if (!id) return res.status(400).json({ error: { message: 'id inválido' } })
+
+    const data = await listEstudiantesElegiblesPorGrupo(id, {
+      q: req.query.q?.toString(),
+      page: req.query.page ? Number(req.query.page) : undefined,
+      pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined,
+    })
+    res.json(data)
+  } catch (e) {
+    next(e)
+  }
 })
 
 export default router

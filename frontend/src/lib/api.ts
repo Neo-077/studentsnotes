@@ -14,17 +14,23 @@ async function request(path: string, opts: RequestInit = {}) {
     const accessToken = data.session?.access_token || null
 
     const isFormData = opts.body instanceof FormData
+
+    console.log('🔍 REQUEST - opts.body recibido:', opts.body)
+    console.log('🔍 REQUEST - tipo:', typeof opts.body)
+
     const headers: Record<string, string> = {
       Accept: 'application/json',
       ...(opts.headers as Record<string, string> | undefined),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     }
 
-    // Solo agrega Content-Type si hay body (y no es FormData)
-    if (!isFormData && opts.body !== undefined) {
+    if (!isFormData && opts.body !== undefined && opts.body !== null) {
       headers['Content-Type'] = headers['Content-Type'] ?? 'application/json'
       if (typeof opts.body !== 'string') {
-        opts = { ...opts, body: JSON.stringify(opts.body) }
+        console.log('🔍 Body antes de stringify:', opts.body)
+        const stringified = JSON.stringify(opts.body)
+        console.log('🔍 Body después de stringify:', stringified)
+        opts = { ...opts, body: stringified }
       }
     }
 
@@ -59,7 +65,7 @@ async function request(path: string, opts: RequestInit = {}) {
 
       if (!res.ok) {
         if (res.status === 401 && !retrying) {
-          try { await supabase.auth.refreshSession() } catch {}
+          try { await supabase.auth.refreshSession() } catch { }
           return attempt(true)
         }
         const msg =
@@ -89,18 +95,23 @@ export default {
   get: (path: string, opts?: RequestInit) =>
     request(path, { method: 'GET', ...(opts || {}) }),
 
-  post: (path: string, body?: any, opts?: RequestInit) =>
-    request(path, {
+  post: (path: string, body?: any, opts?: RequestInit) => {
+    console.log('📤 api.post - path:', path)
+    console.log('📤 api.post - body recibido:', body)
+    console.log('📤 api.post - opts:', opts)
+
+    return request(path, {
+      ...opts,
       method: 'POST',
-      ...(opts || {}),
-      body: body instanceof FormData ? body : body ?? undefined,
-    }),
+      body: body,
+    })
+  },
 
   put: (path: string, body?: any, opts?: RequestInit) =>
     request(path, {
       method: 'PUT',
       ...(opts || {}),
-      body: body instanceof FormData ? body : body ?? undefined,
+      body: body instanceof FormData ? body : body,
     }),
 
   delete: (path: string, opts?: RequestInit) =>

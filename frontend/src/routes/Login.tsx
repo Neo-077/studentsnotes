@@ -40,11 +40,25 @@ export default function Login() {
           setMsg('✅ Cuenta creada. Iniciando sesión…')
         } catch (err: any) {
           const status = err?.response?.status
+          const errorMessage = err?.response?.data?.error?.message || err?.message
+
           if (status === 409) {
-            setMsg('⚠️ Este correo ya está registrado. Inicia sesión con tu contraseña.')
+            setMsg('⚠️ Este correo ya tiene una cuenta registrada. Inicia sesión con tu contraseña.')
             return
           }
-          setMsg('❌ No se pudo crear la cuenta')
+
+          if (status === 403) {
+            setMsg(`❌ ${errorMessage || 'Este correo no está autorizado para crear una cuenta. Contacta al administrador.'}`)
+            return
+          }
+
+          if (status === 400) {
+            setMsg(`❌ ${errorMessage || 'Datos inválidos'}`)
+            return
+          }
+
+          setMsg(`❌ ${errorMessage || 'No se pudo crear la cuenta'}`)
+          console.error('Error al crear cuenta:', err)
           return
         }
       }
@@ -101,8 +115,8 @@ export default function Login() {
                   type="button"
                   onClick={() => setMode('admin')}
                   className={`flex-1 rounded-md px-3 py-2 text-sm border transition ${mode === 'admin'
-                      ? 'bg-[color:var(--primary)] text-[color:var(--primary-ctr)]'
-                      : 'bg-[color:var(--card)]'
+                    ? 'bg-[color:var(--primary)] text-[color:var(--primary-ctr)]'
+                    : 'bg-[color:var(--card)]'
                     }`}
                 >
                   Administrador
@@ -111,8 +125,8 @@ export default function Login() {
                   type="button"
                   onClick={() => setMode('maestro')}
                   className={`flex-1 rounded-md px-3 py-2 text-sm border transition ${mode === 'maestro'
-                      ? 'bg-[color:var(--primary)] text-[color:var(--primary-ctr)]'
-                      : 'bg-[color:var(--card)]'
+                    ? 'bg-[color:var(--primary)] text-[color:var(--primary-ctr)]'
+                    : 'bg-[color:var(--card)]'
                     }`}
                 >
                   Docente
