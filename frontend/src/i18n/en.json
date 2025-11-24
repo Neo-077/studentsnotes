@@ -159,6 +159,52 @@
         "economico": "Economic problems",
         "otro": "Other"
       }
+    },
+    "addForm": {
+      "title": "Add student",
+      "fields": {
+        "firstName": "First name(s)*",
+        "lastName1": "Last name (paternal)*",
+        "lastName2": "Last name (maternal)",
+        "gender": "Gender",
+        "career": "Program",
+        "birthdateLabel": "Date of birth",
+        "birthdateFormatNative": "yyyy-mm-dd",
+        "birthdateFormatText": "dd/mm/yyyy",
+        "birthdateMustBe18InYear": "Must turn 18 in {{year}}"
+      },
+      "buttons": {
+        "openCalendar": "Calendar",
+        "saving": "Saving...",
+        "save": "Save student"
+      },
+      "validation": {
+        "required": "Required",
+        "genderRequired": "Select a gender",
+        "careerRequired": "Select a program",
+        "completeRequired": "Fill in all required fields.",
+        "dateInvalidFormat": "Invalid format. Use yyyy-mm-dd or dd/mm/yyyy",
+        "dateTooOld": "Date is too far in the past (maximum 100 years ago).",
+        "dateTooRecentByYear": "You must turn 18 during {{year}} (born on {{cutoff}} or earlier).",
+        "dateTooRecentHard": "The date cannot be later than {{maxDate}}."
+      },
+      "messages": {
+        "created": "✅ Student created",
+        "errorWithDetails": "❌ {{details}}"
+      },
+      "errors": {
+        "unexpected": "Unexpected error",
+        "redirectMaybeLogin": "Looks like a redirect (maybe to login?). Check authentication/cookies.",
+        "unauthorized": "Unauthorized/forbidden. Check session, token or CSRF.",
+        "methodNotAllowed": "Method not allowed. Confirm the route accepts POST.",
+        "notFound": "Route not found. Check the endpoint.",
+        "serverError": "Server error. Check backend logs.",
+        "unsupportedMediaType": "Unsupported Media Type. Make sure Content-Type: application/json and body parser are configured."
+      },
+      "hints": {
+        "range": "Allowed range: {{min}} – {{max}}. (Cutoff by year {{year}}: must be 18 during the entry year)",
+        "causePrefix": "🔎 {{cause}}"
+      }
     }
   },
   "subjects": {
@@ -236,79 +282,367 @@
     }
   },
   "teachers": {
-  "title": "Teachers",
-  "subtitle": "Create, list, search and import teachers. Email is generated automatically.",
-  "form": {
-    "rfcPlaceholder": "RFC",
-    "firstNamePlaceholder": "First name(s)",
-    "lastName1Placeholder": "Last name (paternal)",
-    "lastName2Placeholder": "Last name (maternal, optional)",
-    "genderPlaceholder": "Gender (optional)",
-    "previewEmailLabel": "Email (auto): {{email}}",
-    "submit": "Save teacher"
+    "title": "Teachers",
+    "subtitle": "Create, list, search and import teachers. Email is generated automatically.",
+    "form": {
+      "rfcPlaceholder": "RFC",
+      "firstNamePlaceholder": "First name(s)",
+      "lastName1Placeholder": "Last name (paternal)",
+      "lastName2Placeholder": "Last name (maternal, optional)",
+      "genderPlaceholder": "Gender (optional)",
+      "previewEmailLabel": "Email (auto): {{email}}",
+      "submit": "Save teacher"
+    },
+    "search": {
+      "placeholder": "Search (RFC, name, email)"
+    },
+    "buttons": {
+      "downloadTemplate": "Download template (XLSX)",
+      "importFile": "Import (.xlsx/.csv)",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "table": {
+      "rfc": "RFC",
+      "firstName": "First name",
+      "lastName1": "Last name (paternal)",
+      "lastName2": "Last name (maternal)",
+      "email": "Email",
+      "gender": "Gender",
+      "loading": "Loading…",
+      "empty": "No teachers."
+    },
+    "messages": {
+      "created": "✅ Teacher created",
+      "deleted": "✅ Teacher deleted",
+      "updated": "✅ Teacher updated"
+    },
+    "errors": {
+      "loadFailed": "Error loading teachers",
+      "requiredFields": "Fill in RFC, first name and paternal last name.",
+      "invalidRFC": "Invalid RFC. Check SAT format.",
+      "duplicateRFCList": "A teacher with this RFC already exists.",
+      "duplicateRFCDB": "RFC already exists in the database.",
+      "createFailed": "Error creating teacher",
+      "updateFailed": "Error updating teacher",
+      "deleteFailed": "Error deleting teacher",
+      "importNoSheets": "The file does not contain any sheets.",
+      "importFailed": "Error importing teachers"
+    },
+    "import": {
+      "summaryBase": "✅ Import: {{inserted}} inserted, {{errors}} errors",
+      "invalidRows": "Invalid rows: {{count}}",
+      "duplicatesInFile": "Duplicates in file (RFC): {{count}}",
+      "duplicatesInUI": "Already existed in list (RFC): {{count}}",
+      "duplicatesInDb": "Already existed in DB (RFC): {{count}}"
+    },
+    "deleteModal": {
+      "title": "Delete teacher",
+      "subtitle": "This action cannot be undone",
+      "confirmLabel": "Delete",
+      "question": "Do you want to delete the following teacher?",
+      "rfcLabel": "RFC"
+    },
+    "editModal": {
+      "title": "Edit teacher",
+      "rfcLabel": "RFC",
+      "firstNameLabel": "First name",
+      "lastName1Label": "Last name (paternal)",
+      "lastName2Label": "Last name (maternal)",
+      "emailLabel": "Email (auto)",
+      "emailHint": "It will be updated automatically if you change the first name or paternal last name, ensuring uniqueness.",
+      "genderLabel": "Gender",
+      "genderPlaceholder": "Unspecified",
+      "cancel": "Cancel",
+      "save": "Save"
+    }
   },
-  "search": {
-    "placeholder": "Search (RFC, name, email)"
+  "classGroups": {
+    "filters": {
+      "termLabel": "Term",
+      "termAll": "All",
+      "careerLabel": "Program",
+      "subjectLabel": "Subject",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Name, code, teacher, schedule"
+    },
+    "header": {
+      "title": "Groups",
+      "loading": "Loading…",
+      "results": "{{count}} result(s)"
+    },
+    "errors": {
+      "loadFailed": "Error loading groups: {{message}}"
+    },
+    "empty": {
+      "noResults": "No results."
+    },
+    "cards": {
+      "capacity": "Capacity: {{capacity}}",
+      "details": "Details"
+    },
+    "pagination": {
+      "summary": "Showing {{from}}–{{to}} of {{total}}",
+      "prev": "Previous",
+      "next": "Next",
+      "pageOf": "Page {{page}} / {{totalPages}}"
+    },
+    "studentsModal": {
+      "title": "Students — {{title}}",
+      "close": "Close",
+      "summary": "Capacity: {{current}} / {{capacity}} • Units: {{units}}",
+      "full": "Full capacity",
+      "addByIdPlaceholder": "ID number",
+      "addButton": "Add",
+      "importing": "Importing…",
+      "importButton": "Import",
+      "templateButton": "Template",
+      "messages": {
+        "studentNotFound": "Student not found",
+        "errorGeneric": "Error",
+        "noControlInFile": "File has no ID numbers",
+        "importError": "Error importing"
+      },
+      "table": {
+        "noControl": "ID number",
+        "name": "Name",
+        "unitCalShort": "U{{u}} Grade",
+        "unitAttendanceShort": "U{{u}} Attend%",
+        "loading": "Loading…",
+        "empty": "No students."
+      },
+      "dropButton": "Drop",
+      "pagination": {
+        "summary": "Showing {{from}}–{{to}} of {{total}}",
+        "prev": "Previous",
+        "next": "Next",
+        "pageOf": "Page {{page}} / {{totalPages}}"
+      }
+    }
   },
-  "buttons": {
-    "downloadTemplate": "Download template (XLSX)",
-    "importFile": "Import (.xlsx/.csv)",
-    "edit": "Edit",
-    "delete": "Delete"
+  "classGroupDetail": {
+    "header": {
+      "title": "Students — {{title}}",
+      "titleFallback": "Group {{id}}"
+    },
+    "buttons": {
+      "exportCharts": "Export charts",
+      "exportChartsLoading": "Exporting charts…",
+      "exportPDF": "Export PDF",
+      "back": "Back",
+      "addStudent": "Add",
+      "importEnrollments": "Import",
+      "importEnrollmentsLoading": "Importing…",
+      "uploadGrades": "Upload grades",
+      "uploadGradesLoading": "Uploading grades…",
+      "template": "Template",
+      "reactivate": "Reactivate",
+      "drop": "Drop",
+      "paginationPrev": "Previous",
+      "paginationNext": "Next"
+    },
+    "tooltips": {
+      "importEnrollments": "Import enrollments by ID number",
+      "importGrades": "Import grades and attendance per unit",
+      "reactivate": "Reactivate enrollment",
+      "drop": "Drop enrollment"
+    },
+    "summary": {
+      "capacity": "Capacity: {{current}} / {{capacity}} • Units: {{units}}",
+      "full": "Full capacity"
+    },
+    "inputs": {
+      "noControlPlaceholder": "ID number"
+    },
+    "messages": {
+      "capacityFull": "Full capacity",
+      "studentNotFound": "Student not found",
+      "enrollmentAdded": "Enrollment added",
+      "importEnrollmentsCompleted": "Import completed",
+      "fileWithoutNoControl": "File has no ID numbers",
+      "exportChartsNotRendered": "Charts have not been rendered yet.",
+      "exportChartsNoneCaptured": "No chart could be captured.",
+      "exportChartsError": "Error exporting charts",
+      "templateXlsxOk": "Template generated with {{count}} eligible students.",
+      "templateXlsxEmpty": "No eligible students found; an empty template was generated.",
+      "templateXlsxError": "Could not generate Excel template",
+      "templateCsvOk": "CSV template generated with {{count}} eligible students.",
+      "templateCsvEmpty": "No eligible students found; an empty CSV was generated.",
+      "templateCsvError": "Could not generate CSV template",
+      "gradesTemplateXlsxOk": "Grades template generated ({{count}} students).",
+      "gradesTemplateXlsxError": "Could not generate grades template",
+      "gradesTemplateCsvOk": "Grades CSV generated ({{count}} students).",
+      "gradesTemplateCsvError": "Could not generate grades CSV",
+      "gradesFileEmpty": "File has no valid grades/attendance.",
+      "gradesImportSummary": "Grades imported: {{ok}} ok, {{bad}} with errors, {{skipped}} skipped (not enrolled).",
+      "gradesImportError": "Error importing grades",
+      "enrollmentReactivated": "Enrollment reactivated",
+      "enrollmentReactivatedError": "Error reactivating enrollment",
+      "enrollmentDropped": "Enrollment dropped successfully",
+      "genericError": "Error"
+    },
+    "table": {
+      "noControl": "ID number",
+      "firstName": "First name",
+      "lastName1": "Last name (paternal)",
+      "lastName2": "Last name (maternal)",
+      "unitCalShort": "U{{u}} Grade",
+      "unitAttendanceShort": "U{{u}} Attend",
+      "averageShort": "Avg",
+      "actions": "Actions",
+      "loading": "Loading…",
+      "empty": "No students."
+    },
+    "pagination": {
+      "summary": "Page {{page}} / {{totalPages}}"
+    },
+    "status": {
+      "inactive": "INACTIVE",
+      "active": "ACTIVE",
+      "approved": "APPROVED",
+      "failed": "FAILED"
+    },
+    "templatesMenu": {
+      "title": "Template",
+      "enrollmentsSection": "Enrollments",
+      "gradesSection": "Grades",
+      "enrollmentsXlsx": "Excel (.xlsx)",
+      "enrollmentsCsv": "CSV (.csv)",
+      "gradesXlsx": "Grades Excel (.xlsx)",
+      "gradesCsv": "Grades CSV (.csv)"
+    },
+    "charts": {
+      "pieTitle": "Pie (Passed vs Failed)",
+      "scatterTitle": "Scatter (Attendance vs Average)",
+      "controlTitle": "Control chart (Averages)",
+      "paretoTitle": "Pareto (Drop reasons)",
+      "exportFilePrefix": "Charts_",
+      "exportOverlayTitle": "Exporting charts…",
+      "exportOverlaySubtitle": "This may take a few seconds.",
+      "pdfTitlePrefix": "Grades — ",
+      "pdfTitleFallback": "Group {{id}}",
+      "pdfFooterSummary": "Total: {{total}}  •  Passed: {{approved}}  •  Failed: {{failed}}",
+      "pdfPageOf": "Page {{page}} of {{total}}",
+      "paretoMainTitle": "Drop distribution by reason",
+      "paretoLoading": "Loading data…",
+      "paretoError": "Could not load Pareto chart",
+      "paretoEmpty": "There are no drops registered for this group.",
+      "paretoYAxisLeft": "Count",
+      "paretoYAxisRight": "Percentage %",
+      "paretoBarName": "Count",
+      "paretoLineName": "Cumulative percentage",
+      "paretoTooltipAccumLabel": "Cumulative percentage",
+      "paretoTooltipValueLabel": "Count",
+      "controlSubtitle": "Averages per unit",
+      "controlSubtitleWithLimits": "Averages per unit with control limits",
+      "controlNoDataTitle": "No data available",
+      "controlNoDataSubtitle": "There are no grades recorded yet",
+      "controlXAxisLabel": "Unit",
+      "controlYAxisLabel": "Grade",
+      "controlTooltipAvg": "Average",
+      "controlTooltipCenter": "Mean",
+      "controlTooltipUCL": "Upper Limit (UCL)",
+      "controlTooltipLCL": "Lower Limit (LCL)",
+      "controlLegendAvg": "Average",
+      "controlRefCenterLabel": "Mean",
+      "controlRefUCLLabel": "UCL",
+      "controlRefLCLLabel": "LCL",
+      "scatterXAxisLabel": "Attendance (%)",
+      "scatterYAxisLabel": "Average",
+      "scatterLegend": "Students",
+      "scatterNoData": "No data available",
+      "scatterTooltipAvg": "Average",
+      "scatterTooltipAttendance": "Attendance",
+      "pieNoData": "Not enough data to display",
+      "piePassedLabel": "Passed",
+      "pieFailedLabel": "Failed",
+      "pieTooltipTotalLabel": "Total",
+      "pieTooltipPercentLabel": "Percentage",
+      "pieSubtitleTotalActive": "Total active students: {{count}}",
+      "pieSubtitleFootnote": "* Students are considered passed if all grades are ≥ 70"
+    }
   },
-  "table": {
-    "rfc": "RFC",
-    "firstName": "First name",
-    "lastName1": "Last name (paternal)",
-    "lastName2": "Last name (maternal)",
-    "email": "Email",
-    "gender": "Gender",
-    "loading": "Loading…",
-    "empty": "No teachers."
+  "groups": {
+    "filters": {
+      "termLabel": "Term",
+      "termAll": "All",
+      "careerLabel": "Program",
+      "subjectLabel": "Subject",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Name, code, teacher, schedule"
+    },
+    "buttons": {
+      "downloadTemplate": "Download template (XLSX)",
+      "importFile": "Import (.xlsx/.xls/.csv)"
+    },
+    "form": {
+      "title": "New Group",
+      "subjectPlaceholder": "Subject…",
+      "teacherPlaceholder": "Teacher…",
+      "modalityPlaceholder": "Modality…",
+      "schedulePlaceholder": "Schedule… (required)",
+      "capacityPlaceholder": "Capacity (default 30)",
+      "submitSaving": "Saving…",
+      "submitSelectCareer": "Select program",
+      "submitSelectSubject": "Select subject",
+      "submitDefault": "Save group"
+    },
+    "table": {
+      "subject": "Subject",
+      "career": "Program",
+      "code": "Code",
+      "teacher": "Teacher",
+      "modality": "Modality",
+      "schedule": "Schedule",
+      "capacity": "Capacity",
+      "loading": "Loading…",
+      "empty": "No results.",
+      "noTeacher": "N/A",
+      "deleteTooltip": "Delete group",
+      "deleteButton": "Delete"
+    },
+    "deleteModal": {
+      "title": "Delete group",
+      "subtitle": "This action cannot be undone",
+      "confirm": "Delete",
+      "question": "Do you want to delete the following group?"
+    },
+    "messages": {
+      "selectSubject": "Select a subject",
+      "selectTeacher": "Select a teacher",
+      "selectModality": "Select a modality",
+      "scheduleRequired": "Schedule is required",
+      "teacherConflict": "❌ The teacher already has a group at that time.",
+      "created": "✅ Group created successfully",
+      "createErrorPrefix": "❌ ",
+      "createGenericError": "Error creating group",
+      "importSummaryBase": "✅ Imported: {{inserted}} / Errors: {{errors}}",
+      "importDuplicatesSkipped": " / Skipped duplicates: {{count}}",
+      "importErrorPrefix": "❌ ",
+      "importGenericError": "Error importing",
+      "deleted": "✅ Group deleted",
+      "deleteErrorPrefix": "❌ ",
+      "deleteGenericError": "Error deleting group"
+    },
+    "errors": {
+      "loadFailed": "Error loading groups"
+    },
+    "importErrors": {
+      "title": "Error details (first {{count}}):",
+      "rowPrefix": "Row {{row}}: {{error}}"
+    },
+    "pagination": {
+      "summary": "Showing {{from}}–{{to}} of {{total}}",
+      "prev": "Previous",
+      "next": "Next",
+      "pageOf": "Page {{page}} / {{totalPages}}"
+    }
   },
-  "messages": {
-    "created": "✅ Teacher created",
-    "deleted": "✅ Teacher deleted",
-    "updated": "✅ Teacher updated"
-  },
-  "errors": {
-    "loadFailed": "Error loading teachers",
-    "requiredFields": "Fill in RFC, first name and paternal last name.",
-    "invalidRFC": "Invalid RFC. Check SAT format.",
-    "duplicateRFCList": "A teacher with this RFC already exists.",
-    "duplicateRFCDB": "RFC already exists in the database.",
-    "createFailed": "Error creating teacher",
-    "updateFailed": "Error updating teacher",
-    "deleteFailed": "Error deleting teacher",
-    "importNoSheets": "The file does not contain any sheets.",
-    "importFailed": "Error importing teachers"
-  },
-  "import": {
-    "summaryBase": "✅ Import: {{inserted}} inserted, {{errors}} errors",
-    "invalidRows": "Invalid rows: {{count}}",
-    "duplicatesInFile": "Duplicates in file (RFC): {{count}}",
-    "duplicatesInUI": "Already existed in list (RFC): {{count}}",
-    "duplicatesInDb": "Already existed in DB (RFC): {{count}}"
-  },
-  "deleteModal": {
-    "title": "Delete teacher",
-    "subtitle": "This action cannot be undone",
-    "confirmLabel": "Delete",
-    "question": "Do you want to delete the following teacher?",
-    "rfcLabel": "RFC"
-  },
-  "editModal": {
-    "title": "Edit teacher",
-    "rfcLabel": "RFC",
-    "firstNameLabel": "First name",
-    "lastName1Label": "Last name (paternal)",
-    "lastName2Label": "Last name (maternal)",
-    "emailLabel": "Email (auto)",
-    "emailHint": "It will be updated automatically if you change the first name or paternal last name, ensuring uniqueness.",
-    "genderLabel": "Gender",
-    "genderPlaceholder": "Unspecified",
-    "cancel": "Cancel",
-    "save": "Save"
+  "enrollmentsPage": {
+    "title": "Register new student",
+    "subtitle": "Fill in the student's information to enroll them in the university.",
+    "asideTitle": "Are you going to enroll in groups?",
+    "asideText": "Once the student is registered, go to Groups to assign them to the corresponding subjects.",
+    "asideLink": "Groups"
   }
-}
 }

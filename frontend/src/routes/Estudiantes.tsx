@@ -183,7 +183,10 @@ export default function Estudiantes() {
       const buf = await file.arrayBuffer()
       const wb = XLSX.read(buf, { type: 'array' })
       const firstSheetName = wb.SheetNames[0]
-      if (!firstSheetName) throw new Error('El archivo no contiene hojas.')
+      if (!firstSheetName) {
+        // Usamos el mensaje genérico de error de importación para mantener i18n
+        throw new Error(t('students.import.errorGeneric'))
+      }
       const ws = wb.Sheets[firstSheetName]
 
       let incoming = sheetToRows(ws).filter(r => norm(r.nombre).length > 0)

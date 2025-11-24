@@ -4,6 +4,7 @@ import useAuth from '../store/useAuth'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
 import jsPDF from 'jspdf'
 import { toPng } from 'html-to-image'
+import { useTranslation } from 'react-i18next'
 
 type DashboardData = {
   registrados: number
@@ -25,11 +26,14 @@ function getCssVar(name: string, fallback: string): string {
 
 export default function Dashboard() {
   const { role } = useAuth()
+  const { t } = useTranslation()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const chartRef = useRef<HTMLDivElement>(null)
+
+  const isAdmin = role === 'admin'
 
   useEffect(() => {
     async function load() {
@@ -39,13 +43,17 @@ export default function Dashboard() {
         const response = await api.get('/dashboard')
         setData(response)
       } catch (e: any) {
-        setError(e.message || 'Error al cargar datos del dashboard')
+        const baseError = t(
+          'dashboard.errors.loadFailed',
+          'Error al cargar datos del dashboard'
+        )
+        setError(`${baseError}${e?.message ? `: ${e.message}` : ''}`)
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [])
+  }, [t])
 
   async function exportToPDF() {
     if (!chartRef.current) return
@@ -53,10 +61,8 @@ export default function Dashboard() {
     setExporting(true)
 
     try {
-      // Tomar el fondo del tema (tarjeta) para usarlo en el PNG
       const cardBg = getCssVar('--card', '#ffffff')
 
-      // Un pequeño delay para asegurarnos que todo está pintado
       await new Promise(resolve => setTimeout(resolve, 150))
 
       const dataUrl = await toPng(chartRef.current, {
@@ -98,47 +104,54 @@ export default function Dashboard() {
       pdf.addImage(dataUrl, 'PNG', x, y, pdfWidth, pdfHeight)
       pdf.save('dashboard-grafica.pdf')
     } catch (e: any) {
-      console.error('Error al exportar PDF:', e)
-      alert('Error al exportar PDF: ' + (e.message || 'Error desconocido'))
+      const prefix = t(
+        'dashboard.errors.exportPDF',
+        'Error al exportar PDF'
+      )
+      alert(`${prefix}: ${e?.message || t('dashboard.errors.unknown', 'Error desconocido')}`)
     } finally {
       setExporting(false)
     }
   }
 
-  const isAdmin = role === 'admin'
-
   // Colores basados en el tema (CSS variables) con fallback
   const primary = getCssVar('--primary', '#3b82f6')
   const danger = getCssVar('--danger-bg', '#ef4444')
-  const warning = getCssVar('--warning-bg', '#f59e0b') // si no tienes --warning-bg usará el fallback
+  const warning = getCssVar('--warning-bg', '#f59e0b')
   const muted = getCssVar('--muted', '#64748b')
   const text = getCssVar('--text', '#1e293b')
   const border = getCssVar('--border', '#e2e8f0')
 
   const chartData = [
     {
-      name: 'Registrados',
+      name: t('dashboard.registered'),
       cantidad: data?.registrados ?? 0,
       fill: primary,
       iconBg: 'color-mix(in oklab, var(--primary), transparent 88%)',
       iconColor: 'var(--primary)',
-      description: isAdmin ? 'En toda la institución' : 'En tus grupos',
+      description: isAdmin
+        ? t('dashboard.description_registered_admin')
+        : t('dashboard.description_registered_teacher'),
     },
     {
-      name: 'Reprobados',
+      name: t('dashboard.failed'),
       cantidad: data?.reprobados ?? 0,
       fill: danger,
       iconBg: 'color-mix(in oklab, var(--danger-bg), transparent 88%)',
       iconColor: 'var(--danger-bg)',
-      description: isAdmin ? 'Promedio < 70 en todas las unidades' : 'En tus grupos',
+      description: isAdmin
+        ? t('dashboard.description_failed_admin')
+        : t('dashboard.description_failed_teacher'),
     },
     {
-      name: 'Bajas',
+      name: t('dashboard.drops'),
       cantidad: data?.bajas ?? 0,
       fill: warning,
       iconBg: 'color-mix(in oklab, var(--warning-bg, #f59e0b), transparent 88%)',
       iconColor: 'var(--warning-bg, #f59e0b)',
-      description: isAdmin ? 'Baja definitiva' : 'Inscripciones en baja',
+      description: isAdmin
+        ? t('dashboard.description_drops_admin')
+        : t('dashboard.description_drops_teacher'),
     },
   ]
 
@@ -160,7 +173,7 @@ export default function Dashboard() {
             {item.name}
           </p>
           <p className="text-xs" style={{ color: item.fill }}>
-            Cantidad:{' '}
+            {t('dashboard.tooltip.countLabel', 'Cantidad')}:{' '}
             <span className="font-bold">
               {payload[0].value.toLocaleString()}
             </span>
@@ -174,7 +187,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="py-10 text-sm text-slate-600 dark:text-[var(--muted)]">
-        Cargando datos del dashboard…
+        {t('dashboard.loading', 'Cargando datos del dashboard…')}
       </div>
     )
   }
@@ -195,12 +208,12 @@ export default function Dashboard() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold text-slate-900 dark:text-[var(--text)]">
-            Dashboard
+            {t('dashboard.title')}
           </h2>
           <p className="text-sm text-slate-600 dark:text-[var(--muted)] mt-1">
             {isAdmin
-              ? 'Vista general de toda la institución'
-              : 'Vista de tus grupos'}
+              ? t('dashboard.subtitle_admin')
+              : t('dashboard.subtitle_teacher')}
           </p>
         </div>
         <button
@@ -222,7 +235,11 @@ export default function Dashboard() {
               d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
             />
           </svg>
-          <span>{exporting ? 'Exportando...' : 'Exportar PDF'}</span>
+          <span>
+            {exporting
+              ? t('dashboard.exporting')
+              : t('dashboard.exportPDF')}
+          </span>
         </button>
       </div>
 
@@ -338,7 +355,7 @@ export default function Dashboard() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-medium text-slate-500 dark:text-[var(--muted)] uppercase tracking-wide mb-1.5">
-                Razón más común de baja
+                {t('dashboard.commonDropReason')}
               </div>
               <div className="text-lg font-bold text-slate-900 dark:text-[var(--text)] capitalize">
                 {data.motivoBajaMasComun}
@@ -352,14 +369,14 @@ export default function Dashboard() {
       <div
         ref={chartRef}
         className="rounded-2xl border border-slate-200 dark:border-[var(--border)] bg-white dark:bg-[var(--card)] p-8 shadow-lg"
-        aria-label="Gráfica de resumen de estudiantes por categoría"
+        aria-label={t('dashboard.chart_title')}
       >
         <div className="mb-6">
           <h3 className="text-2xl font-bold text-slate-900 dark:text-[var(--text)] mb-1">
-            Resumen de Estudiantes
+            {t('dashboard.chart_title')}
           </h3>
           <p className="text-sm text-slate-600 dark:text-[var(--muted)]">
-            Distribución de estudiantes por categoría
+            {t('dashboard.chart_subtitle')}
           </p>
         </div>
         <div className="h-[500px]">

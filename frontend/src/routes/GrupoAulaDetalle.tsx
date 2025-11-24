@@ -10,6 +10,7 @@ import ScatterChartPage from "../pages/ScatterChart"
 import ControlChart from "../pages/ControlChart"
 import ModalBaja from "../components/grupoAulaDetalle/ModalBaja"
 import ParetoChart from "../pages/ParetoChart"
+import { useTranslation } from "react-i18next"
 
 type AlumnoRow = {
   id_inscripcion: number
@@ -26,7 +27,7 @@ type AlumnoRow = {
 }
 
 type AlumnosState = { cupo: number; unidades: number; rows: AlumnoRow[] }
-type GrupoResumen = { total?: number; aprobados?: number; reprobados?: number;[k: string]: any }
+type GrupoResumen = { total?: number; aprobados?: number; reprobados?: number; [k: string]: any }
 type Elegible = { no_control?: string; nombre?: string; ap_paterno?: string; ap_materno?: string }
 
 // --- util local: bloquear/rehabilitar scroll mientras exporta overlays ---
@@ -106,6 +107,7 @@ function estaAprobado(unidades?: Array<{ unidad: number; calificacion?: number }
 }
 
 export default function GrupoAulaDetalle() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { id_grupo: idParam } = useParams()
   const id_grupo = Number(idParam)
@@ -216,12 +218,12 @@ export default function GrupoAulaDetalle() {
 
       if (!titulo) {
         const first = (data?.rows || [])[0] as any
-        const t = location?.state?.titulo
-        setTitulo(typeof t === "string" && t ? t : first?.grupo_titulo || "")
+        const tState = location?.state?.titulo
+        setTitulo(typeof tState === "string" && tState ? tState : first?.grupo_titulo || "")
       }
     } catch (e: any) {
       setMsgKind("error")
-      setMsgAlu(e.message || "Error")
+      setMsgAlu(e.message || t("classGroupDetail.messages.genericError"))
     } finally {
       setLoadingAlu(false)
     }
@@ -232,7 +234,7 @@ export default function GrupoAulaDetalle() {
     try {
       if ((activeRows.length || 0) >= (alumnos.cupo || 0)) {
         setMsgKind("error")
-        setMsgAlu("Cupo lleno")
+        setMsgAlu(t("classGroupDetail.messages.capacityFull"))
         return
       }
       const q = encodeURIComponent(no_control.trim())
@@ -243,16 +245,16 @@ export default function GrupoAulaDetalle() {
         (lista || [])[0]
       if (!est) {
         setMsgKind("error")
-        setMsgAlu("Estudiante no encontrado")
+        setMsgAlu(t("classGroupDetail.messages.studentNotFound"))
         return
       }
       await api.post("/inscripciones", { id_estudiante: est.id_estudiante, id_grupo })
       await loadAlumnos(id_grupo)
       setMsgKind("ok")
-      setMsgAlu("Inscripción agregada")
+      setMsgAlu(t("classGroupDetail.messages.enrollmentAdded"))
     } catch (e: any) {
       setMsgKind("error")
-      setMsgAlu(e.message || "Error")
+      setMsgAlu(e.message || t("classGroupDetail.messages.genericError"))
     }
   }
 
@@ -285,12 +287,9 @@ export default function GrupoAulaDetalle() {
   // Cuando el modal termina, recargamos los datos del servidor
   async function handleBajaRegistrada(payload?: { id_inscripcion?: number }) {
     cerrarModalBaja()
-
-    // Recargar los datos del servidor para asegurar consistencia
     await loadAlumnos(id_grupo)
-
     setMsgKind("ok")
-    setMsgAlu("Inscripción dada de baja correctamente")
+    setMsgAlu(t("classGroupDetail.messages.enrollmentDropped"))
   }
 
   // === Importar INSCRIPCIONES
@@ -333,16 +332,16 @@ export default function GrupoAulaDetalle() {
 
       if (list.length === 0) {
         setMsgKind("error")
-        setMsgAlu("Archivo sin números de control")
+        setMsgAlu(t("classGroupDetail.messages.fileWithoutNoControl"))
         return
       }
       await api.post("/inscripciones/bulk", { id_grupo, no_control: list })
       await loadAlumnos(id_grupo)
       setMsgKind("ok")
-      setMsgAlu("Importación completada")
+      setMsgAlu(t("classGroupDetail.messages.importEnrollmentsCompleted"))
     } catch (e: any) {
       setMsgKind("error")
-      setMsgAlu(e.message || "Error al importar")
+      setMsgAlu(e.message || t("classGroupDetail.messages.genericError"))
     } finally {
       setImporting(false)
       if (fileRef.current) fileRef.current.value = ""
@@ -388,12 +387,12 @@ export default function GrupoAulaDetalle() {
       setMsgKind("ok")
       setMsgAlu(
         elegibles.length
-          ? `Plantilla generada con ${elegibles.length} estudiantes elegibles.`
-          : "No se encontraron elegibles; se generó plantilla vacía."
+          ? t("classGroupDetail.messages.templateXlsxOk", { count: elegibles.length })
+          : t("classGroupDetail.messages.templateXlsxEmpty")
       )
     } catch (err: any) {
       setMsgKind("error")
-      setMsgAlu(err?.message || "No se pudo generar la plantilla Excel")
+      setMsgAlu(err?.message || t("classGroupDetail.messages.templateXlsxError"))
     }
   }
 
@@ -433,12 +432,12 @@ export default function GrupoAulaDetalle() {
       setMsgKind("ok")
       setMsgAlu(
         elegibles.length
-          ? `Plantilla CSV generada con ${elegibles.length} estudiantes elegibles.`
-          : "No se encontraron elegibles; se generó CSV vacío."
+          ? t("classGroupDetail.messages.templateCsvOk", { count: elegibles.length })
+          : t("classGroupDetail.messages.templateCsvEmpty")
       )
     } catch (err: any) {
       setMsgKind("error")
-      setMsgAlu(err?.message || "No se pudo generar la plantilla CSV")
+      setMsgAlu(err?.message || t("classGroupDetail.messages.templateCsvError"))
     }
   }
 
@@ -447,7 +446,7 @@ export default function GrupoAulaDetalle() {
     const incluirAsistencia = !!opts?.incluirAsistencia
     const unidades = Math.max(0, Number(alumnos?.unidades || 0))
 
-    const colsCount = incluirAsistencia ? unidades * 2 + 3 : unidades + 3 // +1 por columna promedio
+    const colsCount = incluirAsistencia ? unidades * 2 + 3 : unidades + 3
     const needLandscape = colsCount > 8
 
     const doc = new jsPDF({
@@ -456,7 +455,7 @@ export default function GrupoAulaDetalle() {
       format: "a4",
     })
 
-    const tituloPDF = `Calificaciones — ${titulo || `Grupo ${id_grupo}`}`
+    const tituloPDF = `${t("classGroupDetail.charts.pdfTitlePrefix")}${titulo || t("classGroupDetail.charts.pdfTitleFallback", { id: id_grupo })}`
     const sub = (() => {
       const parts: string[] = []
       if ((grupo as any)?.clave) parts.push(String((grupo as any).clave))
@@ -474,12 +473,18 @@ export default function GrupoAulaDetalle() {
       doc.text(sub, 14, 26)
     }
 
-    const headRow: string[] = ["No. Control", "Nombre"]
+    const headRow: string[] = [t("classGroupDetail.table.noControl"), t("classGroupDetail.table.firstName")]
     for (let i = 1; i <= unidades; i++) {
-      if (incluirAsistencia) headRow.push(`U${i} Cal`, `U${i} %`)
-      else headRow.push(`U${i}`)
+      if (incluirAsistencia) {
+        headRow.push(
+          t("classGroupDetail.table.unitCalShort", { u: i }),
+          t("classGroupDetail.table.unitAttendanceShort", { u: i })
+        )
+      } else {
+        headRow.push(t("classGroupDetail.table.unitCalShort", { u: i }))
+      }
     }
-    headRow.push("Promedio") // Añadir columna de promedio
+    headRow.push(t("classGroupDetail.table.averageShort"))
     const head = [headRow]
 
     const body = (alumnos?.rows || []).map((r) => {
@@ -496,9 +501,8 @@ export default function GrupoAulaDetalle() {
         else cells.push(cal === "" ? "" : Number(cal))
       }
 
-      // Calcular y añadir promedio
-      const promedio = calcularPromedioAlumno(r?.unidades)
-      cells.push(promedio !== null ? promedio : "")
+      const prom = calcularPromedioAlumno(r?.unidades)
+      cells.push(prom !== null ? prom : "")
 
       return [...base, ...cells]
     })
@@ -509,7 +513,6 @@ export default function GrupoAulaDetalle() {
       1: { cellWidth: 62, halign: "left" },
     }
     for (let i = 2; i < headRow.length - 1; i++) columnStyles[i] = { cellWidth: 16, halign: "center" }
-    // Estilo para columna de promedio (última columna)
     columnStyles[headRow.length - 1] = { cellWidth: 20, halign: "center", fontStyle: "bold" }
 
     autoTable(doc, {
@@ -530,12 +533,16 @@ export default function GrupoAulaDetalle() {
           (doc as any).getNumberOfPages?.() ??
           1
         const pageSize = doc.internal.pageSize
-        const text = `Página ${data.pageNumber} de ${pageCount}`
         const w = (pageSize as any).getWidth ? (pageSize as any).getWidth() : (pageSize as any).width
         const h = (pageSize as any).getHeight ? (pageSize as any).getHeight() : (pageSize as any).height
         doc.setFontSize(9)
         doc.setTextColor(120)
-        doc.text(text, w - 14, h - 8, { align: "right" })
+        doc.text(
+          t("classGroupDetail.charts.pdfPageOf", { page: data.pageNumber, total: pageCount }),
+          w - 14,
+          h - 8,
+          { align: "right" }
+        )
       },
     })
 
@@ -547,12 +554,21 @@ export default function GrupoAulaDetalle() {
         const total = Number((grupo?.total ?? alumnos?.rows?.length ?? 0) as number)
         const aprob = Number(grupo?.aprobados ?? 0)
         const reprob = Number(grupo?.reprobados ?? 0)
-        const resumen = `Total: ${total}  •  Aprobados: ${aprob}  •  Reprobados: ${reprob}`
+        const resumen = t("classGroupDetail.charts.pdfFooterSummary", {
+          total,
+          approved: aprob,
+          failed: reprob,
+        })
         doc.text(resumen, 14, y + 8)
       }
     } catch { }
 
-    doc.save(`Calificaciones_${(titulo || `Grupo_${id_grupo}`).replace(/\s+/g, "_")}.pdf`)
+    doc.save(
+      `Calificaciones_${(titulo || t("classGroupDetail.charts.pdfTitleFallback", { id: id_grupo })).replace(
+        /\s+/g,
+        "_"
+      )}.pdf`
+    )
   }
 
   const loadImage = (src: string) =>
@@ -585,7 +601,6 @@ export default function GrupoAulaDetalle() {
       return { dataUrl, width: img.naturalWidth, height: img.naturalHeight }
     }
 
-    // ----- camino SVG optimizado -----
     const svg = host.querySelector("svg") as SVGSVGElement | null
     if (svg) {
       const { width, height } = svg.getBoundingClientRect()
@@ -624,7 +639,6 @@ export default function GrupoAulaDetalle() {
       }
     }
 
-    // Fallback HTML
     const rect = host.getBoundingClientRect()
     const dataUrl = await toPng(host, {
       backgroundColor: "#ffffff",
@@ -638,14 +652,11 @@ export default function GrupoAulaDetalle() {
   }
 
   function forceLightThemeForExport() {
-    // Guardar el tema actual
-    const wasDark = document.documentElement.classList.contains('dark')
+    const wasDark = document.documentElement.classList.contains("dark")
     const originalBodyFilter = document.body.style.filter
 
-    // Remover temporalmente la clase dark
-    document.documentElement.classList.remove('dark')
+    document.documentElement.classList.remove("dark")
 
-    // Crear estilos para forzar modo claro en la exportación
     const style = document.createElement("style")
     style.setAttribute("data-export-theme", "true")
     style.textContent = `
@@ -687,22 +698,16 @@ export default function GrupoAulaDetalle() {
     `
     document.head.appendChild(style)
 
-    // Remover cualquier filtro del body
-    document.body.style.filter = 'none'
+    document.body.style.filter = "none"
 
     return () => {
-      // Restaurar tema original
       if (wasDark) {
-        document.documentElement.classList.add('dark')
+        document.documentElement.classList.add("dark")
       }
-
-      // Limpiar estilos
       const exportStyle = document.head.querySelector('style[data-export-theme="true"]')
       if (exportStyle) {
         document.head.removeChild(exportStyle)
       }
-
-      // Restaurar filtro original del body
       document.body.style.filter = originalBodyFilter
     }
   }
@@ -714,20 +719,19 @@ export default function GrupoAulaDetalle() {
       const unlock = lockScroll()
       const undoTheme = forceLightThemeForExport()
 
-      // Esperar un momento para que los cambios de tema se apliquen
       await new Promise(resolve => setTimeout(resolve, 300))
 
       const bloques: Array<{ ref: React.RefObject<HTMLDivElement>; titulo: string }> = [
-        { ref: pieRef, titulo: "Pastel (Aprobados vs Reprobados)" },
-        { ref: scatterRef, titulo: "Dispersión (Asistencia vs Promedio)" },
-        { ref: controlRef, titulo: "Carta de Control (Promedios)" },
-        { ref: paretoRef, titulo: "Pareto (Motivo de bajas)" },
+        { ref: pieRef, titulo: t("classGroupDetail.charts.pieTitle") },
+        { ref: scatterRef, titulo: t("classGroupDetail.charts.scatterTitle") },
+        { ref: controlRef, titulo: t("classGroupDetail.charts.controlTitle") },
+        { ref: paretoRef, titulo: t("classGroupDetail.charts.paretoTitle") },
       ]
 
       const hasAny = bloques.some((b) => b.ref.current?.querySelector("svg,canvas"))
       if (!hasAny) {
         setMsgKind("error")
-        setMsgAlu("Aún no hay gráficas renderizadas.")
+        setMsgAlu(t("classGroupDetail.messages.exportChartsNotRendered"))
         setExportingCharts(false)
         undoTheme()
         unlock()
@@ -751,7 +755,11 @@ export default function GrupoAulaDetalle() {
         if (!first) doc.addPage()
         doc.setFont("helvetica", "bold")
         doc.setFontSize(14)
-        doc.text(`${tituloGraf} — ${titulo || `Grupo ${id_grupo}`}`, margin, margin)
+        doc.text(
+          `${tituloGraf} — ${titulo || t("classGroupDetail.charts.pdfTitleFallback", { id: id_grupo })}`,
+          margin,
+          margin
+        )
 
         const ratio = w / h
         let drawW = areaW
@@ -782,36 +790,41 @@ export default function GrupoAulaDetalle() {
 
       if (first) {
         setMsgKind("error")
-        setMsgAlu("No se pudo capturar ninguna gráfica.")
+        setMsgAlu(t("classGroupDetail.messages.exportChartsNoneCaptured"))
         setExportingCharts(false)
         undoTheme()
         unlock()
         return
       }
 
-      doc.save(`Graficas_${(titulo || `Grupo_${id_grupo}`).replace(/\s+/g, "_")}.pdf`)
+      doc.save(
+        `${t("classGroupDetail.charts.exportFilePrefix")}${(titulo || t(
+          "classGroupDetail.charts.pdfTitleFallback",
+          { id: id_grupo }
+        )).replace(/\s+/g, "_")}.pdf`
+      )
       undoTheme()
       unlock()
     } catch (err: any) {
       console.error(err)
       setMsgKind("error")
-      setMsgAlu(err?.message || "Error al exportar gráficas")
+      setMsgAlu(err?.message || t("classGroupDetail.messages.exportChartsError"))
     } finally {
       setExportingCharts(false)
     }
   }
 
-  // Reactivar (se mantiene; Eliminar ya no existe)
+  // Reactivar
   async function reactivarInscripcion(id: number) {
     try {
       setMsgAlu(null)
       await api.put(`/inscripciones/${id}`, { status: "ACTIVA" })
       await loadAlumnos(id_grupo)
       setMsgKind("ok")
-      setMsgAlu("Inscripción reactivada")
+      setMsgAlu(t("classGroupDetail.messages.enrollmentReactivated"))
     } catch (e: any) {
       setMsgKind("error")
-      setMsgAlu(e?.response?.data?.message || e.message || "Error al reactivar")
+      setMsgAlu(e?.response?.data?.message || e.message || t("classGroupDetail.messages.enrollmentReactivatedError"))
     }
   }
 
@@ -825,7 +838,13 @@ export default function GrupoAulaDetalle() {
         : s === "REPROBADA"
           ? "bg-amber-50 text-amber-700 ring-amber-100"
           : "bg-slate-50 text-slate-700 ring-slate-100"
-    const label = isBaja ? "INACTIVO" : s || "ACTIVA"
+
+    let label = s || "ACTIVA"
+    if (isBaja) label = t("classGroupDetail.status.inactive")
+    else if (s === "APROBADA") label = t("classGroupDetail.status.approved")
+    else if (s === "REPROBADA") label = t("classGroupDetail.status.failed")
+    else label = t("classGroupDetail.status.active")
+
     return (
       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ring-1 ${clr}`}>
         {label}
@@ -859,10 +878,10 @@ export default function GrupoAulaDetalle() {
       XLSX.writeFile(wb, `plantilla_calificaciones_grupo_${id_grupo}.xlsx`)
 
       setMsgKind("ok")
-      setMsgAlu(`Plantilla de calificaciones generada (${data.length} alumnos).`)
+      setMsgAlu(t("classGroupDetail.messages.gradesTemplateXlsxOk", { count: data.length }))
     } catch (err: any) {
       setMsgKind("error")
-      setMsgAlu(err?.message || "No se pudo generar la plantilla de calificaciones")
+      setMsgAlu(err?.message || t("classGroupDetail.messages.gradesTemplateXlsxError"))
     }
   }
 
@@ -899,10 +918,10 @@ export default function GrupoAulaDetalle() {
       URL.revokeObjectURL(url)
 
       setMsgKind("ok")
-      setMsgAlu(`CSV de calificaciones generado (${rows.length} alumnos).`)
+      setMsgAlu(t("classGroupDetail.messages.gradesTemplateCsvOk", { count: rows.length }))
     } catch (err: any) {
       setMsgKind("error")
-      setMsgAlu(err?.message || "No se pudo generar el CSV de calificaciones")
+      setMsgAlu(err?.message || t("classGroupDetail.messages.gradesTemplateCsvError"))
     }
   }
 
@@ -913,7 +932,6 @@ export default function GrupoAulaDetalle() {
       setImportingGrades(true)
       setMsgAlu(null)
 
-      // 1) Parse
       let rows: Record<string, unknown>[] = []
       if (file.name.toLowerCase().endsWith(".csv")) {
         const text = await file.text()
@@ -939,14 +957,12 @@ export default function GrupoAulaDetalle() {
         })
       }
 
-      // 2) Dedup por no_control
       const unidades = Number(alumnos.unidades || 0)
       const byNC = new Map<
         string,
         { nc: string; units: Array<{ unidad: number; calificacion?: number; asistencia?: number }> }
       >()
       for (const r of rows) {
-        // tolera "no_control" y variantes
         let nc = String(
           (r["NO_CONTROL"] ??
             (r as any)["NO CONTROL"] ??
@@ -971,7 +987,7 @@ export default function GrupoAulaDetalle() {
         const units: Array<{ unidad: number; calificacion?: number; asistencia?: number }> = []
         for (let u = 1; u <= unidades; u++) {
           const c = normPct((r as any)[`U${u}_CAL`])
-          const a = normAsist((r as any)[`U${u}_ASIST`]) // Usar normAsist en lugar de normPct
+          const a = normAsist((r as any)[`U${u}_ASIST`])
           if (c === null && a === null) continue
           const entry: any = { unidad: u }
           if (c !== null) entry.calificacion = c
@@ -979,18 +995,17 @@ export default function GrupoAulaDetalle() {
           units.push(entry)
         }
         if (units.length === 0) continue
-        byNC.set(nc, { nc, units }) // último gana
+        byNC.set(nc, { nc, units })
       }
 
       if (byNC.size === 0) {
         setMsgKind("error")
-        setMsgAlu("Archivo sin calificaciones/asistencias válidas.")
+        setMsgAlu(t("classGroupDetail.messages.gradesFileEmpty"))
         return
       }
 
-      // 3) Mapa no_control → id_inscripcion del grupo
       const mapIns = new Map<string, number>()
-      for (const r of alumnos.rows || []) { // usamos todas las filas para mapear
+      for (const r of alumnos.rows || []) {
         const nc = String(r?.estudiante?.no_control ?? "").trim()
         if (nc) mapIns.set(nc, r.id_inscripcion)
       }
@@ -1018,17 +1033,21 @@ export default function GrupoAulaDetalle() {
       await Promise.allSettled(tasks)
       await loadAlumnos(id_grupo)
 
-      const msg = `Calificaciones importadas: ${ok} ok, ${bad} con error, ${skipped} omitidos (no inscritos).`
       setMsgKind(bad === 0 ? "ok" : "error")
-      setMsgAlu(msg)
+      setMsgAlu(t("classGroupDetail.messages.gradesImportSummary", { ok, bad, skipped }))
     } catch (e: any) {
       setMsgKind("error")
-      setMsgAlu(e?.message || "Error al importar calificaciones")
+      setMsgAlu(e?.message || t("classGroupDetail.messages.gradesImportError"))
     } finally {
       setImportingGrades(false)
       if (gradesFileRef.current) gradesFileRef.current.value = ""
     }
   }
+
+  const headerTitle =
+    titulo ||
+    t("classGroupDetail.header.titleFallback", { id: id_grupo })
+  const headerFull = t("classGroupDetail.header.title", { title: headerTitle })
 
   return (
     <div className="space-y-4">
@@ -1074,7 +1093,7 @@ export default function GrupoAulaDetalle() {
 
       {/* ====== Header / acciones ====== */}
       <div className="flex items-center justify-between">
-        <div className="font-semibold text-lg">Alumnos — {titulo || `Grupo ${id_grupo}`}</div>
+        <div className="font-semibold text-lg">{headerFull}</div>
         <div className="flex gap-2">
           <button
             onClick={() => exportarGraficasPDF()}
@@ -1083,7 +1102,9 @@ export default function GrupoAulaDetalle() {
                      text-[var(--text)] disabled:opacity-60"
             disabled={exportingCharts}
           >
-            {exportingCharts ? "Exportando gráficas…" : "Exportar gráficas"}
+            {exportingCharts
+              ? t("classGroupDetail.buttons.exportChartsLoading")
+              : t("classGroupDetail.buttons.exportCharts")}
           </button>
 
           <button
@@ -1092,11 +1113,11 @@ export default function GrupoAulaDetalle() {
                      bg-[var(--surface)] hover:bg-[color-mix(in_oklab,var(--text),transparent_92%)]
                      text-[var(--text)]"
           >
-            Exportar PDF
+            {t("classGroupDetail.buttons.exportPDF")}
           </button>
 
           <Link to="/grupos/aula" className="rounded-md border px-3 py-1 text-sm">
-            Volver
+            {t("classGroupDetail.buttons.back")}
           </Link>
         </div>
       </div>
@@ -1110,10 +1131,14 @@ export default function GrupoAulaDetalle() {
       <div className="rounded-2xl bg-white border p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-600">
-            Cupo: {sortedActiveRows.length} / {alumnos.cupo} • Unidades: {alumnos.unidades}{" "}
+            {t("classGroupDetail.summary.capacity", {
+              current: sortedActiveRows.length,
+              capacity: alumnos.cupo,
+              units: alumnos.unidades,
+            })}{" "}
             {sortedActiveRows.length >= (alumnos.cupo || 0) && (
               <span className="ml-2 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-700 ring-1 ring-red-100">
-                Cupo lleno
+                {t("classGroupDetail.summary.full")}
               </span>
             )}
           </div>
@@ -1122,7 +1147,7 @@ export default function GrupoAulaDetalle() {
             {/* Agregar por No. control */}
             <input
               id="alu_noctrl"
-              placeholder="No. control"
+              placeholder={t("classGroupDetail.inputs.noControlPlaceholder")}
               className="h-9 rounded-md border px-3 text-sm"
               disabled={sortedActiveRows.length >= (alumnos.cupo || 0)}
             />
@@ -1134,7 +1159,7 @@ export default function GrupoAulaDetalle() {
                 if (el?.value) agregarPorNoControl(el.value)
               }}
             >
-              Agregar
+              {t("classGroupDetail.buttons.addStudent")}
             </button>
 
             {/* Importar INSCRIPCIONES */}
@@ -1154,9 +1179,11 @@ export default function GrupoAulaDetalle() {
                        disabled:opacity-50"
               disabled={importing}
               onClick={() => fileRef.current?.click()}
-              title="Importar inscripciones por No. control"
+              title={t("classGroupDetail.tooltips.importEnrollments")}
             >
-              {importing ? "Importando…" : "Importar"}
+              {importing
+                ? t("classGroupDetail.buttons.importEnrollmentsLoading")
+                : t("classGroupDetail.buttons.importEnrollments")}
             </button>
 
             {/* Subir Calificaciones */}
@@ -1176,9 +1203,11 @@ export default function GrupoAulaDetalle() {
                        disabled:opacity-50"
               disabled={importingGrades}
               onClick={() => gradesFileRef.current?.click()}
-              title="Importar calificaciones y asistencias por unidad"
+              title={t("classGroupDetail.tooltips.importGrades")}
             >
-              {importingGrades ? "Subiendo califs…" : "Subir calificaciones"}
+              {importingGrades
+                ? t("classGroupDetail.buttons.uploadGradesLoading")
+                : t("classGroupDetail.buttons.uploadGrades")}
             </button>
 
             {/* Menú de plantillas */}
@@ -1188,25 +1217,27 @@ export default function GrupoAulaDetalle() {
                          bg-[var(--surface)] hover:bg-[color-mix(in_oklab,var(--text),transparent_92%)]"
                 onClick={() => setShowTemplateOptions((v) => !v)}
               >
-                Plantilla
+                {t("classGroupDetail.buttons.template")}
               </button>
 
               {showTemplateOptions && (
                 <div className="absolute right-0 mt-1 w-56 z-30 overflow-hidden dropdown-menu">
                   <ul className="py-1">
                     {/* Inscripciones */}
-                    <li className="px-3 py-1 text-[11px] text-slate-500">Inscripciones</li>
+                    <li className="px-3 py-1 text-[11px] text-slate-500">
+                      {t("classGroupDetail.templatesMenu.enrollmentsSection")}
+                    </li>
                     <li>
                       <a
                         className="dropdown-item"
-                        href="#"
+                        href="#" 
                         onClick={(e) => {
                           e.preventDefault()
                           void downloadTemplateXLSX()
                           setShowTemplateOptions(false)
                         }}
                       >
-                        Excel (.xlsx)
+                        {t("classGroupDetail.templatesMenu.enrollmentsXlsx")}
                       </a>
                     </li>
 
@@ -1220,14 +1251,16 @@ export default function GrupoAulaDetalle() {
                           setShowTemplateOptions(false)
                         }}
                       >
-                        CSV (.csv)
+                        {t("classGroupDetail.templatesMenu.enrollmentsCsv")}
                       </a>
                     </li>
 
                     <div className="dropdown-sep" />
 
                     {/* Calificaciones */}
-                    <li className="px-3 py-1 text-[11px] text-slate-500">Calificaciones</li>
+                    <li className="px-3 py-1 text-[11px] text-slate-500">
+                      {t("classGroupDetail.templatesMenu.gradesSection")}
+                    </li>
                     <li>
                       <a
                         className="dropdown-item"
@@ -1238,7 +1271,7 @@ export default function GrupoAulaDetalle() {
                           setShowTemplateOptions(false)
                         }}
                       >
-                        Calificaciones Excel (.xlsx)
+                        {t("classGroupDetail.templatesMenu.gradesXlsx")}
                       </a>
                     </li>
                     <li>
@@ -1251,7 +1284,7 @@ export default function GrupoAulaDetalle() {
                           setShowTemplateOptions(false)
                         }}
                       >
-                        Calificaciones CSV (.csv)
+                        {t("classGroupDetail.templatesMenu.gradesCsv")}
                       </a>
                     </li>
                   </ul>
@@ -1265,18 +1298,26 @@ export default function GrupoAulaDetalle() {
           <table className="min-w-full text-xs">
             <thead className="bg-slate-50">
               <tr className="[&>th]:px-2 [&>th]:py-1.5 text-left">
-                <th className="text-[10px] font-semibold">No. Control</th>
-                <th className="text-[10px] font-semibold">Nombre</th>
-                <th className="text-[10px] font-semibold">Ap. Paterno</th>
-                <th className="text-[10px] font-semibold">Ap. Materno</th>
+                <th className="text-[10px] font-semibold">{t("classGroupDetail.table.noControl")}</th>
+                <th className="text-[10px] font-semibold">{t("classGroupDetail.table.firstName")}</th>
+                <th className="text-[10px] font-semibold">{t("classGroupDetail.table.lastName1")}</th>
+                <th className="text-[10px] font-semibold">{t("classGroupDetail.table.lastName2")}</th>
                 {Array.from({ length: alumnos.unidades || 0 }, (_, i) => i + 1).map((u) => (
                   <Fragment key={`u_head_${u}`}>
-                    <th className="text-center text-[10px] font-semibold">U{u} Cal</th>
-                    <th className="text-center text-[10px] font-semibold">U{u} Asist</th>
+                    <th className="text-center text-[10px] font-semibold">
+                      {t("classGroupDetail.table.unitCalShort", { u })}
+                    </th>
+                    <th className="text-center text-[10px] font-semibold">
+                      {t("classGroupDetail.table.unitAttendanceShort", { u })}
+                    </th>
                   </Fragment>
                 ))}
-                <th className="text-center font-bold text-[10px]">Prom</th>
-                <th className="text-right text-[10px] font-semibold">Acciones</th>
+                <th className="text-center font-bold text-[10px]">
+                  {t("classGroupDetail.table.averageShort")}
+                </th>
+                <th className="text-right text-[10px] font-semibold">
+                  {t("classGroupDetail.table.actions")}
+                </th>
               </tr>
             </thead>
 
@@ -1287,7 +1328,7 @@ export default function GrupoAulaDetalle() {
                     colSpan={6 + (alumnos.unidades || 0) * 2}
                     className="px-3 py-6 text-center text-slate-500"
                   >
-                    Cargando…
+                    {t("classGroupDetail.table.loading")}
                   </td>
                 </tr>
               )}
@@ -1298,7 +1339,7 @@ export default function GrupoAulaDetalle() {
                     colSpan={6 + (alumnos.unidades || 0) * 2}
                     className="px-3 py-6 text-center text-slate-500"
                   >
-                    Sin alumnos.
+                    {t("classGroupDetail.table.empty")}
                   </td>
                 </tr>
               )}
@@ -1385,17 +1426,17 @@ export default function GrupoAulaDetalle() {
                           <button
                             className="rounded border px-2 py-0.5 text-[10px] text-emerald-700 hover:bg-emerald-50"
                             onClick={() => reactivarInscripcion(r.id_inscripcion)}
-                            title="Reactivar inscripción"
+                            title={t("classGroupDetail.tooltips.reactivate")}
                           >
-                            Reactivar
+                            {t("classGroupDetail.buttons.reactivate")}
                           </button>
                         ) : (
                           <button
                             className="rounded border px-2 py-0.5 text-[10px] text-orange-700 hover:bg-orange-50"
                             onClick={() => bajaInscripcion(r.id_inscripcion)}
-                            title="Dar de baja"
+                            title={t("classGroupDetail.tooltips.drop")}
                           >
-                            Baja
+                            {t("classGroupDetail.buttons.drop")}
                           </button>
                         )}
                       </td>
@@ -1414,17 +1455,20 @@ export default function GrupoAulaDetalle() {
               onClick={() => setPageAlu((p) => Math.max(1, p - 1))}
               disabled={pageSafeAlu <= 1}
             >
-              Anterior
+              {t("classGroupDetail.buttons.paginationPrev")}
             </button>
             <span className="text-sm text-slate-600">
-              Página {pageSafeAlu} / {totalPagesAlu}
+              {t("classGroupDetail.pagination.summary", {
+                page: pageSafeAlu,
+                totalPages: totalPagesAlu,
+              })}
             </span>
             <button
               className="rounded-md border px-2 py-1 text-sm disabled:opacity-50"
               onClick={() => setPageAlu((p) => Math.min(totalPagesAlu, p + 1))}
               disabled={pageSafeAlu >= totalPagesAlu}
             >
-              Siguiente
+              {t("classGroupDetail.buttons.paginationNext")}
             </button>
           </div>
         )}
@@ -1434,25 +1478,23 @@ export default function GrupoAulaDetalle() {
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
           ref={pieRef}
-          data-export-title="Pastel (Aprobados vs Reprobados)"
+          data-export-title={t("classGroupDetail.charts.pieTitle")}
           className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
-          {/* CAMBIADO: Pasar activeRows para cálculo dinámico */}
           <PieChartPage grupo={grupo} alumnos={activeRows} />
         </div>
 
         <div
           ref={scatterRef}
-          data-export-title="Dispersión (Asistencia vs Promedio)"
+          data-export-title={t("classGroupDetail.charts.scatterTitle")}
           className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
-          {/* Sólo alumnos activos para la dispersión */}
           <ScatterChartPage alumnos={activeRows} />
         </div>
 
         <div
           ref={controlRef}
-          data-export-title="Carta de Control (Promedios)"
+          data-export-title={t("classGroupDetail.charts.controlTitle")}
           className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
           <ControlChart promedio={promedio} />
@@ -1460,7 +1502,7 @@ export default function GrupoAulaDetalle() {
 
         <div
           ref={paretoRef}
-          data-export-title="Pareto (Motivo de bajas)"
+          data-export-title={t("classGroupDetail.charts.paretoTitle")}
           className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
           <div className="h-[440px]">
@@ -1475,7 +1517,7 @@ export default function GrupoAulaDetalle() {
           className="fixed inset-0 z-[100] bg-black/30 backdrop-blur-sm flex items-center justify-center"
           role="dialog"
           aria-modal="true"
-          aria-label="Exportando gráficas"
+          aria-label={t("classGroupDetail.charts.exportOverlayTitle")}
         >
           <div className="rounded-xl bg-white shadow-lg px-5 py-4 flex items-center gap-3">
             <svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none" role="img" aria-label="cargando">
@@ -1483,8 +1525,10 @@ export default function GrupoAulaDetalle() {
               <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
             </svg>
             <div>
-              <p className="font-medium">Exportando gráficas…</p>
-              <p className="text-sm text-slate-600">Esto puede tardar unos segundos.</p>
+              <p className="font-medium">{t("classGroupDetail.charts.exportOverlayTitle")}</p>
+              <p className="text-sm text-slate-600">
+                {t("classGroupDetail.charts.exportOverlaySubtitle")}
+              </p>
             </div>
           </div>
         </div>
