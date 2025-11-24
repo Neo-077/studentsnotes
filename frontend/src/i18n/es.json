@@ -1,0 +1,314 @@
+{
+  "layout": {
+    "skipToContent": "Saltar al contenido principal",
+    "sidebarAria": "Barra lateral de navegación",
+    "mainNavAria": "Navegación principal",
+    "logout": "Cerrar sesión",
+    "userAvatarAlt": "Avatar del usuario"
+  },
+  "accessibility": {
+    "panelAria": "Opciones de accesibilidad",
+    "title": "Accesibilidad",
+    "theme": "Tema",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro",
+    "fontSize": "Tamaño de texto",
+    "fontSizeNormal": "A",
+    "fontSizeLarge": "A+",
+    "highContrast": "Alto contraste",
+    "language": "Idioma",
+    "languageAria": "Selector de idioma"
+  },
+  "nav": {
+    "home": "Página principal",
+    "enrollments": "Inscripciones",
+    "groups": "Grupos",
+    "classGroups": "Grupos (Aula)",
+    "teachers": "Docentes",
+    "subjects": "Materias",
+    "students": "Estudiantes",
+    "settings": "Configuración"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle_admin": "Vista general de toda la institución",
+    "subtitle_teacher": "Vista de tus grupos",
+    "registered": "Registrados",
+    "failed": "Reprobados",
+    "drops": "Bajas",
+    "description_registered_admin": "En toda la institución",
+    "description_registered_teacher": "En tus grupos",
+    "description_failed_admin": "Promedio < 70 en todas las unidades",
+    "description_failed_teacher": "En tus grupos",
+    "description_drops_admin": "Baja definitiva",
+    "description_drops_teacher": "Inscripciones en baja",
+    "commonDropReason": "Razón más común de baja",
+    "chart_title": "Resumen de Estudiantes",
+    "chart_subtitle": "Distribución de estudiantes por categoría",
+    "exportPDF": "Exportar PDF",
+    "exporting": "Exportando..."
+  },
+  "account": {
+    "title": "Configuración de cuenta",
+    "subtitleTeacher": "Actualiza tu contraseña y tu foto de perfil.",
+    "subtitleAdmin": "Los administradores no pueden cambiar contraseña desde la app.",
+    "passwordSectionTitle": "Contraseña",
+    "currentPasswordPlaceholder": "Contraseña actual",
+    "newPasswordPlaceholder": "Nueva contraseña",
+    "confirmPasswordPlaceholder": "Confirmar contraseña nueva",
+    "saving": "Guardando…",
+    "savePassword": "Guardar contraseña",
+    "resetByEmail": "Cambiar por correo",
+    "resetByEmailTitle": "Solicitar enlace de restablecimiento al correo",
+    "requesting": "Solicitando…",
+    "avatarSectionTitle": "Avatar",
+    "avatarAlt": "Avatar del usuario",
+    "uploadLabel": "Subir imagen (jpg/png/webp)",
+    "deleteAvatar": "Eliminar avatar",
+    "messages": {
+      "passwordUpdated": "Contraseña actualizada",
+      "avatarDeleted": "Avatar eliminado",
+      "avatarUpdated": "✅ Avatar actualizado",
+      "resetLinkSent": "✉️ Si tu cuenta es válida, recibirás un enlace para restablecer la contraseña."
+    },
+    "errors": {
+      "onlyTeacher": "⚠️ Solo los docentes pueden cambiar contraseña en la app.",
+      "needCurrent": "❌ Escribe tu contraseña actual",
+      "newTooShort": "❌ La nueva contraseña debe tener al menos 6 caracteres",
+      "notMatch": "❌ Las contraseñas no coinciden",
+      "sameAsOld": "❌ La nueva contraseña debe ser distinta a la actual",
+      "changeFailedGeneric": "Error al cambiar la contraseña",
+      "avatarDeleteFailed": "Error eliminando avatar",
+      "avatarUploadFailed": "Error subiendo avatar",
+      "resetLinkFailed": "No se pudo solicitar el enlace"
+    }
+  },
+  "students": {
+    "title": "Estudiantes",
+    "subtitleTeacher": "Estudiantes elegibles para las materias que impartes (solo carreras relacionadas).",
+    "subtitleAdmin": "Consulta, busca y carga estudiantes por archivo.",
+    "buttons": {
+      "downloadTemplate": "Descargar plantilla (XLSX)",
+      "importFile": "Importar (.xlsx/.xls/.csv)",
+      "search": "Buscar"
+    },
+    "searchPlaceholder": "Buscar (no_control, nombre, apellidos)",
+    "filters": {
+      "allCareers": "Todas las carreras"
+    },
+    "table": {
+      "noControl": "No. control",
+      "name": "Nombre",
+      "lastName1": "Apellido paterno",
+      "lastName2": "Apellido materno",
+      "career": "Carrera",
+      "gender": "Género",
+      "birthDate": "Nacimiento",
+      "entryDate": "Ingreso",
+      "status": "Estado",
+      "loading": "Cargando…",
+      "empty": "Sin resultados."
+    },
+    "status": {
+      "active": "Activo",
+      "inactive": "Inactivo"
+    },
+    "actions": {
+      "drop": "Dar de baja",
+      "dropTitle": "Dar de baja al estudiante"
+    },
+    "labels": {
+      "dropped": "Dado de baja"
+    },
+    "footer": {
+      "total": "{{count}} en total"
+    },
+    "pagination": {
+      "prev": "Anterior",
+      "next": "Siguiente",
+      "pageOf": "Página {{page}} / {{maxPage}}",
+      "perPage": "{{n}} / pág."
+    },
+    "messages": {
+      "dropped": "✅ Estudiante dado de baja definitivamente"
+    },
+    "errors": {
+      "loadFailed": "Error cargando estudiantes: {{message}}"
+    },
+    "import": {
+      "summaryBase": "✅ Importación: {{inserted}} insertados, {{errors}} errores",
+      "duplicatesInFile": "Omitidos (duplicados en archivo): {{count}}",
+      "duplicatesInDb": "Omitidos (ya existen en BD): {{count}}",
+      "errorGeneric": "Error importando"
+    },
+    "dropModal": {
+      "title": "Dar de baja estudiante",
+      "studentIdLabel": "Id de estudiante *",
+      "dropDateLabel": "Fecha de baja *",
+      "reasonLabel": "Motivo de baja *",
+      "selectReason": "Selecciona un motivo",
+      "helperText": "El estudiante será marcado como inactivo y todas sus inscripciones activas serán dadas de baja.",
+      "confirm": "Dar de baja",
+      "cancel": "Cancelar",
+      "saving": "Guardando…",
+      "reasons": {
+        "academico": "Deserción académica",
+        "conductual": "Faltas excesivas",
+        "salud": "Problemas de salud",
+        "personal": "Situación familiar o personal",
+        "economico": "Problemas económicos",
+        "otro": "Otro"
+      }
+    }
+  },
+  "subjects": {
+    "title": "Materias",
+    "subtitle": "Alta, listado, búsqueda e importación de materias.",
+    "form": {
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Nombre",
+      "unitsLabel": "Unidades (1–10)",
+      "unitsPlaceholder": "Unidades",
+      "creditsLabel": "Créditos (1–30)",
+      "creditsPlaceholder": "Créditos",
+      "careerLabel": "Carrera (opcional para vincular)",
+      "careerPlaceholder": "Carrera…",
+      "semesterLabel": "Semestre (1–12)",
+      "semesterPlaceholder": "Semestre",
+      "submit": "Guardar materia"
+    },
+    "search": {
+      "placeholder": "Buscar (clave, nombre)"
+    },
+    "buttons": {
+      "downloadTemplate": "Descargar plantilla (XLSX)",
+      "importFile": "Importar (.xlsx/.csv)",
+      "edit": "Editar",
+      "delete": "Eliminar"
+    },
+    "table": {
+      "code": "Clave",
+      "name": "Nombre",
+      "career": "Carrera",
+      "units": "Unidades",
+      "credits": "Créditos",
+      "loading": "Cargando…",
+      "empty": "Sin materias."
+    },
+    "messages": {
+      "nameRequired": "Completa el nombre de la materia.",
+      "linkExists": "❌ Ya existe esta materia vinculada a esa carrera.",
+      "linkCreatedExisting": "✅ Vinculación creada con materia existente",
+      "createdAndLinked": "✅ Materia creada y vinculada",
+      "alreadyExisted": "ℹ️ La materia ya existía (sin cambios). Puedes vincularla a una carrera.",
+      "created": "✅ Materia creada",
+      "deleted": "✅ Materia eliminada",
+      "updated": "✅ Materia actualizada"
+    },
+    "errors": {
+      "loadFailed": "Error cargando materias",
+      "createFailed": "Error al crear materia",
+      "deleteFailed": "Error eliminando materia",
+      "updateFailed": "Error actualizando materia",
+      "importNoSheets": "El archivo no contiene hojas.",
+      "importFailed": "Error importando materias"
+    },
+    "import": {
+      "summaryBase": "✅ Importadas: {{inserted}} / Errores: {{errors}}",
+      "duplicatesInFile": "Omitidas (duplicadas en archivo): {{count}}",
+      "duplicatesInUI": "Omitidas (ya existían en UI): {{count}}",
+      "duplicatesInDb": "Omitidas (ya existían en BD): {{count}}"
+    },
+    "deleteModal": {
+      "title": "Eliminar materia",
+      "subtitle": "Esta acción no se puede deshacer",
+      "confirmLabel": "Eliminar",
+      "question": "¿Deseas eliminar la siguiente materia?",
+      "codeLabel": "Clave"
+    },
+    "editModal": {
+      "title": "Editar materia",
+      "nameLabel": "Nombre",
+      "unitsLabel": "Unidades",
+      "creditsLabel": "Créditos",
+      "cancel": "Cancelar",
+      "save": "Guardar"
+    }
+  },
+  "teachers": {
+  "title": "Docentes",
+  "subtitle": "Alta, listado, búsqueda e importación de docentes. El correo se genera automáticamente.",
+  "form": {
+    "rfcPlaceholder": "RFC",
+    "firstNamePlaceholder": "Nombre(s)",
+    "lastName1Placeholder": "Apellido paterno",
+    "lastName2Placeholder": "Apellido materno (opcional)",
+    "genderPlaceholder": "Género (opcional)",
+    "previewEmailLabel": "Correo (auto): {{email}}",
+    "submit": "Guardar docente"
+  },
+  "search": {
+    "placeholder": "Buscar (RFC, nombre, correo)"
+  },
+  "buttons": {
+    "downloadTemplate": "Descargar plantilla (XLSX)",
+    "importFile": "Importar (.xlsx/.csv)",
+    "edit": "Editar",
+    "delete": "Eliminar"
+  },
+  "table": {
+    "rfc": "RFC",
+    "firstName": "Nombre",
+    "lastName1": "Apellido paterno",
+    "lastName2": "Apellido materno",
+    "email": "Correo",
+    "gender": "Género",
+    "loading": "Cargando…",
+    "empty": "Sin docentes."
+  },
+  "messages": {
+    "created": "✅ Docente creado",
+    "deleted": "✅ Docente eliminado",
+    "updated": "✅ Docente actualizado"
+  },
+  "errors": {
+    "loadFailed": "Error cargando docentes",
+    "requiredFields": "Completa RFC, nombre y apellido paterno.",
+    "invalidRFC": "RFC inválido. Verifica el formato SAT.",
+    "duplicateRFCList": "Ya existe un docente con ese RFC.",
+    "duplicateRFCDB": "El RFC ya existe en BD.",
+    "createFailed": "Error al crear docente",
+    "updateFailed": "Error actualizando docente",
+    "deleteFailed": "Error eliminando docente",
+    "importNoSheets": "El archivo no contiene hojas.",
+    "importFailed": "Error importando docentes"
+  },
+  "import": {
+    "summaryBase": "✅ Importación: {{inserted}} insertados, {{errors}} errores",
+    "invalidRows": "Inválidos: {{count}}",
+    "duplicatesInFile": "Duplicados en archivo (RFC): {{count}}",
+    "duplicatesInUI": "Ya existían en lista (RFC): {{count}}",
+    "duplicatesInDb": "Ya existían en BD (RFC): {{count}}"
+  },
+  "deleteModal": {
+    "title": "Eliminar docente",
+    "subtitle": "Esta acción no se puede deshacer",
+    "confirmLabel": "Eliminar",
+    "question": "¿Deseas eliminar al siguiente docente?",
+    "rfcLabel": "RFC"
+  },
+  "editModal": {
+    "title": "Editar docente",
+    "rfcLabel": "RFC",
+    "firstNameLabel": "Nombre",
+    "lastName1Label": "Apellido paterno",
+    "lastName2Label": "Apellido materno",
+    "emailLabel": "Correo (auto)",
+    "emailHint": "Se actualizará automáticamente si cambias el nombre o apellido paterno y se garantizará unicidad.",
+    "genderLabel": "Género",
+    "genderPlaceholder": "Sin especificar",
+    "cancel": "Cancelar",
+    "save": "Guardar"
+  }
+}
+}

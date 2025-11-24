@@ -4,8 +4,11 @@ import api from '../lib/api'
 import * as XLSX from 'xlsx'
 import { Catalogos } from '../lib/catalogos'
 import ConfirmModal from '../components/ConfirmModal'
+import { useTranslation } from 'react-i18next'
 
 export default function Docentes() {
+  const { t } = useTranslation()
+
   type Docente = {
     id_docente: number
     rfc: string
@@ -121,7 +124,7 @@ export default function Docentes() {
         setGeneros(gs ?? [])
       }
     } catch (e: any) {
-      setMsg(e.message || 'Error cargando docentes')
+      setMsg(e.message || t('teachers.errors.loadFailed'))
     } finally {
       if (reqRef.current === myId) {
         if (!silent) setLoading(false)
@@ -180,20 +183,20 @@ export default function Docentes() {
 
     // Reglas mínimas
     if (!payloadBase.rfc || !payloadBase.nombre || !payloadBase.ap_paterno){
-      setMsg('Completa RFC, nombre y apellido paterno.')
+      setMsg(t('teachers.errors.requiredFields'))
       return
     }
-    if (!isValidRFC(payloadBase.rfc)) { setMsg('RFC inválido. Verifica el formato SAT.'); return }
+    if (!isValidRFC(payloadBase.rfc)) { setMsg(t('teachers.errors.invalidRFC')); return }
 
     // Antiduplicados RFC en memoria
     if (rows.some(d => normalizeRFC(d.rfc) === payloadBase.rfc)) {
-      setMsg('Ya existe un docente con ese RFC.')
+      setMsg(t('teachers.errors.duplicateRFCList'))
       return
     }
     // Pre-chequeo opcional RFC
     try {
       const check = await api.post('/docentes/dedup-check', { rfcs: [payloadBase.rfc] })
-      if (check?.exists?.rfcs?.length) { setMsg('El RFC ya existe en BD.'); return }
+      if (check?.exists?.rfcs?.length) { setMsg(t('teachers.errors.duplicateRFCDB')); return }
     } catch { /* ignorar si no existe endpoint */ }
 
     // Generar correo único
@@ -204,11 +207,11 @@ export default function Docentes() {
 
     try {
       await api.post('/docentes', payload)
-      setMsg('✅ Docente creado')
+      setMsg(t('teachers.messages.created'))
       setF({ rfc:'', nombre:'', ap_paterno:'', ap_materno:'', id_genero:'' })
       await load()
     } catch(e:any){
-      setMsg('❌ '+(e.message||'Error al crear docente'))
+      setMsg('❌ ' + (e.message || t('teachers.errors.createFailed')))
     }
   }
 
@@ -219,15 +222,15 @@ export default function Docentes() {
 
     if (edit.rfc != null) {
       const rfc = normalizeRFC(edit.rfc)
-      if (!isValidRFC(rfc)) { setMsg('RFC inválido.'); return }
+      if (!isValidRFC(rfc)) { setMsg(t('teachers.errors.invalidRFC')); return }
       if (rows.some(d => d.id_docente !== edit.id && normalizeRFC(d.rfc) === rfc)) {
-        setMsg('Ya existe otro docente con ese RFC.')
+        setMsg(t('teachers.errors.duplicateRFCList'))
         return
       }
       // Chequeo opcional RFC
       try {
         const check = await api.post('/docentes/dedup-check', { rfcs: [rfc], exclude_id: edit.id })
-        if (check?.exists?.rfcs?.length) { setMsg('El RFC ya existe en BD.'); return }
+        if (check?.exists?.rfcs?.length) { setMsg(t('teachers.errors.duplicateRFCDB')); return }
       } catch {}
       upd.rfc = rfc
     }
@@ -248,11 +251,11 @@ export default function Docentes() {
 
     try{
       await api.put(`/docentes/${edit.id}`, upd)
-      setMsg('✅ Docente actualizado')
+      setMsg(t('teachers.messages.updated'))
       setEdit({ open:false })
       await load()
     }catch(e:any){
-      setMsg('❌ '+(e.message||'Error actualizando docente'))
+      setMsg('❌ ' + (e.message || t('teachers.errors.updateFailed')))
     }
   }
 
@@ -295,7 +298,7 @@ export default function Docentes() {
       const buf = await file.arrayBuffer()
       const wb = XLSX.read(buf, { type: 'array' })
       const firstSheetName = wb.SheetNames[0]
-      if (!firstSheetName) throw new Error('El archivo no contiene hojas.')
+      if (!firstSheetName) throw new Error(t('teachers.errors.importNoSheets'))
       const ws = wb.Sheets[firstSheetName]
 
       // 2) Normalizar
@@ -343,7 +346,6 @@ export default function Docentes() {
       const dupVsDb = notInUI.length - notInDb.length
 
       // 7) Generar correos auto, evitando colisiones entre ellos, UI y BD
-      //    Primero resolvemos colisiones locales (archivo + UI)
       const takenLocal = new Set<string>(rows.map(r => r.correo.toLowerCase()))
       const prepared: any[] = []
       for (const r of notInDb) {
@@ -407,19 +409,27 @@ export default function Docentes() {
 
       const report = await api.post('/docentes/bulk', fd as any)
 
-      const inserted = report?.summary?.inserted ?? 0
-      const errors = report?.summary?.errors ?? 0
+      const inserted: number = report?.summary?.inserted ?? 0
+      const errors: number = report?.summary?.errors ?? 0
 
-      setMsg(
-        `✅ Importación: ${inserted} insertados, ${errors} errores` +
-        (invalid.length ? ` | Inválidos: ${invalid.length}` : '') +
-        (dupInFile.length ? ` | Duplicados en archivo (RFC): ${dupInFile.length}` : '') +
-        (dupVsUI ? ` | Ya existían en lista (RFC): ${dupVsUI}` : '') +
-        (dupVsDb ? ` | Ya existían en BD (RFC): ${dupVsDb}` : '')
-      )
+      let summary = t('teachers.import.summaryBase', { inserted, errors })
+      if (invalid.length) {
+        summary += ' | ' + t('teachers.import.invalidRows', { count: invalid.length })
+      }
+      if (dupInFile.length) {
+        summary += ' | ' + t('teachers.import.duplicatesInFile', { count: dupInFile.length })
+      }
+      if (dupVsUI) {
+        summary += ' | ' + t('teachers.import.duplicatesInUI', { count: dupVsUI })
+      }
+      if (dupVsDb) {
+        summary += ' | ' + t('teachers.import.duplicatesInDb', { count: dupVsDb })
+      }
+
+      setMsg(summary)
       await load()
     } catch (err:any) {
-      setMsg('❌ '+(err.message || 'Error importando docentes'))
+      setMsg('❌ ' + (err.message || t('teachers.errors.importFailed')))
     } finally {
       const input = document.querySelector<HTMLInputElement>('input[type=file]')
       if (input) input.value = ''
@@ -448,49 +458,72 @@ export default function Docentes() {
       await api.delete(`/docentes/${confirmDel.id}`)
       setConfirmDel({ open:false })
       await load()
-      setMsg('✅ Docente eliminado')
+      setMsg(t('teachers.messages.deleted'))
     } catch(e:any){
-      setMsg('❌ '+(e.message||'Error eliminando docente'))
+      setMsg('❌ ' + (e.message || t('teachers.errors.deleteFailed')))
     }
   }
 
   /** ========= Render ========= **/
+  const previewEmail = emailFromLocal(
+    buildEmailLocalBase(f.nombre, f.ap_paterno)
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold">Docentes</h2>
-          <p className="text-sm text-slate-600">Alta, listado, búsqueda e importación de docentes. El correo se genera automáticamente.</p>
+          <h2 className="text-2xl font-semibold">{t('teachers.title')}</h2>
+          <p className="text-sm text-slate-600">
+            {t('teachers.subtitle')}
+          </p>
         </div>
       </div>
 
       {/* Crear (sin correo) */}
       <form onSubmit={onCreate} className="rounded-2xl border bg-white p-3 shadow-sm grid md:grid-cols-3 gap-3">
-        <input className="h-10 rounded-xl border px-3 text-sm" placeholder="RFC"
-               value={f.rfc} onChange={e=>setF({...f, rfc:e.target.value})} />
-        <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Nombre(s)"
-               value={f.nombre} onChange={e=>setF({...f, nombre:e.target.value})} />
-        <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Apellido paterno"
-               value={f.ap_paterno} onChange={e=>setF({...f, ap_paterno:e.target.value})} />
-        <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Apellido materno (opcional)"
-               value={f.ap_materno} onChange={e=>setF({...f, ap_materno:e.target.value})} />
-        <select className="h-10 rounded-xl border px-3 text-sm md:col-span-1" value={f.id_genero}
-                onChange={e=>setF({...f, id_genero:e.target.value})}>
-          <option value="">Género (opcional)</option>
+        <input
+          className="h-10 rounded-xl border px-3 text-sm"
+          placeholder={t('teachers.form.rfcPlaceholder')}
+          value={f.rfc}
+          onChange={e=>setF({...f, rfc:e.target.value})}
+        />
+        <input
+          className="h-10 rounded-xl border px-3 text-sm"
+          placeholder={t('teachers.form.firstNamePlaceholder')}
+          value={f.nombre}
+          onChange={e=>setF({...f, nombre:e.target.value})}
+        />
+        <input
+          className="h-10 rounded-xl border px-3 text-sm"
+          placeholder={t('teachers.form.lastName1Placeholder')}
+          value={f.ap_paterno}
+          onChange={e=>setF({...f, ap_paterno:e.target.value})}
+        />
+        <input
+          className="h-10 rounded-xl border px-3 text-sm"
+          placeholder={t('teachers.form.lastName2Placeholder')}
+          value={f.ap_materno}
+          onChange={e=>setF({...f, ap_materno:e.target.value})}
+        />
+        <select
+          className="h-10 rounded-xl border px-3 text-sm md:col-span-1"
+          value={f.id_genero}
+          onChange={e=>setF({...f, id_genero:e.target.value})}
+        >
+          <option value="">{t('teachers.form.genderPlaceholder')}</option>
           {generos.map((g:any)=> <option key={g.id_genero} value={g.id_genero}>{g.descripcion}</option>)}
         </select>
 
         {/* Vista previa del correo generado */}
         <div className="md:col-span-3 text-xs text-slate-600">
-          Correo (auto): {
-            emailFromLocal(
-              buildEmailLocalBase(f.nombre, f.ap_paterno)
-            )
-          }
+          {t('teachers.form.previewEmailLabel', { email: previewEmail })}
         </div>
 
         <div className="md:col-span-3 flex items-center gap-2">
-          <button className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm">Guardar docente</button>
+          <button className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm">
+            {t('teachers.form.submit')}
+          </button>
           {msg && <span className="text-sm">{msg}</span>}
         </div>
       </form>
@@ -498,26 +531,54 @@ export default function Docentes() {
       {/* Listado + Import */}
       <div className="rounded-2xl border bg-white p-3 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar (RFC, nombre, correo)" className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 text-sm"/>
-          <button onClick={downloadTemplateXLSX} className="rounded-lg border px-3 py-2 text-sm">Descargar plantilla (XLSX)</button>
+          <input
+            value={q}
+            onChange={e=>setQ(e.target.value)}
+            placeholder={t('teachers.search.placeholder')}
+            className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 text-sm"
+          />
+          <button
+            onClick={downloadTemplateXLSX}
+            className="rounded-lg border px-3 py-2 text-sm"
+          >
+            {t('teachers.buttons.downloadTemplate')}
+          </button>
           <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
-            Importar (.xlsx/.csv)
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden"
-              onChange={(e)=> e.target.files?.[0] && onImport(e.target.files[0])}/>
+            {t('teachers.buttons.importFile')}
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e)=> e.target.files?.[0] && onImport(e.target.files[0])}
+            />
           </label>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left">
-                <th>RFC</th><th>Nombre</th><th>Apellido paterno</th><th>Apellido materno</th><th>Correo</th><th>Género</th><th></th>
+                <th>{t('teachers.table.rfc')}</th>
+                <th>{t('teachers.table.firstName')}</th>
+                <th>{t('teachers.table.lastName1')}</th>
+                <th>{t('teachers.table.lastName2')}</th>
+                <th>{t('teachers.table.email')}</th>
+                <th>{t('teachers.table.gender')}</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {loading && rows.length===0 ? (
-                <tr><td colSpan={7} className="px-3 py-6 text-center">Cargando…</td></tr>
+                <tr>
+                  <td colSpan={7} className="px-3 py-6 text-center">
+                    {t('teachers.table.loading')}
+                  </td>
+                </tr>
               ) : dlist.length===0 ? (
-                <tr><td colSpan={7} className="px-3 py-6 text-center">Sin docentes.</td></tr>
+                <tr>
+                  <td colSpan={7} className="px-3 py-6 text-center">
+                    {t('teachers.table.empty')}
+                  </td>
+                </tr>
               ) : dlist.map(d => (
                 <tr key={d.id_docente} className="[&>td]:px-3 [&>td]:py-2">
                   <td className="font-mono">{d.rfc}</td>
@@ -527,8 +588,18 @@ export default function Docentes() {
                   <td>{d.correo}</td>
                   <td>{(generos.find(g => g.id_genero===d.id_genero)?.descripcion) ?? '—'}</td>
                   <td className="text-right flex items-center gap-2 justify-end">
-                    <button onClick={()=> askEdit(d)} className="px-3 py-1.5 text-xs">Editar</button>
-                    <button onClick={()=> askDelete(d)} className="px-3 py-1.5 text-xs">Eliminar</button>
+                    <button
+                      onClick={()=> askEdit(d)}
+                      className="px-3 py-1.5 text-xs"
+                    >
+                      {t('teachers.buttons.edit')}
+                    </button>
+                    <button
+                      onClick={()=> askDelete(d)}
+                      className="px-3 py-1.5 text-xs"
+                    >
+                      {t('teachers.buttons.delete')}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -540,67 +611,132 @@ export default function Docentes() {
       {/* Modal eliminar */}
       <ConfirmModal
         open={confirmDel.open}
-        title="Eliminar docente"
-        subtitle="Esta acción no se puede deshacer"
-        confirmLabel="Eliminar"
+        title={t('teachers.deleteModal.title')}
+        subtitle={t('teachers.deleteModal.subtitle')}
+        confirmLabel={t('teachers.deleteModal.confirmLabel')}
         danger
         onCancel={()=> setConfirmDel({ open:false })}
         onConfirm={confirmDelete}
       >
         <div className="space-y-2 text-sm">
-          <div>¿Deseas eliminar al siguiente docente?</div>
+          <div>{t('teachers.deleteModal.question')}</div>
           <div className="rounded-lg border bg-slate-50 px-3 py-2">
             <div className="font-medium">{confirmDel.nombre}</div>
-            <div className="text-slate-600">RFC: {confirmDel.rfc}</div>
+            <div className="text-slate-600">
+              {t('teachers.deleteModal.rfcLabel')}: {confirmDel.rfc}
+            </div>
           </div>
         </div>
       </ConfirmModal>
 
       {/* Modal editar (correo no editable; se regenera si cambian nombre/ap_paterno) */}
       {edit.open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={()=> setEdit({ open:false })}>
-          <div className="w-full max-w-xl rounded-2xl border bg-white shadow-lg" onClick={(e)=> e.stopPropagation()}>
-            <div className="px-4 py-3 border-b"><div className="text-sm font-semibold">Editar docente</div></div>
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+          onClick={()=> setEdit({ open:false })}
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl border bg-white shadow-lg"
+            onClick={(e)=> e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b">
+              <div className="text-sm font-semibold">
+                {t('teachers.editModal.title')}
+              </div>
+            </div>
             <div className="px-4 py-4 grid md:grid-cols-2 gap-3">
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">RFC</label>
-                <input className="h-10 rounded-xl border px-3 text-sm" value={edit.rfc ?? ''} onChange={e=> setEdit(s=>({...s, rfc:e.target.value}))} />
+                <label className="text-xs text-slate-600">
+                  {t('teachers.editModal.rfcLabel')}
+                </label>
+                <input
+                  className="h-10 rounded-xl border px-3 text-sm"
+                  value={edit.rfc ?? ''}
+                  onChange={e=> setEdit(s=>({...s, rfc:e.target.value}))}
+                />
               </div>
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">Nombre</label>
-                <input className="h-10 rounded-xl border px-3 text-sm" value={edit.nombre ?? ''} onChange={e=> setEdit(s=>({...s, nombre:e.target.value}))} />
+                <label className="text-xs text-slate-600">
+                  {t('teachers.editModal.firstNameLabel')}
+                </label>
+                <input
+                  className="h-10 rounded-xl border px-3 text-sm"
+                  value={edit.nombre ?? ''}
+                  onChange={e=> setEdit(s=>({...s, nombre:e.target.value}))}
+                />
               </div>
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">Apellido paterno</label>
-                <input className="h-10 rounded-xl border px-3 text-sm" value={edit.ap_paterno ?? ''} onChange={e=> setEdit(s=>({...s, ap_paterno:e.target.value}))} />
+                <label className="text-xs text-slate-600">
+                  {t('teachers.editModal.lastName1Label')}
+                </label>
+                <input
+                  className="h-10 rounded-xl border px-3 text-sm"
+                  value={edit.ap_paterno ?? ''}
+                  onChange={e=> setEdit(s=>({...s, ap_paterno:e.target.value}))}
+                />
               </div>
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">Apellido materno</label>
-                <input className="h-10 rounded-xl border px-3 text-sm" value={edit.ap_materno ?? ''} onChange={e=> setEdit(s=>({...s, ap_materno:e.target.value}))} />
+                <label className="text-xs text-slate-600">
+                  {t('teachers.editModal.lastName2Label')}
+                </label>
+                <input
+                  className="h-10 rounded-xl border px-3 text-sm"
+                  value={edit.ap_materno ?? ''}
+                  onChange={e=> setEdit(s=>({...s, ap_materno:e.target.value}))}
+                />
               </div>
 
               <div className="grid gap-1 md:col-span-2">
-                <label className="text-xs text-slate-600">Correo (auto)</label>
-                <input className="h-10 rounded-xl border px-3 text-sm" disabled
-                  value={emailFromLocal(buildEmailLocalBase(edit.nombre ?? '', edit.ap_paterno ?? ''))} />
+                <label className="text-xs text-slate-600">
+                  {t('teachers.editModal.emailLabel')}
+                </label>
+                <input
+                  className="h-10 rounded-xl border px-3 text-sm"
+                  disabled
+                  value={emailFromLocal(
+                    buildEmailLocalBase(edit.nombre ?? '', edit.ap_paterno ?? '')
+                  )}
+                />
                 <div className="text-[11px] text-slate-500 mt-1">
-                  Se actualizará automáticamente si cambias el nombre o apellido paterno y se garantizará unicidad.
+                  {t('teachers.editModal.emailHint')}
                 </div>
               </div>
 
               <div className="grid gap-1 md:col-span-2">
-                <label className="text-xs text-slate-600">Género</label>
-                <select className="h-10 rounded-xl border px-3 text-sm" value={edit.id_genero ?? ''} onChange={e=> setEdit(s=>({...s, id_genero: e.target.value ? Number(e.target.value) : ''}))}>
-                  <option value="">Sin especificar</option>
-                  {generos.map((g:any)=> <option key={g.id_genero} value={g.id_genero}>{g.descripcion}</option>)}
+                <label className="text-xs text-slate-600">
+                  {t('teachers.editModal.genderLabel')}
+                </label>
+                <select
+                  className="h-10 rounded-xl border px-3 text-sm"
+                  value={edit.id_genero ?? ''}
+                  onChange={e=> setEdit(s=>({
+                    ...s,
+                    id_genero: e.target.value ? Number(e.target.value) : ''
+                  }))}
+                >
+                  <option value="">{t('teachers.editModal.genderPlaceholder')}</option>
+                  {generos.map((g:any)=> (
+                    <option key={g.id_genero} value={g.id_genero}>
+                      {g.descripcion}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
             <div className="flex items-center justify-end gap-2 px-4 py-3 border-t">
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={()=> setEdit({ open:false })}>Cancelar</button>
-              <button className="rounded-md px-3 py-2 text-sm"
+              <button
+                className="rounded-md border px-3 py-2 text-sm"
+                onClick={()=> setEdit({ open:false })}
+              >
+                {t('teachers.editModal.cancel')}
+              </button>
+              <button
+                className="rounded-md px-3 py-2 text-sm"
                 style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-ctr)' }}
-                onClick={onSaveEdit}>Guardar</button>
+                onClick={onSaveEdit}
+              >
+                {t('teachers.editModal.save')}
+              </button>
             </div>
           </div>
         </div>

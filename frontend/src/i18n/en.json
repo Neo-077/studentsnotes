@@ -1,0 +1,314 @@
+{
+  "layout": {
+    "skipToContent": "Skip to main content",
+    "sidebarAria": "Sidebar navigation",
+    "mainNavAria": "Main navigation",
+    "logout": "Log out",
+    "userAvatarAlt": "User avatar"
+  },
+  "accessibility": {
+    "panelAria": "Accessibility options",
+    "title": "Accessibility",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "fontSize": "Font size",
+    "fontSizeNormal": "A",
+    "fontSizeLarge": "A+",
+    "highContrast": "High contrast",
+    "language": "Language",
+    "languageAria": "Language selector"
+  },
+  "nav": {
+    "home": "Home",
+    "enrollments": "Enrollments",
+    "groups": "Groups",
+    "classGroups": "Class Groups",
+    "teachers": "Teachers",
+    "subjects": "Subjects",
+    "students": "Students",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle_admin": "General overview of the institution",
+    "subtitle_teacher": "Overview of your groups",
+    "registered": "Registered",
+    "failed": "Failed",
+    "drops": "Drops",
+    "description_registered_admin": "Across the institution",
+    "description_registered_teacher": "Across your groups",
+    "description_failed_admin": "Average < 70 in all units",
+    "description_failed_teacher": "Across your groups",
+    "description_drops_admin": "Definitive drop",
+    "description_drops_teacher": "Dropped enrollments",
+    "commonDropReason": "Most common drop reason",
+    "chart_title": "Student Summary",
+    "chart_subtitle": "Distribution of students by category",
+    "exportPDF": "Export PDF",
+    "exporting": "Exporting..."
+  },
+  "account": {
+    "title": "Account settings",
+    "subtitleTeacher": "Update your password and profile picture.",
+    "subtitleAdmin": "Administrators cannot change their password from the app.",
+    "passwordSectionTitle": "Password",
+    "currentPasswordPlaceholder": "Current password",
+    "newPasswordPlaceholder": "New password",
+    "confirmPasswordPlaceholder": "Confirm new password",
+    "saving": "Saving…",
+    "savePassword": "Save password",
+    "resetByEmail": "Change via email",
+    "resetByEmailTitle": "Request reset link to your email",
+    "requesting": "Requesting…",
+    "avatarSectionTitle": "Avatar",
+    "avatarAlt": "User avatar",
+    "uploadLabel": "Upload image (jpg/png/webp)",
+    "deleteAvatar": "Delete avatar",
+    "messages": {
+      "passwordUpdated": "Password updated",
+      "avatarDeleted": "Avatar removed",
+      "avatarUpdated": "✅ Avatar updated",
+      "resetLinkSent": "✉️ If your account is valid, you will receive a password reset link."
+    },
+    "errors": {
+      "onlyTeacher": "⚠️ Only teachers can change their password in the app.",
+      "needCurrent": "❌ Enter your current password",
+      "newTooShort": "❌ The new password must be at least 6 characters",
+      "notMatch": "❌ Passwords do not match",
+      "sameAsOld": "❌ The new password must be different from the current one",
+      "changeFailedGeneric": "Error changing password",
+      "avatarDeleteFailed": "Error deleting avatar",
+      "avatarUploadFailed": "Error uploading avatar",
+      "resetLinkFailed": "Could not request reset link"
+    }
+  },
+  "students": {
+    "title": "Students",
+    "subtitleTeacher": "Students eligible for the subjects you teach (only related programs).",
+    "subtitleAdmin": "View, search and upload students from a file.",
+    "buttons": {
+      "downloadTemplate": "Download template (XLSX)",
+      "importFile": "Import (.xlsx/.xls/.csv)",
+      "search": "Search"
+    },
+    "searchPlaceholder": "Search (no_control, first name, last names)",
+    "filters": {
+      "allCareers": "All programs"
+    },
+    "table": {
+      "noControl": "ID number",
+      "name": "First name",
+      "lastName1": "Last name (paternal)",
+      "lastName2": "Last name (maternal)",
+      "career": "Program",
+      "gender": "Gender",
+      "birthDate": "Birth date",
+      "entryDate": "Entry date",
+      "status": "Status",
+      "loading": "Loading…",
+      "empty": "No results."
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "actions": {
+      "drop": "Drop",
+      "dropTitle": "Drop the student"
+    },
+    "labels": {
+      "dropped": "Dropped"
+    },
+    "footer": {
+      "total": "{{count}} total"
+    },
+    "pagination": {
+      "prev": "Previous",
+      "next": "Next",
+      "pageOf": "Page {{page}} / {{maxPage}}",
+      "perPage": "{{n}} / page"
+    },
+    "messages": {
+      "dropped": "✅ Student permanently dropped"
+    },
+    "errors": {
+      "loadFailed": "Error loading students: {{message}}"
+    },
+    "import": {
+      "summaryBase": "✅ Import: {{inserted}} inserted, {{errors}} errors",
+      "duplicatesInFile": "Skipped (duplicates in file): {{count}}",
+      "duplicatesInDb": "Skipped (already in DB): {{count}}",
+      "errorGeneric": "Error importing"
+    },
+    "dropModal": {
+      "title": "Drop student",
+      "studentIdLabel": "Student ID *",
+      "dropDateLabel": "Drop date *",
+      "reasonLabel": "Drop reason *",
+      "selectReason": "Select a reason",
+      "helperText": "The student will be marked as inactive and all active enrollments will be dropped.",
+      "confirm": "Drop",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "reasons": {
+        "academico": "Academic dropout",
+        "conductual": "Excessive absences",
+        "salud": "Health issues",
+        "personal": "Family or personal situation",
+        "economico": "Economic problems",
+        "otro": "Other"
+      }
+    }
+  },
+  "subjects": {
+    "title": "Subjects",
+    "subtitle": "Create, list, search and import subjects.",
+    "form": {
+      "nameLabel": "Name",
+      "namePlaceholder": "Name",
+      "unitsLabel": "Units (1–10)",
+      "unitsPlaceholder": "Units",
+      "creditsLabel": "Credits (1–30)",
+      "creditsPlaceholder": "Credits",
+      "careerLabel": "Program (optional to link)",
+      "careerPlaceholder": "Program…",
+      "semesterLabel": "Semester (1–12)",
+      "semesterPlaceholder": "Semester",
+      "submit": "Save subject"
+    },
+    "search": {
+      "placeholder": "Search (code, name)"
+    },
+    "buttons": {
+      "downloadTemplate": "Download template (XLSX)",
+      "importFile": "Import (.xlsx/.csv)",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "table": {
+      "code": "Code",
+      "name": "Name",
+      "career": "Program",
+      "units": "Units",
+      "credits": "Credits",
+      "loading": "Loading…",
+      "empty": "No subjects."
+    },
+    "messages": {
+      "nameRequired": "Please fill in the subject name.",
+      "linkExists": "❌ This subject is already linked to that program.",
+      "linkCreatedExisting": "✅ Link created with existing subject",
+      "createdAndLinked": "✅ Subject created and linked",
+      "alreadyExisted": "ℹ️ The subject already existed (no changes). You can link it to a program.",
+      "created": "✅ Subject created",
+      "deleted": "✅ Subject deleted",
+      "updated": "✅ Subject updated"
+    },
+    "errors": {
+      "loadFailed": "Error loading subjects",
+      "createFailed": "Error creating subject",
+      "deleteFailed": "Error deleting subject",
+      "updateFailed": "Error updating subject",
+      "importNoSheets": "The file does not contain any sheets.",
+      "importFailed": "Error importing subjects"
+    },
+    "import": {
+      "summaryBase": "✅ Imported: {{inserted}} / Errors: {{errors}}",
+      "duplicatesInFile": "Skipped (duplicates in file): {{count}}",
+      "duplicatesInUI": "Skipped (already existed in UI): {{count}}",
+      "duplicatesInDb": "Skipped (already existed in DB): {{count}}"
+    },
+    "deleteModal": {
+      "title": "Delete subject",
+      "subtitle": "This action cannot be undone",
+      "confirmLabel": "Delete",
+      "question": "Do you want to delete the following subject?",
+      "codeLabel": "Code"
+    },
+    "editModal": {
+      "title": "Edit subject",
+      "nameLabel": "Name",
+      "unitsLabel": "Units",
+      "creditsLabel": "Credits",
+      "cancel": "Cancel",
+      "save": "Save"
+    }
+  },
+  "teachers": {
+  "title": "Teachers",
+  "subtitle": "Create, list, search and import teachers. Email is generated automatically.",
+  "form": {
+    "rfcPlaceholder": "RFC",
+    "firstNamePlaceholder": "First name(s)",
+    "lastName1Placeholder": "Last name (paternal)",
+    "lastName2Placeholder": "Last name (maternal, optional)",
+    "genderPlaceholder": "Gender (optional)",
+    "previewEmailLabel": "Email (auto): {{email}}",
+    "submit": "Save teacher"
+  },
+  "search": {
+    "placeholder": "Search (RFC, name, email)"
+  },
+  "buttons": {
+    "downloadTemplate": "Download template (XLSX)",
+    "importFile": "Import (.xlsx/.csv)",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "table": {
+    "rfc": "RFC",
+    "firstName": "First name",
+    "lastName1": "Last name (paternal)",
+    "lastName2": "Last name (maternal)",
+    "email": "Email",
+    "gender": "Gender",
+    "loading": "Loading…",
+    "empty": "No teachers."
+  },
+  "messages": {
+    "created": "✅ Teacher created",
+    "deleted": "✅ Teacher deleted",
+    "updated": "✅ Teacher updated"
+  },
+  "errors": {
+    "loadFailed": "Error loading teachers",
+    "requiredFields": "Fill in RFC, first name and paternal last name.",
+    "invalidRFC": "Invalid RFC. Check SAT format.",
+    "duplicateRFCList": "A teacher with this RFC already exists.",
+    "duplicateRFCDB": "RFC already exists in the database.",
+    "createFailed": "Error creating teacher",
+    "updateFailed": "Error updating teacher",
+    "deleteFailed": "Error deleting teacher",
+    "importNoSheets": "The file does not contain any sheets.",
+    "importFailed": "Error importing teachers"
+  },
+  "import": {
+    "summaryBase": "✅ Import: {{inserted}} inserted, {{errors}} errors",
+    "invalidRows": "Invalid rows: {{count}}",
+    "duplicatesInFile": "Duplicates in file (RFC): {{count}}",
+    "duplicatesInUI": "Already existed in list (RFC): {{count}}",
+    "duplicatesInDb": "Already existed in DB (RFC): {{count}}"
+  },
+  "deleteModal": {
+    "title": "Delete teacher",
+    "subtitle": "This action cannot be undone",
+    "confirmLabel": "Delete",
+    "question": "Do you want to delete the following teacher?",
+    "rfcLabel": "RFC"
+  },
+  "editModal": {
+    "title": "Edit teacher",
+    "rfcLabel": "RFC",
+    "firstNameLabel": "First name",
+    "lastName1Label": "Last name (paternal)",
+    "lastName2Label": "Last name (maternal)",
+    "emailLabel": "Email (auto)",
+    "emailHint": "It will be updated automatically if you change the first name or paternal last name, ensuring uniqueness.",
+    "genderLabel": "Gender",
+    "genderPlaceholder": "Unspecified",
+    "cancel": "Cancel",
+    "save": "Save"
+  }
+}
+}

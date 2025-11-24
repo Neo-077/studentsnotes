@@ -1,11 +1,12 @@
-// src/pages/Account.tsx
 import { useState } from 'react'
 import api from '../lib/api'
 import useAuth from '../store/useAuth'
+import { useTranslation } from 'react-i18next'
 
 export default function Account() {
   const { role, refresh } = useAuth()
   const isMaestro = role === 'maestro'
+  const { t } = useTranslation()
 
   const [oldPw, setOldPw] = useState('')
   const [pw, setPw] = useState('')
@@ -20,22 +21,27 @@ export default function Account() {
     if (loading) return
     setMsg(null)
 
-    if (!isMaestro) return setMsg('⚠️ Solo los docentes pueden cambiar contraseña en la app.')
-    if (oldPw.length < 6) return setMsg('❌ Escribe tu contraseña actual')
-    if (pw.length < 6) return setMsg('❌ La nueva contraseña debe tener al menos 6 caracteres')
-    if (pw !== pw2) return setMsg('❌ Las contraseñas no coinciden')
-    if (pw === oldPw) return setMsg('❌ La nueva contraseña debe ser distinta a la actual')
+    if (!isMaestro) return setMsg(t('account.errors.onlyTeacher'))
+    if (oldPw.length < 6) return setMsg(t('account.errors.needCurrent'))
+    if (pw.length < 6) return setMsg(t('account.errors.newTooShort'))
+    if (pw !== pw2) return setMsg(t('account.errors.notMatch'))
+    if (pw === oldPw) return setMsg(t('account.errors.sameAsOld'))
 
     setLoading(true)
     try {
-      await api.post('/auth/change-password', { old_password: oldPw, new_password: pw }, { headers: { 'x-no-retry': '1' } })
+      await api.post(
+        '/auth/change-password',
+        { old_password: oldPw, new_password: pw },
+        { headers: { 'x-no-retry': '1' } }
+      )
       await refresh()
-      setMsg('Contraseña actualizada')
-      setOldPw(''); setPw(''); setPw2('')
+      setMsg(t('account.messages.passwordUpdated'))
+      setOldPw('')
+      setPw('')
+      setPw2('')
     } catch (e: any) {
-      // nuestro api.ts lanza Error(message)
-      const message = e?.message || 'Error al cambiar la contraseña'
-      setMsg(` ${message}`)
+      const message = e?.message || t('account.errors.changeFailedGeneric')
+      setMsg(message)
     } finally {
       setLoading(false)
     }
@@ -47,9 +53,9 @@ export default function Account() {
       await api.delete('/auth/avatar')
       setAvatarUrl(undefined)
       await refresh()
-      setMsg('Avatar eliminado')
+      setMsg(t('account.messages.avatarDeleted'))
     } catch (e: any) {
-      setMsg((e.message || 'Error eliminando avatar'))
+      setMsg(e.message || t('account.errors.avatarDeleteFailed'))
     }
   }
 
@@ -60,10 +66,10 @@ export default function Account() {
       fd.append('file', file, file.name)
       const res = await api.put('/auth/avatar', fd as any)
       if (res?.url) setAvatarUrl(res.url)
-      setMsg('✅ Avatar actualizado')
+      setMsg(t('account.messages.avatarUpdated'))
       await refresh()
     } catch (e: any) {
-      setMsg(' ' + (e.message || 'Error subiendo avatar'))
+      setMsg(e.message || t('account.errors.avatarUploadFailed'))
     }
   }
 
@@ -73,9 +79,9 @@ export default function Account() {
     setSendingLink(true)
     try {
       await api.post('/auth/request-password-reset', {})
-      setMsg('✉️ Si tu cuenta es válida, recibirás un enlace para restablecer la contraseña.')
+      setMsg(t('account.messages.resetLinkSent'))
     } catch (e: any) {
-      setMsg((e?.message || 'No se pudo solicitar el enlace'))
+      setMsg(e?.message || t('account.errors.resetLinkFailed'))
     } finally {
       setSendingLink(false)
     }
@@ -84,52 +90,98 @@ export default function Account() {
   return (
     <div className="grid gap-6">
       <div>
-        <h2 className="text-2xl font-semibold">Configuración de cuenta</h2>
+        <h2 className="text-2xl font-semibold">
+          {t('account.title')}
+        </h2>
         <p className="text-sm text-slate-600">
           {isMaestro
-            ? 'Actualiza tu contraseña y tu foto de perfil.'
-            : 'Los administradores no pueden cambiar contraseña desde la app.'}
+            ? t('account.subtitleTeacher')
+            : t('account.subtitleAdmin')}
         </p>
       </div>
 
-      <div className={`rounded-2xl border bg-white p-4 shadow-sm max-w-xl ${!isMaestro ? 'opacity-60 pointer-events-none' : ''}`}>
-        <h3 className="font-medium mb-3">Contraseña</h3>
+      <div
+        className={`rounded-2xl border bg-white p-4 shadow-sm max-w-xl ${
+          !isMaestro ? 'opacity-60 pointer-events-none' : ''
+        }`}
+      >
+        <h3 className="font-medium mb-3">
+          {t('account.passwordSectionTitle')}
+        </h3>
         <form onSubmit={changePassword} className="grid gap-3">
-          <input type="password" placeholder="Contraseña actual" className="h-10 rounded-xl border px-3"
-                 value={oldPw} onChange={(e) => setOldPw(e.target.value)} />
-          <input type="password" placeholder="Nueva contraseña" className="h-10 rounded-xl border px-3"
-                 value={pw} onChange={(e) => setPw(e.target.value)} />
-          <input type="password" placeholder="Confirmar contraseña nueva" className="h-10 rounded-xl border px-3"
-                 value={pw2} onChange={(e) => setPw2(e.target.value)} />
+          <input
+            type="password"
+            placeholder={t('account.currentPasswordPlaceholder')}
+            className="h-10 rounded-xl border px-3"
+            value={oldPw}
+            onChange={(e) => setOldPw(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder={t('account.newPasswordPlaceholder')}
+            className="h-10 rounded-xl border px-3"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder={t('account.confirmPasswordPlaceholder')}
+            className="h-10 rounded-xl border px-3"
+            value={pw2}
+            onChange={(e) => setPw2(e.target.value)}
+          />
 
           <div className="flex items-center gap-3">
-            <button disabled={loading || !isMaestro}
-                    className="h-10 rounded-lg bg-blue-600 px-4 text-white shadow-sm disabled:opacity-60">
-              {loading ? 'Guardando…' : 'Guardar contraseña'}
+            <button
+              disabled={loading || !isMaestro}
+              className="h-10 rounded-lg bg-blue-600 px-4 text-white shadow-sm disabled:opacity-60"
+            >
+              {loading ? t('account.saving') : t('account.savePassword')}
             </button>
-            <button type="button" onClick={requestResetLink}
-                    disabled={sendingLink || !isMaestro}
-                    className="h-10 rounded-lg border px-4 text-sm disabled:opacity-60"
-                    title="Solicitar enlace de restablecimiento al correo">
-              {sendingLink ? 'Solicitando…' : 'Cambiar por correo'}
+            <button
+              type="button"
+              onClick={requestResetLink}
+              disabled={sendingLink || !isMaestro}
+              className="h-10 rounded-lg border px-4 text-sm disabled:opacity-60"
+              title={t('account.resetByEmailTitle')}
+            >
+              {sendingLink ? t('account.requesting') : t('account.resetByEmail')}
             </button>
           </div>
         </form>
       </div>
 
       <div className="rounded-2xl border bg-white p-4 shadow-sm max-w-xl">
-        <h3 className="font-medium mb-3">Avatar</h3>
+        <h3 className="font-medium mb-3">
+          {t('account.avatarSectionTitle')}
+        </h3>
         <div className="flex items-center gap-4">
           <div className="size-16 rounded-full bg-slate-200 overflow-hidden ring-1 ring-slate-300">
-            {avatarUrl ? <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" /> : null}
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={t('account.avatarAlt')}
+                className="w-full h-full object-cover"
+              />
+            ) : null}
           </div>
           <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
-            Subir imagen (jpg/png/webp)
-            <input type="file" accept="image/*" className="hidden"
-                   onChange={(e) => e.target.files?.[0] && onUploadAvatar(e.target.files[0])} />
+            {t('account.uploadLabel')}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) =>
+                e.target.files?.[0] && onUploadAvatar(e.target.files[0])
+              }
+            />
           </label>
-          <button type="button" onClick={onDeleteAvatar} className="rounded-lg border px-3 py-2 text-sm">
-            Eliminar avatar
+          <button
+            type="button"
+            onClick={onDeleteAvatar}
+            className="rounded-lg border px-3 py-2 text-sm"
+          >
+            {t('account.deleteAvatar')}
           </button>
         </div>
       </div>
