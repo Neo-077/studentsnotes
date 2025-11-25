@@ -4,10 +4,13 @@ import api from '../lib/api'
 import { Catalogos } from '../lib/catalogos'
 import * as XLSX from 'xlsx'
 import ConfirmModal from '../components/ConfirmModal'
+import { useTranslation } from 'react-i18next'
 
-export default function Materias(){
+export default function Materias() {
   type Materia = { id_materia: number; clave?: string; nombre: string; unidades: number; creditos: number }
   type RelMC = { id_materia:number; id_carrera:number; semestre:number | null; carrera?: { nombre:string; clave?: string } }
+
+  const { t } = useTranslation()
 
   const [rows, setRows] = useState<Materia[]>([])
   const [carreras, setCarreras] = useState<any[]>([])
@@ -57,7 +60,8 @@ export default function Materias(){
   const reqRef = useRef(0)
   async function load(silent = false){
     const my = ++reqRef.current
-    if (!silent) setLoading(true); setMsg(null)
+    if (!silent) setLoading(true)
+    setMsg(null)
     try {
       const [mats, cars, rels] = await Promise.all([
         Catalogos.materias(),
@@ -70,7 +74,10 @@ export default function Materias(){
         setRelaciones(Array.isArray(rels) ? rels : [])
       }
     }
-    catch(e:any){ setMsg(e.message || 'Error cargando materias') }
+    catch(e:any){
+      const message = e?.message || ''
+      setMsg(message || t('subjects.errors.loadFailed'))
+    }
     finally{
       if (reqRef.current === my){ if (!silent) setLoading(false) }
     }
@@ -114,7 +121,7 @@ export default function Materias(){
       ...listaMaterias,
       [],
       ['Instrucciones'],
-      ["Obligatorio: nombre, unidades, creditos."],
+      ['Obligatorio: nombre, unidades, creditos.'],
       ["Opcional: 'carrera' puede ser id, clave o nombre exacto."],
       ["Opcional: 'semestre' (1-12) si se vinculará con carrera."],
       ["Regla: NO se permite duplicar (materia,carrera). La misma materia SÍ puede estar en otra carrera."],
@@ -162,7 +169,8 @@ export default function Materias(){
 
   /** ===== Crear con validación (materia única por carrera) ===== **/
   async function onCreate(e: React.FormEvent){
-    e.preventDefault(); setMsg(null)
+    e.preventDefault()
+    setMsg(null)
     const payload = {
       nombre: norm(f.nombre),
       unidades: Number(f.unidades||5),
@@ -170,7 +178,10 @@ export default function Materias(){
     }
     const idCarr = carreraInputToId(f.id_carrera)
 
-    if (!payload.nombre){ setMsg('Completa el nombre de la materia.'); return }
+    if (!payload.nombre){
+      setMsg(t('subjects.messages.nameRequired'))
+      return
+    }
 
     // Si existe materia con ese nombre, reutilizamos
     const existing = (rows || []).find(m => norm(m.nombre) === payload.nombre)
@@ -179,7 +190,7 @@ export default function Materias(){
     if (existing && idCarr){
       const dupKey = materiaKey(existing.nombre, idCarr)
       if (existingPairs.has(dupKey)){
-        setMsg('❌ Ya existe esta materia vinculada a esa carrera.')
+        setMsg(t('subjects.messages.linkExists'))
         return
       }
     }
@@ -201,29 +212,47 @@ export default function Materias(){
       if (id_materia && idCarr && f.semestre){
         const dupKey = materiaKey(payload.nombre, idCarr)
         if (existingPairs.has(dupKey)){
-          setMsg('❌ Ya existe esta materia vinculada a esa carrera.')
+          setMsg(t('subjects.messages.linkExists'))
           return
         }
         await api.post('/materia-carrera', {
           id_materia, id_carrera: idCarr, semestre: Number(f.semestre)
         })
-        setMsg(existing ? '✅ Vinculación creada con materia existente' : '✅ Materia creada y vinculada')
+        setMsg(existing ? t('subjects.messages.linkCreatedExisting') : t('subjects.messages.createdAndLinked'))
       } else {
-        setMsg(existing ? 'ℹ️ La materia ya existía (sin cambios). Puedes vincularla a una carrera.' : '✅ Materia creada')
+        setMsg(existing ? t('subjects.messages.alreadyExisted') : t('subjects.messages.created'))
       }
 
       setF({ nombre:'', unidades:'5', creditos:'5', id_carrera:'', semestre:'' })
       await load()
     }
-    catch(e:any){ setMsg('❌ '+(e.message||'Error al crear materia')) }
+    catch(e:any){
+      setMsg('❌ '+(e.message || t('subjects.errors.createFailed')))
+    }
   }
 
-  function askDelete(m: Materia){ setConfirmDel({ open:true, id: m.id_materia, nombre: m.nombre, clave: m.clave }) }
-  function askEdit(m: Materia){ setEdit({ open:true, id: m.id_materia, nombre: m.nombre, unidades: String(m.unidades), creditos: String(m.creditos) }) }
+  function askDelete(m: Materia){
+    setConfirmDel({ open:true, id: m.id_materia, nombre: m.nombre, clave: m.clave })
+  }
+
+  function askEdit(m: Materia){
+    setEdit({ open:true, id: m.id_materia, nombre: m.nombre, unidades: String(m.unidades), creditos: String(m.creditos) })
+  }
+
   async function confirmDelete(){
-    if (!confirmDel.id){ setConfirmDel({ open:false }); return }
-    try{ await api.delete(`/materias/${confirmDel.id}`); setConfirmDel({ open:false }); await load(); setMsg('✅ Materia eliminada') }
-    catch(e:any){ setMsg('❌ '+(e.message||'Error eliminando materia')) }
+    if (!confirmDel.id){
+      setConfirmDel({ open:false })
+      return
+    }
+    try{
+      await api.delete(`/materias/${confirmDel.id}`)
+      setConfirmDel({ open:false })
+      await load()
+      setMsg(t('subjects.messages.deleted'))
+    }
+    catch(e:any){
+      setMsg('❌ '+(e.message || t('subjects.errors.deleteFailed')))
+    }
   }
 
   /** ===== Importación con anti-duplicados (materia,carrera) ===== **/
@@ -241,12 +270,13 @@ export default function Materias(){
   }
 
   async function onImport(file: File) {
-    setMsg(null); setLoading(true)
+    setMsg(null)
+    setLoading(true)
     try{
       const buf = await file.arrayBuffer()
       const wb = XLSX.read(buf, { type: 'array' })
       const sheet = wb.Sheets[wb.SheetNames[0]]
-      if (!sheet) throw new Error('El archivo no contiene hojas.')
+      if (!sheet) throw new Error(t('subjects.errors.importNoSheets'))
 
       // 1) Normalizar y descartar vacíos
       let incoming = sheetToRows(sheet).filter(r => !!r.nombre)
@@ -269,7 +299,6 @@ export default function Materias(){
       const dupVsUI = uniqueInFile.length - notInUI.length
 
       // 4) (Opcional) Pre-chequeo en servidor para pares existentes
-      //    Endpoint sugerido: POST /materias/dedup-check  body: { pairs: [{ nombre:string, id_carrera:number }] } -> { exists: string[] } (keys normalizadas)
       let dupVsDb = 0
       let filtered = notInUI
       try {
@@ -307,15 +336,25 @@ export default function Materias(){
       // 6) Subir a tu endpoint bulk
       const rep = await api.post('/materias/bulk', fd as any)
 
-      setMsg(
-        `✅ Importadas: ${rep?.summary?.inserted ?? 0} / Errores: ${rep?.summary?.errors ?? 0}` +
-        (dupInFile.length ? ` | Omitidas (duplicadas en archivo): ${dupInFile.length}` : '') +
-        (dupVsUI ? ` | Omitidas (ya existían en UI): ${dupVsUI}` : '') +
-        (dupVsDb ? ` | Omitidas (ya existían en BD): ${dupVsDb}` : '')
-      )
+      const inserted = rep?.summary?.inserted ?? 0
+      const errors = rep?.summary?.errors ?? 0
+
+      const parts: string[] = []
+      parts.push(t('subjects.import.summaryBase', { inserted, errors }))
+      if (dupInFile.length) {
+        parts.push(t('subjects.import.duplicatesInFile', { count: dupInFile.length }))
+      }
+      if (dupVsUI) {
+        parts.push(t('subjects.import.duplicatesInUI', { count: dupVsUI }))
+      }
+      if (dupVsDb) {
+        parts.push(t('subjects.import.duplicatesInDb', { count: dupVsDb }))
+      }
+
+      setMsg(parts.join(' | '))
       await load()
     } catch (err:any){
-      setMsg('❌ '+(err.message||'Error importando materias'))
+      setMsg('❌ '+(err.message || t('subjects.errors.importFailed')))
     } finally {
       const input = document.querySelector<HTMLInputElement>('input[type=file]')
       if (input) input.value = ''
@@ -328,49 +367,104 @@ export default function Materias(){
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold">Materias</h2>
-          <p className="text-sm text-slate-600">Alta, listado, búsqueda e importación de materias.</p>
+          <h2 className="text-2xl font-semibold">{t('subjects.title')}</h2>
+          <p className="text-sm text-slate-600">
+            {t('subjects.subtitle')}
+          </p>
         </div>
       </div>
 
       <form onSubmit={onCreate} className="rounded-2xl border bg-white p-3 shadow-sm grid md:grid-cols-4 gap-3">
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">Nombre</label>
-          <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Nombre" value={f.nombre} onChange={e=>setF({...f, nombre:e.target.value})} />
+          <label className="text-xs text-slate-500">{t('subjects.form.nameLabel')}</label>
+          <input
+            className="h-10 rounded-xl border px-3 text-sm"
+            placeholder={t('subjects.form.namePlaceholder')}
+            value={f.nombre}
+            onChange={e=>setF({...f, nombre:e.target.value})}
+          />
         </div>
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">Unidades (1–10)</label>
-          <input className="h-10 rounded-xl border px-3 text-sm" type="number" min={1} max={10} placeholder="Unidades" value={f.unidades} onChange={e=>setF({...f, unidades:e.target.value})} />
+          <label className="text-xs text-slate-500">{t('subjects.form.unitsLabel')}</label>
+          <input
+            className="h-10 rounded-xl border px-3 text-sm"
+            type="number"
+            min={1}
+            max={10}
+            placeholder={t('subjects.form.unitsPlaceholder')}
+            value={f.unidades}
+            onChange={e=>setF({...f, unidades:e.target.value})}
+          />
         </div>
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">Créditos (1–30)</label>
-          <input className="h-10 rounded-xl border px-3 text-sm" type="number" min={1} max={30} placeholder="Créditos" value={f.creditos} onChange={e=>setF({...f, creditos:e.target.value})} />
+          <label className="text-xs text-slate-500">{t('subjects.form.creditsLabel')}</label>
+          <input
+            className="h-10 rounded-xl border px-3 text-sm"
+            type="number"
+            min={1}
+            max={30}
+            placeholder={t('subjects.form.creditsPlaceholder')}
+            value={f.creditos}
+            onChange={e=>setF({...f, creditos:e.target.value})}
+          />
         </div>
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">Carrera (opcional para vincular)</label>
-          <select className="h-10 rounded-xl border px-3 text-sm" value={f.id_carrera} onChange={e=> setF({...f, id_carrera: e.target.value})}>
-            <option value="">Carrera…</option>
-            {carreras.map(c => <option key={c.id_carrera} value={c.id_carrera}>{c.clave ? `${c.clave} — ` : ''}{c.nombre}</option>)}
+          <label className="text-xs text-slate-500">{t('subjects.form.careerLabel')}</label>
+          <select
+            className="h-10 rounded-xl border px-3 text-sm"
+            value={f.id_carrera}
+            onChange={e=> setF({...f, id_carrera: e.target.value})}
+          >
+            <option value="">{t('subjects.form.careerPlaceholder')}</option>
+            {carreras.map(c => (
+              <option key={c.id_carrera} value={c.id_carrera}>
+                {c.clave ? `${c.clave} — ` : ''}{c.nombre}
+              </option>
+            ))}
           </select>
         </div>
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">Semestre (1–12)</label>
-          <input className="h-10 rounded-xl border px-3 text-sm" placeholder="Semestre" type="number" min={1} max={12} value={f.semestre} onChange={e=> setF({...f, semestre: e.target.value})} />
+          <label className="text-xs text-slate-500">{t('subjects.form.semesterLabel')}</label>
+          <input
+            className="h-10 rounded-xl border px-3 text-sm"
+            placeholder={t('subjects.form.semesterPlaceholder')}
+            type="number"
+            min={1}
+            max={12}
+            value={f.semestre}
+            onChange={e=> setF({...f, semestre: e.target.value})}
+          />
         </div>
         <div className="md:col-span-4 flex items-center gap-2">
-          <button className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm">Guardar materia</button>
+          <button className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm">
+            {t('subjects.form.submit')}
+          </button>
           {msg && <span className="text-sm">{msg}</span>}
         </div>
       </form>
 
       <div className="rounded-2xl border bg-white p-3 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar (clave, nombre)" className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 text-sm"/>
-          <button onClick={downloadTemplateXLSX} className="rounded-lg border px-3 py-2 text-sm">Descargar plantilla (XLSX)</button>
+          <input
+            value={q}
+            onChange={e=>setQ(e.target.value)}
+            placeholder={t('subjects.search.placeholder')}
+            className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 text-sm"
+          />
+          <button
+            onClick={downloadTemplateXLSX}
+            className="rounded-lg border px-3 py-2 text-sm"
+          >
+            {t('subjects.buttons.downloadTemplate')}
+          </button>
           <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
-            Importar (.xlsx/.csv)
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden"
-                   onChange={(e)=> e.target.files?.[0] && onImport(e.target.files[0]) }/>
+            {t('subjects.buttons.importFile')}
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e)=> e.target.files?.[0] && onImport(e.target.files[0]) }
+            />
           </label>
         </div>
 
@@ -378,14 +472,27 @@ export default function Materias(){
           <table className="min-w-full text-sm">
             <thead>
               <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left">
-                <th>Clave</th><th>Nombre</th><th>Carrera</th><th>Unidades</th><th>Créditos</th><th></th>
+                <th>{t('subjects.table.code')}</th>
+                <th>{t('subjects.table.name')}</th>
+                <th>{t('subjects.table.career')}</th>
+                <th>{t('subjects.table.units')}</th>
+                <th>{t('subjects.table.credits')}</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {loading && filasMateriaCarrera.length===0 ? (
-                <tr><td colSpan={6} className="px-3 py-6 text-center">Cargando…</td></tr>
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center">
+                    {t('subjects.table.loading')}
+                  </td>
+                </tr>
               ) : list.length===0 ? (
-                <tr><td colSpan={6} className="px-3 py-6 text-center">Sin materias.</td></tr>
+                <tr>
+                  <td colSpan={6} className="px-3 py-6 text-center">
+                    {t('subjects.table.empty')}
+                  </td>
+                </tr>
               ) : list.map(m => (
                 <tr key={`${m.id_materia}-${m.carreraTexto}`} className="[&>td]:px-3 [&>td]:py-2">
                   <td className="font-mono text-xs">{m.clave ?? '—'}</td>
@@ -397,11 +504,15 @@ export default function Materias(){
                     <button
                       onClick={()=> askEdit({ id_materia: m.id_materia, nombre: m.nombre, unidades: m.unidades, creditos: m.creditos } as any)}
                       className="px-3 py-1.5 text-xs"
-                    >Editar</button>
+                    >
+                      {t('subjects.buttons.edit')}
+                    </button>
                     <button
                       onClick={()=> askDelete({ id_materia: m.id_materia, nombre: m.nombre, clave: m.clave } as any)}
                       className="px-3 py-1.5 text-xs"
-                    >Eliminar</button>
+                    >
+                      {t('subjects.buttons.delete')}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -412,55 +523,104 @@ export default function Materias(){
 
       <ConfirmModal
         open={confirmDel.open}
-        title="Eliminar materia"
-        subtitle="Esta acción no se puede deshacer"
-        confirmLabel="Eliminar"
+        title={t('subjects.deleteModal.title')}
+        subtitle={t('subjects.deleteModal.subtitle')}
+        confirmLabel={t('subjects.deleteModal.confirmLabel')}
         danger
         onCancel={()=> setConfirmDel({ open:false })}
         onConfirm={confirmDelete}
       >
         <div className="space-y-2 text-sm">
-          <div>¿Deseas eliminar la siguiente materia?</div>
+          <div>{t('subjects.deleteModal.question')}</div>
           <div className="rounded-lg border bg-slate-50 px-3 py-2">
             <div className="font-medium">{confirmDel.nombre}</div>
-            <div className="text-slate-600">Clave: {confirmDel.clave ?? '—'}</div>
+            <div className="text-slate-600">
+              {t('subjects.deleteModal.codeLabel')}: {confirmDel.clave ?? '—'}
+            </div>
           </div>
         </div>
       </ConfirmModal>
 
       {edit.open && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={()=> setEdit({ open:false })}>
-          <div className="w-full max-w-md rounded-2xl border bg-white shadow-lg" onClick={(e)=> e.stopPropagation()}>
-            <div className="px-4 py-3 border-b"><div className="text-sm font-semibold">Editar materia</div></div>
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+          onClick={()=> setEdit({ open:false })}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border bg-white shadow-lg"
+            onClick={(e)=> e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b">
+              <div className="text-sm font-semibold">
+                {t('subjects.editModal.title')}
+              </div>
+            </div>
             <div className="px-4 py-4 grid gap-3">
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">Nombre</label>
-                <input className="h-10 rounded-xl border px-3 text-sm" value={edit.nombre ?? ''} onChange={e=> setEdit(s=>({...s, nombre:e.target.value}))} />
+                <label className="text-xs text-slate-600">
+                  {t('subjects.editModal.nameLabel')}
+                </label>
+                <input
+                  className="h-10 rounded-xl border px-3 text-sm"
+                  value={edit.nombre ?? ''}
+                  onChange={e=> setEdit(s=>({...s, nombre:e.target.value}))}
+                />
               </div>
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">Unidades</label>
-                <input type="number" min={1} max={10} className="h-10 rounded-xl border px-3 text-sm" value={edit.unidades ?? ''} onChange={e=> setEdit(s=>({...s, unidades:e.target.value}))} />
+                <label className="text-xs text-slate-600">
+                  {t('subjects.editModal.unitsLabel')}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  className="h-10 rounded-xl border px-3 text-sm"
+                  value={edit.unidades ?? ''}
+                  onChange={e=> setEdit(s=>({...s, unidades:e.target.value}))}
+                />
               </div>
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">Créditos</label>
-                <input type="number" min={1} max={30} className="h-10 rounded-xl border px-3 text-sm" value={edit.creditos ?? ''} onChange={e=> setEdit(s=>({...s, creditos:e.target.value}))} />
+                <label className="text-xs text-slate-600">
+                  {t('subjects.editModal.creditsLabel')}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  className="h-10 rounded-xl border px-3 text-sm"
+                  value={edit.creditos ?? ''}
+                  onChange={e=> setEdit(s=>({...s, creditos:e.target.value}))}
+                />
               </div>
             </div>
             <div className="flex items-center justify-end gap-2 px-4 py-3 border-t">
-              <button className="rounded-md border px-3 py-2 text-sm" onClick={()=> setEdit({ open:false })}>Cancelar</button>
-              <button className="rounded-md px-3 py-2 text-sm" style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-ctr)' }} onClick={async ()=>{
-                if (!edit.id) return setEdit({ open:false })
-                try{
-                  const payload:any = { }
-                  if (edit.nombre!=null) payload.nombre = norm(edit.nombre)
-                  if (edit.unidades!=null) payload.unidades = Number(edit.unidades)
-                  if (edit.creditos!=null) payload.creditos = Number(edit.creditos)
-                  await api.put(`/materias/${edit.id}`, payload)
-                  setMsg('✅ Materia actualizada')
-                  setEdit({ open:false })
-                  await load()
-                }catch(e:any){ setMsg('❌ '+(e.message||'Error actualizando materia')) }
-              }}>Guardar</button>
+              <button
+                className="rounded-md border px-3 py-2 text-sm"
+                onClick={()=> setEdit({ open:false })}
+              >
+                {t('subjects.editModal.cancel')}
+              </button>
+              <button
+                className="rounded-md px-3 py-2 text-sm"
+                style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-ctr)' }}
+                onClick={async ()=>{
+                  if (!edit.id) return setEdit({ open:false })
+                  try{
+                    const payload:any = { }
+                    if (edit.nombre!=null) payload.nombre = norm(edit.nombre)
+                    if (edit.unidades!=null) payload.unidades = Number(edit.unidades)
+                    if (edit.creditos!=null) payload.creditos = Number(edit.creditos)
+                    await api.put(`/materias/${edit.id}`, payload)
+                    setMsg(t('subjects.messages.updated'))
+                    setEdit({ open:false })
+                    await load()
+                  }catch(e:any){
+                    setMsg('❌ '+(e.message || t('subjects.errors.updateFailed')))
+                  }
+                }}
+              >
+                {t('subjects.editModal.save')}
+              </button>
             </div>
           </div>
         </div>

@@ -11,6 +11,7 @@ import {
   Line,
   Legend,
 } from 'recharts'
+import { useTranslation } from 'react-i18next'
 import api from '../lib/api'
 
 type Props = { id_grupo: number }
@@ -23,6 +24,7 @@ type Baja = {
 }
 
 export default function ParetoChart({ id_grupo }: Props) {
+  const { t } = useTranslation()
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +38,7 @@ export default function ParetoChart({ id_grupo }: Props) {
 
         // 1) Trae las inscripciones del grupo (para obtener sus ids)
         const insRes = await api.get(`/inscripciones?grupo_id=${id_grupo}`)
-        const insRows = (insRes?.rows ?? insRes?.data?.rows ?? insRes) as any[]
+        const insRows = (insRes?.rows ?? (insRes as any)?.data?.rows ?? insRes) as any[]
         const ids = new Set<number>((insRows || []).map(r => Number(r?.id_inscripcion)).filter(Boolean))
 
         if (ids.size === 0) {
@@ -48,7 +50,7 @@ export default function ParetoChart({ id_grupo }: Props) {
 
         // 2) Trae todas las bajas y filtra por los ids de inscripcion del grupo
         const bajasRes = await api.get(`/baja-materia`)
-        const bajasRaw = (bajasRes ?? bajasRes?.data ?? bajasRes?.data?.data) as Baja[] | any
+        const bajasRaw = (bajasRes ?? (bajasRes as any)?.data ?? (bajasRes as any)?.data?.data) as Baja[] | any
         const bajas: Baja[] = Array.isArray(bajasRaw) ? bajasRaw : []
 
         const rows = bajas.filter(b => ids.has(Number((b as any)?.id_inscripcion)))
@@ -79,13 +81,17 @@ export default function ParetoChart({ id_grupo }: Props) {
 
         if (alive) setData(final)
       } catch (e: any) {
-        if (alive) setError(e?.response?.data?.message || e?.message || 'No se pudo cargar el Pareto')
+        if (alive) {
+          setError(e?.response?.data?.message || e?.message || t('classGroupDetail.charts.paretoError'))
+        }
       } finally {
         if (alive) setLoading(false)
       }
     })()
-    return () => { alive = false }
-  }, [id_grupo])
+    return () => {
+      alive = false
+    }
+  }, [id_grupo, t])
 
   // ---------- helpers ----------
   function normalize(s: string) {
@@ -93,25 +99,26 @@ export default function ParetoChart({ id_grupo }: Props) {
       return s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
     } catch {
       // Fallback por si el entorno no soporta \p{Diacritic}
-      return s
-        .toLowerCase()
-        .normalize?.('NFD')
-        ?.replace(/[\u0300-\u036f]/g, '') || s.toLowerCase()
+      return (
+        s
+          .toLowerCase()
+          .normalize?.('NFD')
+          ?.replace(/[\u0300-\u036f]/g, '') || s.toLowerCase()
+      )
     }
   }
 
   function prettyMotivo(norm: string) {
-    const map: Record<string, string> = {
-      academico: 'Académico',
-      conductual: 'Conductual',
-      salud: 'Problemas de salud',
-      personal: 'Situación personal/familiar',
-      economico: 'Problemas económicos',
-      otro: 'Otro',
+    const key = norm.trim()
+
+    // Intentar mapear a razones ya definidas en el i18n (students.dropModal.reasons.*)
+    const knownKeys = ['academico', 'conductual', 'salud', 'personal', 'economico', 'otro']
+    if (knownKeys.includes(key)) {
+      return t(`students.dropModal.reasons.${key}`)
     }
-    // si llega ya bonito, respétalo
-    if (map[norm]) return map[norm]
-    return norm.replace(/\b\w/g, c => c.toUpperCase())
+
+    // Si llega ya bonito o no hay traducción definida, capitalizar palabras
+    return key.replace(/\b\w/g, c => c.toUpperCase())
   }
 
   // ---------- renders ----------
@@ -120,7 +127,9 @@ export default function ParetoChart({ id_grupo }: Props) {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 mx-auto" />
-          <p className="mt-2 text-gray-600">Cargando datos…</p>
+          <p className="mt-2 text-gray-600">
+            {t('classGroupDetail.charts.paretoLoading')}
+          </p>
         </div>
       </div>
     )
@@ -137,44 +146,67 @@ export default function ParetoChart({ id_grupo }: Props) {
   if (data.length === 0) {
     return (
       <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-        <p className="text-sm text-yellow-700">No hay bajas registradas para este grupo.</p>
+        <p className="text-sm text-yellow-700">
+          {t('classGroupDetail.charts.paretoEmpty')}
+        </p>
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Distribución de Bajas por Motivo</h2>
+      <h2 className="text-lg font-semibold">
+        {t('classGroupDetail.charts.paretoMainTitle')}
+      </h2>
       <div className="bg-white p-4 rounded-lg shadow">
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
-              <YAxis yAxisId="left" label={{ value: 'Cantidad', angle: -90, position: 'insideLeft' }} />
+              <YAxis
+                yAxisId="left"
+                label={{
+                  value: t('classGroupDetail.charts.paretoYAxisLeft'),
+                  angle: -90,
+                  position: 'insideLeft',
+                }}
+              />
               <YAxis
                 yAxisId="right"
                 orientation="right"
                 domain={[0, 100]}
-                label={{ value: 'Porcentaje %', angle: 90, position: 'insideRight' }}
+                label={{
+                  value: t('classGroupDetail.charts.paretoYAxisRight'),
+                  angle: 90,
+                  position: 'insideRight',
+                }}
               />
               <Tooltip
                 formatter={(value: any, _name: any, payload: any) => {
-                  // name mostrado en la leyenda
                   const key = payload?.dataKey
-                  if (key === 'cumPct') return [`${value}%`, 'Porcentaje acumulado']
-                  return [value, 'Cantidad']
+                  if (key === 'cumPct') {
+                    return [
+                      `${value}%`,
+                      t('classGroupDetail.charts.paretoTooltipAccumLabel'),
+                    ]
+                  }
+                  return [value, t('classGroupDetail.charts.paretoTooltipValueLabel')]
                 }}
               />
               <Legend />
-              <Bar yAxisId="left" dataKey="value" name="Cantidad" />
+              <Bar
+                yAxisId="left"
+                dataKey="value"
+                name={t('classGroupDetail.charts.paretoBarName')}
+              />
               <Line
                 yAxisId="right"
                 type="monotone"
                 dataKey="cumPct"
                 strokeWidth={2}
                 dot={false}
-                name="Porcentaje acumulado"
+                name={t('classGroupDetail.charts.paretoLineName')}
               />
             </ComposedChart>
           </ResponsiveContainer>

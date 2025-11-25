@@ -1,33 +1,36 @@
-import React, { useMemo } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import React, { useMemo } from "react"
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import { useTranslation } from "react-i18next"
 
 type GrupoResumen = {
-  total?: number;
-  aprobados?: number;
-  reprobados?: number;
-  [k: string]: any;
-};
+  total?: number
+  aprobados?: number
+  reprobados?: number
+  [k: string]: any
+}
 
 type AlumnoRow = {
-  id_inscripcion: number;
-  status?: string;
-  unidades?: Array<{ unidad: number; calificacion?: number; asistencia?: number }>;
-};
+  id_inscripcion: number
+  status?: string
+  unidades?: Array<{ unidad: number; calificacion?: number; asistencia?: number }>
+}
 
 export default function PieChartPage({
   grupo,
-  alumnos
+  alumnos,
 }: {
   grupo: GrupoResumen
   alumnos?: AlumnoRow[]
 }) {
+  const { t } = useTranslation()
+
   // Calcular aprobados y reprobados dinámicamente desde los datos de alumnos
   const { aprobados, reprobados, total } = useMemo(() => {
     if (!alumnos || alumnos.length === 0) {
       return {
         aprobados: grupo?.aprobados ?? 0,
         reprobados: grupo?.reprobados ?? 0,
-        total: grupo?.total ?? 0
+        total: grupo?.total ?? 0,
       }
     }
 
@@ -67,20 +70,23 @@ export default function PieChartPage({
     return {
       aprobados: aprobadosCount,
       reprobados: reprobadosCount,
-      total: alumnosActivos.length
+      total: alumnosActivos.length,
     }
   }, [alumnos, grupo])
 
-  const data = [
-    { name: "Aprobados", value: aprobados, color: "#10b981" },
-    { name: "Reprobados", value: reprobados, color: "#ef4444" },
-  ]
+  const data = useMemo(
+    () => [
+      { name: t("classGroupDetail.charts.piePassedLabel"), value: aprobados, color: "#10b981" },
+      { name: t("classGroupDetail.charts.pieFailedLabel"), value: reprobados, color: "#ef4444" },
+    ],
+    [aprobados, reprobados, t]
+  )
 
   if (total === 0 || (aprobados === 0 && reprobados === 0)) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-slate-500 dark:text-slate-400 text-sm">
-          No hay datos suficientes para mostrar
+          {t("classGroupDetail.charts.pieNoData")}
         </p>
       </div>
     )
@@ -89,7 +95,7 @@ export default function PieChartPage({
   return (
     <div className="w-full h-full">
       <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4">
-        Aprobados vs Reprobados
+        {t("classGroupDetail.charts.pieTitle")}
       </h3>
       <ResponsiveContainer width="100%" height={350}>
         <PieChart>
@@ -98,7 +104,9 @@ export default function PieChartPage({
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={(entry: any) => `${entry.name}: ${((entry.percent || 0) * 100).toFixed(0)}%`}
+            label={(entry: any) =>
+              `${entry.name}: ${((entry.percent || 0) * 100).toFixed(0)}%`
+            }
             outerRadius={100}
             fill="#8884d8"
             dataKey="value"
@@ -110,19 +118,22 @@ export default function PieChartPage({
           <Tooltip
             content={({ active, payload }) => {
               if (active && payload && payload.length) {
-                const data = payload[0]
+                const item = payload[0] as any
+                const value = Number(item.value) || 0
+
                 return (
                   <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700">
                     <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">
-                      {data.name}
+                      {item.name}
                     </p>
                     <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Total: <span className="font-semibold">{data.value}</span>
+                      {t("classGroupDetail.charts.pieTooltipTotalLabel")}:{" "}
+                      <span className="font-semibold">{value}</span>
                     </p>
                     <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Porcentaje:{" "}
+                      {t("classGroupDetail.charts.pieTooltipPercentLabel")}:{" "}
                       <span className="font-semibold">
-                        {((Number(data.value) / total) * 100).toFixed(1)}%
+                        {((value / total) * 100).toFixed(1)}%
                       </span>
                     </p>
                   </div>
@@ -144,10 +155,10 @@ export default function PieChartPage({
       </ResponsiveContainer>
       <div className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">
         <p>
-          Total de alumnos activos: <span className="font-semibold">{total}</span>
+          {t("classGroupDetail.charts.pieSubtitleTotalActive", { count: total })}
         </p>
         <p className="italic mt-1">
-          * Se consideran aprobados los alumnos con todas las calificaciones ≥ 70
+          {t("classGroupDetail.charts.pieSubtitleFootnote")}
         </p>
       </div>
     </div>

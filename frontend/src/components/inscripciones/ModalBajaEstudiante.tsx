@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import { getUserIdFromLocalStorage } from '../../utils/func'
 import api from '../../lib/api'
+import { useTranslation } from 'react-i18next'
 
 const motivos = [
-    { value: 'academico', label: 'Deserción académica' },
-    { value: 'conductual', label: 'Faltas excesivas' },
-    { value: 'salud', label: 'Problemas de salud' },
-    { value: 'personal', label: 'Situación familiar o personal' },
-    { value: 'economico', label: 'Problemas económicos' },
-    { value: 'otro', label: 'Otro' },
+    { value: 'academico', key: 'students.dropModal.reasons.academico' },
+    { value: 'conductual', key: 'students.dropModal.reasons.conductual' },
+    { value: 'salud', key: 'students.dropModal.reasons.salud' },
+    { value: 'personal', key: 'students.dropModal.reasons.personal' },
+    { value: 'economico', key: 'students.dropModal.reasons.economico' },
+    { value: 'otro', key: 'students.dropModal.reasons.otro' },
 ]
 
 type BajaEstudianteFormData = {
@@ -31,14 +32,15 @@ type Props = {
 
 export default function ModalBajaEstudiante({
     open,
-    title = 'Dar de baja estudiante',
+    title,
     subtitle,
-    confirmLabel = 'Dar de baja',
-    cancelLabel = 'Cancelar',
+    confirmLabel,
+    cancelLabel,
     idEstudiante,
     onConfirm,
     onCancel
 }: Props) {
+    const { t } = useTranslation()
     const userId = Number(getUserIdFromLocalStorage()) || 1
 
     const [form, setForm] = useState<BajaEstudianteFormData>({
@@ -48,6 +50,10 @@ export default function ModalBajaEstudiante({
         registrado_por: userId,
     })
     const [saving, setSaving] = useState(false)
+
+    const resolvedTitle = title ?? t('students.dropModal.title')
+    const resolvedConfirmLabel = confirmLabel ?? t('students.dropModal.confirm')
+    const resolvedCancelLabel = cancelLabel ?? t('students.dropModal.cancel')
 
     // Cerrar con ESC
     useEffect(() => {
@@ -105,14 +111,18 @@ export default function ModalBajaEstudiante({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="px-4 py-3 border-b">
-                    <div id="modal-baja-estudiante-title" className="text-sm font-semibold">{title}</div>
+                    <div id="modal-baja-estudiante-title" className="text-sm font-semibold">
+                        {resolvedTitle}
+                    </div>
                     {subtitle && <div className="text-xs text-slate-600">{subtitle}</div>}
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="px-4 py-4 grid md:grid-cols-2 gap-3">
                         <div className="grid gap-1">
-                            <label className="text-xs text-slate-600">Id de estudiante *</label>
+                            <label className="text-xs text-slate-600">
+                                {t('students.dropModal.studentIdLabel')}
+                            </label>
                             <input
                                 type="number"
                                 disabled
@@ -124,7 +134,9 @@ export default function ModalBajaEstudiante({
                         </div>
 
                         <div className="grid gap-1">
-                            <label className="text-xs text-slate-600">Fecha de baja *</label>
+                            <label className="text-xs text-slate-600">
+                                {t('students.dropModal.dropDateLabel')}
+                            </label>
                             <input
                                 type="date"
                                 className="h-10 rounded-xl border px-3 text-sm"
@@ -135,20 +147,24 @@ export default function ModalBajaEstudiante({
                         </div>
 
                         <div className="grid gap-1 md:col-span-2">
-                            <label className="text-xs text-slate-600">Motivo de baja *</label>
+                            <label className="text-xs text-slate-600">
+                                {t('students.dropModal.reasonLabel')}
+                            </label>
                             <select
                                 className="h-10 rounded-xl border px-3 text-sm"
                                 value={form.motivo_adicional}
                                 onChange={e => setForm({ ...form, motivo_adicional: e.target.value })}
                                 required
                             >
-                                <option value="">Selecciona un motivo</option>
+                                <option value="">{t('students.dropModal.selectReason')}</option>
                                 {motivos.map((m) => (
-                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                    <option key={m.value} value={m.value}>
+                                        {t(m.key)}
+                                    </option>
                                 ))}
                             </select>
                             <p className="text-[11px] text-slate-500 mt-1">
-                                El estudiante será marcado como inactivo y todas sus inscripciones activas serán dadas de baja.
+                                {t('students.dropModal.helperText')}
                             </p>
                         </div>
                     </div>
@@ -160,14 +176,14 @@ export default function ModalBajaEstudiante({
                             onClick={onCancel}
                             disabled={saving}
                         >
-                            {cancelLabel}
+                            {resolvedCancelLabel}
                         </button>
                         <button
                             type="submit"
                             disabled={saving || !form.motivo_adicional}
                             className="rounded-md px-3 py-2 text-sm disabled:opacity-60 bg-red-600 text-white hover:bg-red-700"
                         >
-                            {saving ? 'Guardando…' : confirmLabel}
+                            {saving ? t('students.dropModal.saving') : resolvedConfirmLabel}
                         </button>
                     </div>
                 </form>
@@ -175,4 +191,3 @@ export default function ModalBajaEstudiante({
         </div>
     )
 }
-

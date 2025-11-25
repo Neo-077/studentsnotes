@@ -14,157 +14,307 @@ import GrupoAulaDetalle from './routes/GrupoAulaDetalle'
 import Dashboard from './routes/Dashboard'
 import { toggleTheme, isDark } from './lib/theme'
 import Account from './routes/Account'
+import { useTranslation } from 'react-i18next'
+
+type FontSizePref = 'normal' | 'large'
+
+function applyFontSize(pref: FontSizePref) {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  root.dataset.fontSize = pref
+  try {
+    localStorage.setItem('sn_font_size', pref)
+  } catch {
+    // ignore
+  }
+}
+
+function getStoredFontSize(): FontSizePref {
+  if (typeof window === 'undefined') return 'normal'
+  try {
+    const value = localStorage.getItem('sn_font_size') as FontSizePref | null
+    return value === 'large' ? 'large' : 'normal'
+  } catch {
+    return 'normal'
+  }
+}
+
+function applyHighContrast(enabled: boolean) {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  root.classList.toggle('high-contrast', enabled)
+  try {
+    localStorage.setItem('sn_high_contrast', enabled ? '1' : '0')
+  } catch {
+    // ignore
+  }
+}
+
+function getStoredHighContrast(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return localStorage.getItem('sn_high_contrast') === '1'
+  } catch {
+    return false
+  }
+}
 
 function Shell() {
   const { user, logout, role, avatarUrl, refresh } = useAuth()
   const [dark, setDark] = useState(false)
-  useEffect(() => { setDark(isDark()) }, [])
+  const [fontSize, setFontSize] = useState<FontSizePref>('normal')
+  const [highContrast, setHighContrast] = useState(false)
+  const { t, i18n } = useTranslation()
+
+  useEffect(() => {
+    setDark(isDark())
+    const storedSize = getStoredFontSize()
+    setFontSize(storedSize)
+    applyFontSize(storedSize)
+
+    const storedHighContrast = getStoredHighContrast()
+    setHighContrast(storedHighContrast)
+    applyHighContrast(storedHighContrast)
+  }, [])
 
   // Si hay sesión pero rol aún no llega (primer render), refresca perfil una sola vez
   useEffect(() => {
     if (user && role == null) {
-      refresh().catch(() => { })
+      refresh().catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!user])
 
+  useEffect(() => {
+    applyFontSize(fontSize)
+  }, [fontSize])
+
+  useEffect(() => {
+    applyHighContrast(highContrast)
+  }, [highContrast])
+
   const displayName =
     (user?.user_metadata?.full_name as string) ||
     (user?.user_metadata?.name as string) ||
-    user?.email || 'Docente'
+    user?.email ||
+    'Docente'
 
-  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join('')
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
+
+  const handleThemeToggle = () => {
+    setDark(toggleTheme() === 'dark')
+  }
+
+  const handleFontSizeChange = (size: FontSizePref) => {
+    setFontSize(size)
+  }
+
+  const handleHighContrastToggle = () => {
+    setHighContrast((prev) => !prev)
+  }
+
+  const currentLng = i18n.language?.startsWith('en') ? 'en' : 'es'
+
+  const handleLanguageToggle = () => {
+    const next = currentLng === 'es' ? 'en' : 'es'
+    i18n.changeLanguage(next)
+  }
+
+  const navItemsAdmin = [
+    { to: '/dashboard', label: t('nav.home') },
+    { to: '/inscripciones', label: t('nav.enrollments') },
+    { to: '/grupos', label: t('nav.groups') },
+    { to: '/grupos/aula', label: t('nav.classGroups') },
+    { to: '/docentes', label: t('nav.teachers') },
+    { to: '/materias', label: t('nav.subjects') },
+    { to: '/estudiantes', label: t('nav.students') },
+    { to: '/cuenta', label: t('nav.settings') },
+  ] as const
+
+  const navItemsTeacher = [
+    { to: '/dashboard', label: t('nav.home') },
+    { to: '/grupos/aula', label: t('nav.classGroups') },
+    { to: '/estudiantes', label: t('nav.students') },
+    { to: '/cuenta', label: t('nav.settings') },
+  ] as const
 
   return (
     <div className="min-h-screen-fix grid grid-cols-1 lg:grid-cols-[260px_1fr] app-root">
-      {/* Sidebar */}
-      <aside className="sidebar p-4 lg:min-h-screen-fix shadow-xl">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="size-8 rounded-md bg-white/15 grid place-items-center font-semibold">SN</div>
-          <h1 className="text-[clamp(1rem,2vw,1.25rem)] font-semibold tracking-wide">StudentsNotes</h1>
-        </div>
-        <button
-          onClick={() => setDark(toggleTheme() === 'dark')}
-          className="theme-toggle mb-4 inline-flex items-center gap-2 rounded-md transition px-3 py-2 text-xs"
-          title="Alternar tema"
-        >
-          {dark ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z" stroke="currentColor" strokeWidth="1.5" /></svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.5" /><path d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.07 6.07-1.41-1.41M8.34 8.34 6.93 6.93m10.14 0-1.41 1.41M8.34 15.66l-1.41 1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-          )}
-          <span>{dark ? 'Oscuro' : 'Claro'}</span>
-        </button>
+      {/* Enlace para saltar al contenido principal (para teclado/lector) */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 bg-blue-600 text-white px-3 py-2 rounded shadow-lg z-50"
+      >
+        {t('layout.skipToContent')}
+      </a>
 
-        <nav className="grid gap-1 mt-1">
-          {(role === 'maestro'
-            ? [
-              { to: '/dashboard', label: 'Página principal' },
-              { to: '/grupos/aula', label: 'Grupos (Aula)' },
-              { to: '/estudiantes', label: 'Estudiantes' },
-              { to: '/cuenta', label: 'Configuración' }
-            ]
-            : [
-              { to: '/dashboard', label: 'Página principal' },
-              { to: '/inscripciones', label: 'Inscripciones' },
-              { to: '/grupos', label: 'Grupos' },
-              { to: '/grupos/aula', label: 'Grupos (Aula)' },
-              { to: '/docentes', label: 'Docentes' },
-              { to: '/materias', label: 'Materias' },
-              { to: '/estudiantes', label: 'Estudiantes' },
-              { to: '/cuenta', label: 'Configuración' },
-            ]
-          ).map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/grupos'}
-              className={({ isActive }) => [
-                'sidebar-link',
-                isActive ? 'is-active' : ''
-              ].join(' ')}
+      {/* Sidebar */}
+      <aside className="sidebar p-4 lg:min-h-screen-fix shadow-xl" aria-label={t('layout.sidebarAria')}>
+        {/* Marca */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="size-8 rounded-md bg-white/15 grid place-items-center font-semibold">SN</div>
+            <h1 className="text-[clamp(1rem,2vw,1.25rem)] font-semibold tracking-wide">StudentsNotes</h1>
+          </div>
+        </div>
+
+        {/* Panel de accesibilidad */}
+        <section
+          className="mb-6 rounded-xl p-3 text-xs space-y-3"
+          aria-label={t('accessibility.panelAria')}
+          style={{
+            background: 'color-mix(in oklab, var(--sidebar-bg), white 6%)',
+            border: '1px solid color-mix(in oklab, var(--sidebar-fg), transparent 80%)',
+          }}
+        >
+          <h2 className="mb-2 flex items-center gap-2 font-semibold text-[0.8rem] uppercase tracking-wide">
+            <span>{t('accessibility.title')}</span>
+          </h2>
+
+          <div className="space-y-3">
+            {/* Tema claro / oscuro */}
+            <button
+              type="button"
+              onClick={handleThemeToggle}
+              className="theme-toggle inline-flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs"
             >
-              {item.label}
-            </NavLink>
-          ))}
+              <span className="flex items-center gap-2">
+                <span>{t('accessibility.theme')}</span>
+              </span>
+              <span className="opacity-80">
+                {dark ? t('accessibility.themeDark') : t('accessibility.themeLight')}
+              </span>
+            </button>
+
+            {/* Tamaño de fuente */}
+            <div className="space-y-1">
+              <span className="block text-[0.7rem] font-semibold uppercase tracking-wide">
+                {t('accessibility.fontSize')}
+              </span>
+
+              <div className="inline-flex gap-1 rounded-md bg-white/10 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleFontSizeChange('normal')}
+                  className={[
+                    'px-2 py-1 text-[0.7rem] rounded-md transition',
+                    fontSize === 'normal' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-700',
+                  ].join(' ')}
+                  aria-pressed={fontSize === 'normal'}
+                >
+                  {t('accessibility.fontSizeNormal')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFontSizeChange('large')}
+                  className={[
+                    'px-2 py-1 text-[0.8rem] rounded-md transition',
+                    fontSize === 'large' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-700',
+                  ].join(' ')}
+                  aria-pressed={fontSize === 'large'}
+                >
+                  {t('accessibility.fontSizeLarge')}
+                </button>
+              </div>
+            </div>
+
+            {/* Alto contraste */}
+            <label className="mt-1 flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="size-3"
+                checked={highContrast}
+                onChange={handleHighContrastToggle}
+              />
+              <span>{t('accessibility.highContrast')}</span>
+            </label>
+
+            {/* Idioma - mismo diseño que el botón de tema */}
+            <button
+              type="button"
+              onClick={handleLanguageToggle}
+              className="theme-toggle inline-flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs"
+              aria-label={t('accessibility.languageAria')}
+            >
+              <span className="flex items-center gap-2">
+                <span>{t('accessibility.language')}</span>
+              </span>
+              <span className="opacity-80">
+                {currentLng === 'es' ? 'Español' : 'English'}
+              </span>
+            </button>
+          </div>
+        </section>
+
+        {/* Navegación principal */}
+        <nav className="mt-2" aria-label={t('layout.mainNavAria')}>
+          <ul className="grid gap-1 text-sm">
+            {(role === 'admin' ? navItemsAdmin : navItemsTeacher).map((item) => (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end={item.to === '/grupos'}
+                  className={({ isActive }) =>
+                    [
+                      'sidebar-link inline-flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500',
+                      isActive ? 'is-active' : '',
+                    ].join(' ')
+                  }
+                >
+                  <span className="truncate">{item.label}</span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
         </nav>
 
+        {/* Info de usuario + logout */}
         <div className="mt-6 grid gap-3">
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-full bg-white/12 grid place-items-center font-semibold overflow-hidden">
               {avatarUrl ? (
-                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                <img src={avatarUrl} alt={t('layout.userAvatarAlt')} className="w-full h-full object-cover" />
               ) : (
-                <span>{initials || 'D'}</span>
+                <span aria-hidden="true">{initials || 'D'}</span>
               )}
             </div>
             <div className="min-w-0 w-full">
-              <div className="text-sm font-medium break-words leading-snug">{displayName}</div>
-              {user?.email && <div className="text-xs opacity-80 break-all leading-snug">{user.email}</div>}
+              <p className="text-sm font-medium break-words leading-snug">{displayName}</p>
+              {user?.email && (
+                <p className="text-xs opacity-80 break-all leading-snug">
+                  {user.email}
+                </p>
+              )}
             </div>
           </div>
           <button
             onClick={logout}
-            className="logout-btn rounded-md transition px-4 py-2 text-sm"
-            title="Cerrar sesión"
+            className="logout-btn rounded-md transition px-4 py-2 text-sm text-left"
+            title={t('layout.logout')}
           >
-            Cerrar sesión
+            {t('layout.logout')}
           </button>
         </div>
       </aside>
 
       {/* Columna principal */}
       <div>
-        <main className="safe-areas mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-7">
+        <main
+          id="main-content"
+          className="safe-areas mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-7"
+          role="main"
+          aria-live="polite"
+        >
           <Outlet />
         </main>
       </div>
     </div>
-  )
-}
-
-
-/* ====== Iconos SVG simples (sin dependencias) ====== */
-function IconHome(props: any) {
-  return (
-    <svg {...props} viewBox="0 0 24 24" fill="none">
-      <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-function IconBars(props: any) {
-  return (
-    <svg {...props} viewBox="0 0 24 24" fill="none">
-      <path d="M5 12v6m7-10v10m7-6v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  )
-}
-function IconScatter(props: any) {
-  return (
-    <svg {...props} viewBox="0 0 24 24" fill="none">
-      <circle cx="6" cy="16" r="1.6" fill="currentColor" /><circle cx="12" cy="10" r="1.6" fill="currentColor" /><circle cx="18" cy="14" r="1.6" fill="currentColor" />
-    </svg>
-  )
-}
-function IconControl(props: any) {
-  return (
-    <svg {...props} viewBox="0 0 24 24" fill="none">
-      <path d="M6 7h12M6 12h8M6 17h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  )
-}
-function IconPie(props: any) {
-  return (
-    <svg {...props} viewBox="0 0 24 24" fill="none">
-      <path d="M12 3v9h9A9 9 0 1 1 12 3Z" stroke="currentColor" strokeWidth="1.5" /><path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
-  )
-}
-function IconUsers(props: any) {
-  return (
-    <svg {...props} viewBox="0 0 24 24" fill="none">
-      <path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" /><path d="M20 19v-1a3 3 0 0 0-2-2.83" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><circle cx="17" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
   )
 }
 
@@ -182,7 +332,6 @@ function RequireAuth() {
 
   if (!session) return <Navigate to="/login" replace state={{ from: location }} />
 
-  // 🔒 Redirigir "/" a dashboard
   if (location.pathname === '/') {
     return <Navigate to="/dashboard" replace />
   }
@@ -193,6 +342,8 @@ function RequireAuth() {
 function AdminOnly() {
   const { role, initialized } = useAuth()
   if (!initialized) return null
+  // Opcional: si quieres forzar solo admin en frontend:
+  // if (role !== 'admin') return <Navigate to="/dashboard" replace />
   return <Outlet />
 }
 

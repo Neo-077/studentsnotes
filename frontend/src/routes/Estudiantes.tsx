@@ -1,10 +1,10 @@
-// src/routes/Estudiantes.tsx
 import { useEffect, useMemo, useRef, useState } from 'react'
 import api from '../lib/api'
 import useAuth from '../store/useAuth'
 import { Catalogos } from '../lib/catalogos'
 import * as XLSX from 'xlsx'
 import ModalBajaEstudiante from '../components/inscripciones/ModalBajaEstudiante'
+import { useTranslation } from 'react-i18next'
 
 type Row = {
   id_estudiante: number
@@ -23,6 +23,8 @@ type Row = {
 
 export default function Estudiantes() {
   const { initialized, role } = useAuth()
+  const { t } = useTranslation()
+
   const [rows, setRows] = useState<Row[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -42,8 +44,6 @@ export default function Estudiantes() {
     if (!silent) setLoading(true)
     setMsg(null)
     try {
-      // Si es docente, usar el endpoint de estudiantes elegibles (sin filtrar por carrera)
-      // Si es admin, usar el endpoint normal con filtros
       let path = '/estudiantes'
       const qs = new URLSearchParams({
         q,
@@ -53,9 +53,7 @@ export default function Estudiantes() {
 
       if (role === 'maestro') {
         path = `/estudiantes/elegibles/docente`
-        // Los elegibles ya están filtrados por las carreras de las materias del docente
       } else {
-        // Solo admin puede filtrar por carrera manualmente
         if (idCarrera) {
           qs.append('id_carrera', String(idCarrera))
         }
@@ -68,7 +66,10 @@ export default function Estudiantes() {
         setTotal(data.total || 0)
       }
     } catch (e: any) {
-      if (reqRef.current === my) setMsg('Error cargando estudiantes: ' + (e.message || ''))
+      if (reqRef.current === my) {
+        const message = e?.message || ''
+        setMsg(t('students.errors.loadFailed', { message }))
+      }
     } finally {
       if (reqRef.current === my) { if (!silent) setLoading(false) }
     }
@@ -78,15 +79,17 @@ export default function Estudiantes() {
 
   // Búsqueda reactiva (debounce) al escribir o cambiar carrera (solo para admin)
   useEffect(() => {
-    const t = setTimeout(() => { if (initialized) { setPage(1); load(false) } }, 250)
-    return () => clearTimeout(t)
+    const tmo = setTimeout(() => { if (initialized) { setPage(1); load(false) } }, 250)
+    return () => clearTimeout(tmo)
   }, [initialized, q, ...(role === 'admin' ? [idCarrera] : [])])
 
   // Recarga silenciosa al volver del background/enfocar/reconectar
   useEffect(() => {
     const handler = () => { if (initialized) load(true) }
     window.addEventListener('focus', handler)
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') handler() })
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') handler()
+    })
     window.addEventListener('pageshow', handler)
     window.addEventListener('online', handler)
     return () => {
@@ -112,7 +115,7 @@ export default function Estudiantes() {
   async function handleConfirmBaja() {
     setModalBaja({ open: false })
     await load()
-    setMsg('✅ Estudiante dado de baja definitivamente')
+    setMsg(t('students.messages.dropped'))
   }
 
   /** ========= Helpers ========= **/
@@ -127,7 +130,6 @@ export default function Estudiantes() {
   function toISOAny(v: any): string | null {
     if (v == null || v === '') return null
     if (typeof v === 'number') {
-      // Excel serial date → ISO (asumiendo base 1899-12-30)
       const epoch = new Date(Date.UTC(1899, 11, 30))
       const ms = Math.round(v * 24 * 3600 * 1000)
       const d = new Date(epoch.getTime() + ms)
@@ -154,8 +156,6 @@ export default function Estudiantes() {
 
   // ======= Helpers de deduplicación para importación =======
   const keyFromRow = (r: any) => {
-    // Identidad lógica del estudiante para evitar duplicados en import:
-    // nombre + apellidos + fecha_nacimiento (normalizados)
     const nombre = norm(r.nombre)
     const apPat = norm(r.ap_paterno ?? '')
     const apMat = norm(r.ap_materno ?? '')
@@ -163,17 +163,15 @@ export default function Estudiantes() {
     return `${nombre}|${apPat}|${apMat}|${fnac}`
   }
 
-  // Convierte hoja a objetos con las cabeceras esperadas
   function sheetToRows(sheet: XLSX.WorkSheet) {
     const json = XLSX.utils.sheet_to_json<any>(sheet, { defval: null })
     return json.map((r) => ({
       nombre: String(r.nombre ?? '').trim(),
       ap_paterno: r.ap_paterno ? String(r.ap_paterno).trim() : null,
       ap_materno: r.ap_materno ? String(r.ap_materno).trim() : null,
-      genero: r.genero ?? r.id_genero ?? null,      // se permiten texto o id
-      carrera: r.carrera ?? r.id_carrera ?? null,   // se permiten texto o id
+      genero: r.genero ?? r.id_genero ?? null,
+      carrera: r.carrera ?? r.id_carrera ?? null,
       fecha_nacimiento: toISOAny(r.fecha_nacimiento),
-      // fecha_ingreso/activo los omitimos en el archivo final para que coincida con tu /bulk actual
     }))
   }
 
@@ -182,17 +180,17 @@ export default function Estudiantes() {
     setMsg(null)
     setLoading(true)
     try {
-      // 1) Leer archivo local
       const buf = await file.arrayBuffer()
       const wb = XLSX.read(buf, { type: 'array' })
       const firstSheetName = wb.SheetNames[0]
-      if (!firstSheetName) throw new Error('El archivo no contiene hojas.')
+      if (!firstSheetName) {
+        // Usamos el mensaje genérico de error de importación para mantener i18n
+        throw new Error(t('students.import.errorGeneric'))
+      }
       const ws = wb.Sheets[firstSheetName]
 
-      // 2) Normalizar filas y filtrar vacíos (sin nombre)
       let incoming = sheetToRows(ws).filter(r => norm(r.nombre).length > 0)
 
-      // 3) Quitar duplicados INTERNOS (mismo archivo)
       const seen = new Set<string>()
       const uniqueInFile: any[] = []
       const dupInFile: any[] = []
@@ -202,9 +200,6 @@ export default function Estudiantes() {
         else { seen.add(k); uniqueInFile.push(r) }
       }
 
-      // 4) (Opcional) Pre-chequeo en servidor para evitar EXISTENTES en BD
-      //    Si tu backend implementa este endpoint, úsalo; si no existe, lo ignoramos sin fallar.
-      //    POST /estudiantes/dedup-check  body: { keys: string[] } => { exists: string[] }
       let alreadyInDbKeys: string[] = []
       try {
         const keys = uniqueInFile.map(keyFromRow)
@@ -213,14 +208,13 @@ export default function Estudiantes() {
           alreadyInDbKeys = Array.isArray(res.exists) ? res.exists : []
         }
       } catch {
-        // Ignorar si no existe o falla: el backend /bulk hará sus propias validaciones
+        // Ignorar si no existe o falla
       }
 
       const finalRows = alreadyInDbKeys.length
         ? uniqueInFile.filter(r => !alreadyInDbKeys.includes(keyFromRow(r)))
         : uniqueInFile
 
-      // 5) Generar XLSX "limpio" con solo columnas que tu /bulk ya acepta
       const headers = ['nombre', 'ap_paterno', 'ap_materno', 'genero', 'carrera', 'fecha_nacimiento']
       const dataAoA = [
         headers,
@@ -241,23 +235,27 @@ export default function Estudiantes() {
       const fd = new FormData()
       fd.append('file', cleanBlob, `estudiantes_limpios_${Date.now()}.xlsx`)
 
-      // 6) Subir archivo limpio al mismo endpoint /bulk
       const report = await api.post('/estudiantes/bulk', fd as any)
 
-      // 7) Resumen amigable
       const dupInFileCount = dupInFile.length
       const dupInDbCount = alreadyInDbKeys.length
       const inserted = report?.summary?.inserted ?? 0
       const errors = report?.summary?.errors ?? 0
 
-      setMsg(
-        `✅ Importación: ${inserted} insertados, ${errors} errores` +
-        (dupInFileCount ? ` | Omitidos (duplicados en archivo): ${dupInFileCount}` : '') +
-        (dupInDbCount ? ` | Omitidos (ya existen en BD): ${dupInDbCount}` : '')
-      )
+      const parts: string[] = []
+      parts.push(t('students.import.summaryBase', { inserted, errors }))
+      if (dupInFileCount) {
+        parts.push(t('students.import.duplicatesInFile', { count: dupInFileCount }))
+      }
+      if (dupInDbCount) {
+        parts.push(t('students.import.duplicatesInDb', { count: dupInDbCount }))
+      }
+
+      setMsg(parts.join(' | '))
       await load()
     } catch (e: any) {
-      setMsg('❌ ' + (e.message || 'Error importando'))
+      const fallback = t('students.import.errorGeneric')
+      setMsg('❌ ' + (e?.message || fallback))
     } finally {
       const input = document.querySelector<HTMLInputElement>('input[type=file]')
       if (input) input.value = ''
@@ -269,7 +267,6 @@ export default function Estudiantes() {
     const headers = ['nombre', 'ap_paterno', 'ap_materno', 'genero', 'carrera', 'fecha_nacimiento']
     const wsMain = XLSX.utils.aoa_to_sheet([headers])
 
-    // Listas de referencia: carreras y géneros
     const [gen, car] = await Promise.all([
       Catalogos.generos(),
       Catalogos.carreras()
@@ -301,21 +298,21 @@ export default function Estudiantes() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold">Estudiantes</h2>
+          <h2 className="text-2xl font-semibold">{t('students.title')}</h2>
           <p className="text-sm text-slate-600">
             {role === 'maestro'
-              ? 'Estudiantes elegibles para las materias que impartes (solo carreras relacionadas).'
-              : 'Consulta, busca y carga estudiantes por archivo.'}
+              ? t('students.subtitleTeacher')
+              : t('students.subtitleAdmin')}
           </p>
         </div>
 
         {role === 'admin' && (
           <div className="flex items-center gap-2">
             <button onClick={downloadTemplateXLSX} className="rounded-lg border px-3 py-2 text-sm">
-              Descargar plantilla (XLSX)
+              {t('students.buttons.downloadTemplate')}
             </button>
             <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
-              Importar (.xlsx/.xls/.csv)
+              {t('students.buttons.importFile')}
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
@@ -327,11 +324,14 @@ export default function Estudiantes() {
         )}
       </div>
 
-      <form onSubmit={onSearch} className="flex flex-wrap items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm">
+      <form
+        onSubmit={onSearch}
+        className="flex flex-wrap items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm"
+      >
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar (no_control, nombre, apellidos)"
+          placeholder={t('students.searchPlaceholder')}
           className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         />
         {role === 'admin' && (
@@ -340,7 +340,7 @@ export default function Estudiantes() {
             onChange={(e) => setIdCarrera(e.target.value ? Number(e.target.value) : '')}
             className="h-10 rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            <option value="">Todas las carreras</option>
+            <option value="">{t('students.filters.allCareers')}</option>
             {carreras.map((c) => (
               <option key={c.id_carrera} value={c.id_carrera}>
                 {c.clave ? `${c.clave} — ` : ''}{c.nombre}
@@ -348,7 +348,12 @@ export default function Estudiantes() {
             ))}
           </select>
         )}
-        <button type="submit" className="h-10 rounded-lg bg-blue-600 px-4 text-white shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500">Buscar</button>
+        <button
+          type="submit"
+          className="h-10 rounded-lg bg-blue-600 px-4 text-white shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          {t('students.buttons.search')}
+        </button>
       </form>
 
       <div className="rounded-xl border bg-white">
@@ -356,67 +361,117 @@ export default function Estudiantes() {
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 sticky top-0 z-10">
               <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left text-slate-600">
-                <th>No. control</th>
-                <th>Nombre</th>
-                <th>Apellido paterno</th>
-                <th>Apellido materno</th>
-                <th>Carrera</th>
-                <th>Género</th>
-                <th>Nacimiento</th>
-                <th>Ingreso</th>
-                <th>Estado</th>
+                <th>{t('students.table.noControl')}</th>
+                <th>{t('students.table.name')}</th>
+                <th>{t('students.table.lastName1')}</th>
+                <th>{t('students.table.lastName2')}</th>
+                <th>{t('students.table.career')}</th>
+                <th>{t('students.table.gender')}</th>
+                <th>{t('students.table.birthDate')}</th>
+                <th>{t('students.table.entryDate')}</th>
+                <th>{t('students.table.status')}</th>
                 {role === 'admin' && <th></th>}
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading && rows.length === 0 ? (
-                <tr><td colSpan={role === 'admin' ? 10 : 9} className="px-3 py-6 text-center text-slate-500">Cargando…</td></tr>
+                <tr>
+                  <td colSpan={role === 'admin' ? 10 : 9} className="px-3 py-6 text-center text-slate-500">
+                    {t('students.table.loading')}
+                  </td>
+                </tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={role === 'admin' ? 10 : 9} className="px-3 py-6 text-center text-slate-500">Sin resultados.</td></tr>
+                <tr>
+                  <td colSpan={role === 'admin' ? 10 : 9} className="px-3 py-6 text-center text-slate-500">
+                    {t('students.table.empty')}
+                  </td>
+                </tr>
               ) : (
-                [...rows].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
-                  || (a.ap_paterno || '').localeCompare(b.ap_paterno || '', 'es', { sensitivity: 'base' })
-                  || (a.ap_materno || '').localeCompare(b.ap_materno || '', 'es', { sensitivity: 'base' })
-                ).map(r => (
-                  <tr key={r.id_estudiante} className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60">
-                    <td className="font-mono">{r.no_control ?? '—'}</td>
-                    <td>{r.nombre}</td>
-                    <td>{r.ap_paterno ?? '—'}</td>
-                    <td>{r.ap_materno ?? '—'}</td>
-                    <td>{r.carrera?.clave ? `${r.carrera.clave} — ` : ''}{r.carrera?.nombre ?? r.id_carrera}</td>
-                    <td>{r.genero?.descripcion ?? r.id_genero}</td>
-                    <td>{r.fecha_nacimiento ?? '—'}</td>
-                    <td>{r.fecha_ingreso ?? '—'}</td>
-                    <td><span>{r.activo ? 'Activo' : 'Inactivo'}</span></td>
-                    {role === 'admin' && (
+                [...rows]
+                  .sort(
+                    (a, b) =>
+                      a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }) ||
+                      (a.ap_paterno || '').localeCompare(b.ap_paterno || '', 'es', { sensitivity: 'base' }) ||
+                      (a.ap_materno || '').localeCompare(b.ap_materno || '', 'es', { sensitivity: 'base' })
+                  )
+                  .map(r => (
+                    <tr
+                      key={r.id_estudiante}
+                      className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60"
+                    >
+                      <td className="font-mono">{r.no_control ?? '—'}</td>
+                      <td>{r.nombre}</td>
+                      <td>{r.ap_paterno ?? '—'}</td>
+                      <td>{r.ap_materno ?? '—'}</td>
                       <td>
-                        {r.activo ? (
-                          <button
-                            type="button"
-                            className="inline-flex items-center px-3 py-1.5 text-xs text-orange-700 hover:bg-orange-50 rounded-md border"
-                            onClick={() => askBaja(r)}
-                            title="Dar de baja al estudiante"
-                          >Dar de baja</button>
-                        ) : (
-                          <span className="text-xs text-slate-500">Dado de baja</span>
-                        )}
+                        {r.carrera?.clave ? `${r.carrera.clave} — ` : ''}
+                        {r.carrera?.nombre ?? r.id_carrera}
                       </td>
-                    )}
-                  </tr>
-                ))
+                      <td>{r.genero?.descripcion ?? r.id_genero}</td>
+                      <td>{r.fecha_nacimiento ?? '—'}</td>
+                      <td>{r.fecha_ingreso ?? '—'}</td>
+                      <td>
+                        <span>
+                          {r.activo ? t('students.status.active') : t('students.status.inactive')}
+                        </span>
+                      </td>
+                      {role === 'admin' && (
+                        <td>
+                          {r.activo ? (
+                            <button
+                              type="button"
+                              className="inline-flex items-center px-3 py-1.5 text-xs text-orange-700 hover:bg-orange-50 rounded-md border"
+                              onClick={() => askBaja(r)}
+                              title={t('students.actions.dropTitle')}
+                            >
+                              {t('students.actions.drop')}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-500">
+                              {t('students.labels.dropped')}
+                            </span>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))
               )}
             </tbody>
           </table>
         </div>
 
         <div className="flex items-center justify-between px-3 py-2">
-          <div className="text-xs text-slate-500">{total.toLocaleString()} en total</div>
+          <div className="text-xs text-slate-500">
+            {t('students.footer.total', { count: total.toLocaleString() })}
+          </div>
           <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Anterior</button>
-            <span className="text-sm">Página {page} / {maxPage}</span>
-            <button className="rounded border px-2 py-1" disabled={page >= maxPage} onClick={() => setPage(p => Math.min(maxPage, p + 1))}>Siguiente</button>
-            <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} className="rounded border px-2 py-1 text-sm">
-              {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n} / pág.</option>)}
+            <button
+              className="rounded border px-2 py-1"
+              disabled={page <= 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+            >
+              {t('students.pagination.prev')}
+            </button>
+            <span className="text-sm">
+              {t('students.pagination.pageOf', { page, maxPage })}
+            </span>
+            <button
+              className="rounded border px-2 py-1"
+              disabled={page >= maxPage}
+              onClick={() => setPage(p => Math.min(maxPage, p + 1))}
+            >
+              {t('students.pagination.next')}
+            </button>
+            <select
+              value={pageSize}
+              onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}
+              className="rounded border px-2 py-1 text-sm"
+            >
+              {[10, 20, 50, 100].map(n => (
+                <option key={n} value={n}>
+                  {t('students.pagination.perPage', { n })}
+                </option>
+              ))}
             </select>
           </div>
         </div>

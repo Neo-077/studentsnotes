@@ -59,6 +59,38 @@ html.dark {
   --danger-bg-hover:#F05252;
 }
 
+/* ===== High contrast mode (aplica a TODO el sistema) ===== */
+html.high-contrast {
+  /* Forzamos esquema oscuro desde el navegador */
+  color-scheme: dark;
+
+  /* Fondo/base muy oscuros */
+  --bg:        #000000;
+  --surface:   #000000;
+  --card:      #000000;
+
+  /* Texto súper legible */
+  --text:      #FFFFFF;
+  --muted:     #F5F5F5;
+
+  /* Bordes y foco muy marcados */
+  --border:    #FFFFFF;
+  --ring:      #FFBF00;
+
+  /* Primario en amarillo bien visible */
+  --primary:       #FFBF00;
+  --primary-ctr:   #000000;
+
+  /* Sidebar también en alto contraste */
+  --sidebar-bg:    #000000;
+  --sidebar-fg:    #FFFFFF;
+
+  /* Colores de error mega visibles */
+  --danger-bg:       #FF4B4B;
+  --danger-fg:       #000000;
+  --danger-bg-hover: #FF1F1F;
+}
+
 /* ===== Mapear utilidades comunes a la paleta ===== */
 .bg-white { background-color: var(--card) !important; }
 .bg-slate-50, .bg-slate-100 { background-color: var(--surface) !important; }
@@ -314,3 +346,33 @@ table button:active { transform: none; filter: brightness(.98); }
   height: 1px;
   background: var(--border);
 }
+
+
+/* Tamaño de fuente global (ligado a data-font-size) */
+:root[data-font-size='normal'] {
+  font-size: 16px;
+}
+
+:root[data-font-size='large'] {
+  font-size: 18px;
+}
+
+/* Alto contraste (puedes afinar colores según tu paleta) */
+.high-contrast {
+  --tw-bg-opacity: 1;
+  --tw-text-opacity: 1;
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.high-contrast .sidebar {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+.high-contrast .sidebar-link.is-active {
+  background-color: #fff !important;
+  color: #000 !important;
+}
+
+/* El resto se apoya en Tailwind: .sr-only, focus-visible, etc. */
