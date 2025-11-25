@@ -19,6 +19,23 @@
     "language": "Language",
     "languageAria": "Language selector"
   },
+  "confirm": {
+    "title": "Confirm operation",
+    "yes": "Confirm",
+    "no": "Cancel",
+    "post": {
+      "title": "Confirm creation",
+      "description": "Do you want to proceed with creating this record?"
+    },
+    "put": {
+      "title": "Confirm modification",
+      "description": "Do you want to apply the changes?"
+    },
+    "delete": {
+      "title": "Confirm deletion",
+      "description": "This action is irreversible. Do you want to continue?"
+    }
+  },
   "nav": {
     "home": "Home",
     "enrollments": "Enrollments",
@@ -217,7 +234,7 @@
       "unitsPlaceholder": "Units",
       "creditsLabel": "Credits (1–30)",
       "creditsPlaceholder": "Credits",
-      "careerLabel": "Program (optional to link)",
+      "careerLabel": "Program",
       "careerPlaceholder": "Program…",
       "semesterLabel": "Semester (1–12)",
       "semesterPlaceholder": "Semester",
@@ -243,6 +260,7 @@
     },
     "messages": {
       "nameRequired": "Please fill in the subject name.",
+      "careerRequired": "Select a program",
       "linkExists": "❌ This subject is already linked to that program.",
       "linkCreatedExisting": "✅ Link created with existing subject",
       "createdAndLinked": "✅ Subject created and linked",
@@ -364,7 +382,7 @@
       "careerLabel": "Program",
       "subjectLabel": "Subject",
       "searchLabel": "Search",
-      "searchPlaceholder": "Name, code, teacher, schedule"
+      "searchPlaceholder": "Name, code, teacher"
     },
     "header": {
       "title": "Groups",

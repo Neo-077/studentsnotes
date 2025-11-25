@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import api from "../../lib/api"
+import { FiPlus } from 'react-icons/fi'
 
 type Props = {
   groupId?: number | null
@@ -84,8 +85,8 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
               key={s.id_estudiante}
               onClick={() => setSelectedStudent(s)}
               className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${selectedStudent?.id_estudiante === s.id_estudiante
-                  ? "bg-gray-100"
-                  : ""
+                ? "bg-gray-100"
+                : ""
                 }`}
             >
               {s.no_control} — {s.nombre} {s.ap_paterno}
@@ -106,8 +107,9 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
       <button
         onClick={inscribir}
         disabled={loading}
-        className="w-full bg-blue-600 text-white rounded-xl py-2"
+        className="w-full bg-blue-600 text-white rounded-xl py-2 inline-flex items-center justify-center"
       >
+        <FiPlus className="mr-2" size={16} />
         {loading ? "Inscribiendo..." : "Inscribir"}
       </button>
 

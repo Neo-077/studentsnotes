@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import api from "../../lib/api"
 import { Catalogos } from "../../lib/catalogos"
 import { useTranslation } from "react-i18next"
+import { FiSave } from 'react-icons/fi'
 
 // ————————————————————————————————————————————————————————————————
 // CONFIG GENERAL
@@ -278,8 +279,14 @@ export default function AddStudentForm({
   })
 
   useEffect(() => {
-    Catalogos.generos().then(setGeneros)
-    Catalogos.carreras().then(setCarreras)
+    Catalogos.generos().then((res: any) => {
+      const arr = Array.isArray(res) ? res : (res?.rows ?? res?.data ?? [])
+      setGeneros(arr)
+    })
+    Catalogos.carreras().then((res: any) => {
+      const arr = Array.isArray(res) ? res : (res?.rows ?? res?.data ?? [])
+      setCarreras(arr)
+    })
   }, [])
 
   useEffect(() => {
@@ -316,7 +323,8 @@ export default function AddStudentForm({
         },
       })
 
-      setMsg(t("students.addForm.messages.created"))
+      const createdMsg = t("students.addForm.messages.created")
+        ; (await import('../../lib/notifyService')).default.notify({ type: 'success', message: `${createdMsg}: ${clean.nombre} ${clean.ap_paterno}` })
       reset({ id_carrera: defaultCarreraId } as Partial<FormValues>)
     } catch (e: any) {
       const details = extractErrorMessage(e, t)
@@ -346,9 +354,11 @@ export default function AddStudentForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-1">
+          <label className="text-xs text-slate-500">{t("students.addForm.fields.firstName")} <span className="text-red-500" aria-hidden="true">*</span></label>
           <input
             className="border rounded-xl px-3 py-2"
             placeholder={t("students.addForm.fields.firstName")}
+            aria-required="true"
             autoComplete="given-name"
             {...register("nombre")}
           />
@@ -360,9 +370,11 @@ export default function AddStudentForm({
         </div>
 
         <div className="grid gap-1">
+          <label className="text-xs text-slate-500">{t("students.addForm.fields.lastName1")} <span className="text-red-500" aria-hidden="true">*</span></label>
           <input
             className="border rounded-xl px-3 py-2"
             placeholder={t("students.addForm.fields.lastName1")}
+            aria-required="true"
             autoComplete="family-name"
             {...register("ap_paterno")}
           />
@@ -381,9 +393,11 @@ export default function AddStudentForm({
         />
 
         <div className="grid gap-1">
+          <label className="text-xs text-slate-500">{t("students.addForm.fields.gender")} <span className="text-red-500" aria-hidden="true">*</span></label>
           <select
             className="border rounded-xl px-3 py-2"
             defaultValue=""
+            aria-required="true"
             {...register("id_genero")}
           >
             <option value="" disabled>
@@ -403,9 +417,11 @@ export default function AddStudentForm({
         </div>
 
         <div className="grid gap-1">
+          <label className="text-xs text-slate-500">{t("students.addForm.fields.career")} <span className="text-red-500" aria-hidden="true">*</span></label>
           <select
             className="border rounded-xl px-3 py-2"
             defaultValue={defaultCarreraId ?? ""}
+            aria-required="true"
             {...register("id_carrera")}
           >
             <option value="" disabled>
@@ -429,7 +445,7 @@ export default function AddStudentForm({
             htmlFor="fecha_nacimiento"
             className="text-xs text-slate-500"
           >
-            {t("students.addForm.fields.birthdateLabel")}{" "}
+            {t("students.addForm.fields.birthdateLabel")} <span className="text-red-500" aria-hidden="true">*</span>{" "}
             <span className="text-slate-400">
               (
               {hasNativeDate
@@ -449,6 +465,7 @@ export default function AddStudentForm({
               id="fecha_nacimiento"
               type={hasNativeDate ? "date" : "text"}
               className="h-10 w-full rounded-xl border px-3 pr-24 text-sm"
+              aria-required="true"
               min={hasNativeDate ? minDate : undefined}
               max={hasNativeDate ? maxDate : undefined}
               placeholder={
@@ -497,17 +514,19 @@ export default function AddStudentForm({
       {(errors.nombre ||
         errors.ap_paterno ||
         errors.id_genero ||
-        errors.id_carrera) && (
-        <p className="text-sm text-red-600">
-          {t("students.addForm.validation.completeRequired")}
-        </p>
-      )}
+        errors.id_carrera ||
+        errors.fecha_nacimiento) && (
+          <p className="text-sm text-red-600">
+            {t("students.addForm.validation.completeRequired")}
+          </p>
+        )}
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 text-white rounded-xl py-2 disabled:opacity-60"
+        className="w-full bg-blue-600 text-white rounded-xl py-2 disabled:opacity-60 inline-flex items-center justify-center"
       >
+        <FiSave className="mr-2" size={18} />
         {loading
           ? t("students.addForm.buttons.saving")
           : t("students.addForm.buttons.save")}

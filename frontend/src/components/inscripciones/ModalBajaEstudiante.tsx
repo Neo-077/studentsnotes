@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { getUserIdFromLocalStorage } from '../../utils/func'
 import api from '../../lib/api'
+import notify from '../../lib/notifyService'
 import { useTranslation } from 'react-i18next'
+import { FiArrowLeft, FiTrash2 } from 'react-icons/fi'
 
 const motivos = [
     { value: 'academico', key: 'students.dropModal.reasons.academico' },
@@ -89,10 +91,16 @@ export default function ModalBajaEstudiante({
         }
 
         try {
-            await api.post(`/estudiantes/${form.id_estudiante}/baja`, payload)
+            await api.post(`/estudiantes/${form.id_estudiante}/baja`, payload, { skipConfirm: true } as any)
+            try { notify({ type: 'success', message: t('students.messages.droppedWithId', { id: form.id_estudiante }) }) } catch { }
+            await onConfirm(payload)
+        } catch (err: any) {
+            console.error('Error al dar de baja estudiante:', err)
+            const format = (await import('../../lib/errorFormatter')).default
+            const msg = format(err, { entity: 'el estudiante', action: 'delete' })
+            try { notify({ type: 'error', message: msg }) } catch { }
         } finally {
             setSaving(false)
-            await onConfirm(payload)
         }
     }
 
@@ -107,7 +115,7 @@ export default function ModalBajaEstudiante({
             onClick={() => { if (!saving) onCancel() }}
         >
             <div
-                className="w-full max-w-2xl rounded-2xl border bg-white shadow-lg"
+                className="w-full max-w-2xl rounded-2xl border bg-white text-slate-900 dark:bg-slate-800 dark:text-slate-100 shadow-lg ring-1 ring-black/10 dark:ring-black/20 border-slate-200 dark:border-slate-700"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="px-4 py-3 border-b">
@@ -120,13 +128,13 @@ export default function ModalBajaEstudiante({
                 <form onSubmit={handleSubmit}>
                     <div className="px-4 py-4 grid md:grid-cols-2 gap-3">
                         <div className="grid gap-1">
-                            <label className="text-xs text-slate-600">
+                            <label className="text-xs text-slate-600 dark:text-slate-300">
                                 {t('students.dropModal.studentIdLabel')}
                             </label>
                             <input
                                 type="number"
                                 disabled
-                                className="h-10 rounded-xl border px-3 text-sm bg-slate-50"
+                                className="h-10 rounded-xl border px-3 text-sm bg-slate-50 text-slate-900 dark:bg-slate-700 dark:text-slate-100 border-slate-200 dark:border-slate-600"
                                 value={form.id_estudiante}
                                 onChange={e => setForm({ ...form, id_estudiante: Number(e.target.value || 0) })}
                                 required
@@ -134,12 +142,12 @@ export default function ModalBajaEstudiante({
                         </div>
 
                         <div className="grid gap-1">
-                            <label className="text-xs text-slate-600">
-                                {t('students.dropModal.dropDateLabel')}
+                            <label className="text-xs text-slate-600 dark:text-slate-300">
+                                {t('students.dropModal.dropDateLabel')} <span className="text-red-500" aria-hidden="true">*</span>
                             </label>
                             <input
                                 type="date"
-                                className="h-10 rounded-xl border px-3 text-sm"
+                                className="h-10 rounded-xl border px-3 text-sm bg-transparent text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-600"
                                 value={form.fecha_baja}
                                 onChange={e => setForm({ ...form, fecha_baja: e.target.value })}
                                 required
@@ -147,14 +155,15 @@ export default function ModalBajaEstudiante({
                         </div>
 
                         <div className="grid gap-1 md:col-span-2">
-                            <label className="text-xs text-slate-600">
-                                {t('students.dropModal.reasonLabel')}
+                            <label className="text-xs text-slate-600 dark:text-slate-300">
+                                {t('students.dropModal.reasonLabel')} <span className="text-red-500" aria-hidden="true">*</span>
                             </label>
                             <select
-                                className="h-10 rounded-xl border px-3 text-sm"
+                                className="h-10 rounded-xl border px-3 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-600"
                                 value={form.motivo_adicional}
                                 onChange={e => setForm({ ...form, motivo_adicional: e.target.value })}
                                 required
+                                aria-required="true"
                             >
                                 <option value="">{t('students.dropModal.selectReason')}</option>
                                 {motivos.map((m) => (
@@ -169,20 +178,22 @@ export default function ModalBajaEstudiante({
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2 px-4 py-3 border-t">
+                    <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
                         <button
                             type="button"
-                            className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                            className="rounded-md border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm disabled:opacity-60 inline-flex items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-400"
                             onClick={onCancel}
                             disabled={saving}
                         >
+                            <FiArrowLeft className="mr-2" size={16} />
                             {resolvedCancelLabel}
                         </button>
                         <button
                             type="submit"
                             disabled={saving || !form.motivo_adicional}
-                            className="rounded-md px-3 py-2 text-sm disabled:opacity-60 bg-red-600 text-white hover:bg-red-700"
+                            className="rounded-md px-3 py-2 text-sm disabled:opacity-60 bg-red-600 text-white hover:bg-red-700 inline-flex items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-400"
                         >
+                            <FiTrash2 className="mr-2" size={16} />
                             {saving ? t('students.dropModal.saving') : resolvedConfirmLabel}
                         </button>
                     </div>

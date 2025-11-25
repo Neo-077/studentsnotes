@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { FiSave } from 'react-icons/fi'
 import api from '../lib/api'
 import useAuth from '../store/useAuth'
+import notifyService from '../lib/notifyService'
 import { useTranslation } from 'react-i18next'
 
 export default function Account() {
@@ -35,12 +37,13 @@ export default function Account() {
         { headers: { 'x-no-retry': '1' } }
       )
       await refresh()
-      setMsg(t('account.messages.passwordUpdated'))
+      notifyService.notify({ type: 'success', message: t('account.messages.passwordUpdated') })
       setOldPw('')
       setPw('')
       setPw2('')
     } catch (e: any) {
-      const message = e?.message || t('account.errors.changeFailedGeneric')
+      const format = (await import('../lib/errorFormatter')).default
+      const message = format(e, { action: 'update' }) || t('account.errors.changeFailedGeneric')
       setMsg(message)
     } finally {
       setLoading(false)
@@ -53,9 +56,10 @@ export default function Account() {
       await api.delete('/auth/avatar')
       setAvatarUrl(undefined)
       await refresh()
-      setMsg(t('account.messages.avatarDeleted'))
+      notifyService.notify({ type: 'success', message: t('account.messages.avatarDeleted') })
     } catch (e: any) {
-      setMsg(e.message || t('account.errors.avatarDeleteFailed'))
+      const format = (await import('../lib/errorFormatter')).default
+      notifyService.notify({ type: 'error', message: format(e, { action: 'delete' }) || t('account.errors.avatarDeleteFailed') })
     }
   }
 
@@ -66,10 +70,11 @@ export default function Account() {
       fd.append('file', file, file.name)
       const res = await api.put('/auth/avatar', fd as any)
       if (res?.url) setAvatarUrl(res.url)
-      setMsg(t('account.messages.avatarUpdated'))
+      notifyService.notify({ type: 'success', message: t('account.messages.avatarUpdated') })
       await refresh()
     } catch (e: any) {
-      setMsg(e.message || t('account.errors.avatarUploadFailed'))
+      const format = (await import('../lib/errorFormatter')).default
+      notifyService.notify({ type: 'error', message: format(e, { action: 'create' }) || t('account.errors.avatarUploadFailed') })
     }
   }
 
@@ -79,9 +84,10 @@ export default function Account() {
     setSendingLink(true)
     try {
       await api.post('/auth/request-password-reset', {})
-      setMsg(t('account.messages.resetLinkSent'))
+      notifyService.notify({ type: 'success', message: t('account.messages.resetLinkSent') })
     } catch (e: any) {
-      setMsg(e?.message || t('account.errors.resetLinkFailed'))
+      const format = (await import('../lib/errorFormatter')).default
+      notifyService.notify({ type: 'error', message: format(e, { action: 'create' }) || t('account.errors.resetLinkFailed') })
     } finally {
       setSendingLink(false)
     }
@@ -101,9 +107,8 @@ export default function Account() {
       </div>
 
       <div
-        className={`rounded-2xl border bg-white p-4 shadow-sm max-w-xl ${
-          !isMaestro ? 'opacity-60 pointer-events-none' : ''
-        }`}
+        className={`rounded-2xl border bg-white p-4 shadow-sm max-w-xl ${!isMaestro ? 'opacity-60 pointer-events-none' : ''
+          }`}
       >
         <h3 className="font-medium mb-3">
           {t('account.passwordSectionTitle')}
@@ -134,8 +139,9 @@ export default function Account() {
           <div className="flex items-center gap-3">
             <button
               disabled={loading || !isMaestro}
-              className="h-10 rounded-lg bg-blue-600 px-4 text-white shadow-sm disabled:opacity-60"
+              className="h-10 rounded-lg bg-blue-600 px-4 text-white shadow-sm disabled:opacity-60 inline-flex items-center"
             >
+              <FiSave className="mr-2" size={14} />
               {loading ? t('account.saving') : t('account.savePassword')}
             </button>
             <button

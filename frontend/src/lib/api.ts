@@ -1,5 +1,6 @@
 // src/lib/api.ts
 import { supabase } from './supabaseClient'
+import confirmService from './confirmService'
 
 const RAW_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
 const BASE = RAW_BASE.replace(/\/+$/, '') // sin trailing slash
@@ -100,20 +101,75 @@ export default {
     console.log('📤 api.post - body recibido:', body)
     console.log('📤 api.post - opts:', opts)
 
-    return request(path, {
-      ...opts,
-      method: 'POST',
-      body: body,
+    // Allow callers to bypass confirmation (e.g. when they already showed a modal)
+    if ((opts as any)?.skipConfirm) {
+      return request(path, {
+        ...opts,
+        method: 'POST',
+        body: body,
+      })
+    }
+
+    // Require user confirmation for mutating actions
+    const ask = confirmService.requestConfirm({
+      titleKey: 'confirm.post.title',
+      descriptionKey: 'confirm.post.description',
+      confirmLabelKey: 'confirm.yes',
+      cancelLabelKey: 'confirm.no',
+      danger: false,
+    })
+
+    return ask.then((ok) => {
+      if (!ok) throw new Error('Canceled by user')
+      return request(path, {
+        ...opts,
+        method: 'POST',
+        body: body,
+      })
     })
   },
 
-  put: (path: string, body?: any, opts?: RequestInit) =>
-    request(path, {
-      method: 'PUT',
-      ...(opts || {}),
-      body: body instanceof FormData ? body : body,
-    }),
+  put: (path: string, body?: any, opts?: RequestInit) => {
+    if ((opts as any)?.skipConfirm) {
+      return request(path, {
+        method: 'PUT',
+        ...(opts || {}),
+        body: body instanceof FormData ? body : body,
+      })
+    }
 
-  delete: (path: string, opts?: RequestInit) =>
-    request(path, { method: 'DELETE', ...(opts || {}) }),
+    const ask = confirmService.requestConfirm({
+      titleKey: 'confirm.put.title',
+      descriptionKey: 'confirm.put.description',
+      confirmLabelKey: 'confirm.yes',
+      cancelLabelKey: 'confirm.no',
+      danger: false,
+    })
+    return ask.then((ok) => {
+      if (!ok) throw new Error('Canceled by user')
+      return request(path, {
+        method: 'PUT',
+        ...(opts || {}),
+        body: body instanceof FormData ? body : body,
+      })
+    })
+  },
+
+  delete: (path: string, opts?: RequestInit) => {
+    if ((opts as any)?.skipConfirm) {
+      return request(path, { method: 'DELETE', ...(opts || {}) })
+    }
+
+    const ask = confirmService.requestConfirm({
+      titleKey: 'confirm.delete.title',
+      descriptionKey: 'confirm.delete.description',
+      confirmLabelKey: 'confirm.yes',
+      cancelLabelKey: 'confirm.no',
+      danger: true,
+    })
+    return ask.then((ok) => {
+      if (!ok) throw new Error('Canceled by user')
+      return request(path, { method: 'DELETE', ...(opts || {}) })
+    })
+  },
 }

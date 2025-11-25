@@ -19,6 +19,23 @@
     "language": "Idioma",
     "languageAria": "Selector de idioma"
   },
+  "confirm": {
+    "title": "Confirmar operación",
+    "yes": "Confirmar",
+    "no": "Cancelar",
+    "post": {
+      "title": "Confirmar creación",
+      "description": "¿Deseas continuar con la creación de este registro?"
+    },
+    "put": {
+      "title": "Confirmar modificación",
+      "description": "¿Deseas aplicar los cambios?"
+    },
+    "delete": {
+      "title": "Confirmar eliminación",
+      "description": "Esta acción es irreversible. ¿Deseas continuar?"
+    }
+  },
   "nav": {
     "home": "Página principal",
     "enrollments": "Inscripciones",
@@ -217,7 +234,7 @@
       "unitsPlaceholder": "Unidades",
       "creditsLabel": "Créditos (1–30)",
       "creditsPlaceholder": "Créditos",
-      "careerLabel": "Carrera (opcional para vincular)",
+      "careerLabel": "Carrera",
       "careerPlaceholder": "Carrera…",
       "semesterLabel": "Semestre (1–12)",
       "semesterPlaceholder": "Semestre",
@@ -243,6 +260,7 @@
     },
     "messages": {
       "nameRequired": "Completa el nombre de la materia.",
+      "careerRequired": "Selecciona una carrera",
       "linkExists": "❌ Ya existe esta materia vinculada a esa carrera.",
       "linkCreatedExisting": "✅ Vinculación creada con materia existente",
       "createdAndLinked": "✅ Materia creada y vinculada",
@@ -364,7 +382,7 @@
       "careerLabel": "Carrera",
       "subjectLabel": "Materia",
       "searchLabel": "Buscar",
-      "searchPlaceholder": "Nombre, código, docente, horario"
+      "searchPlaceholder": "Nombre, código, docente"
     },
     "header": {
       "title": "Grupos",

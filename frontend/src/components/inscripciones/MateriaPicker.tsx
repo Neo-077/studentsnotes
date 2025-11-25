@@ -38,10 +38,11 @@ export default function MateriaPicker({
       setLoading(true)
       try {
         // si hay carrera/termino los pasamos como query
-        const list = await Catalogos.materias({
+        const listRaw = await Catalogos.materias({
           carrera_id: carreraId ?? undefined,
           termino_id: terminoId ?? undefined,
         })
+        const list = Array.isArray(listRaw) ? listRaw : (listRaw?.rows ?? listRaw?.data ?? [])
         if (!cancel) setItems(list ?? [])
       } finally {
         if (!cancel) setLoading(false)

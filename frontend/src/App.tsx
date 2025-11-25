@@ -15,6 +15,9 @@ import Dashboard from './routes/Dashboard'
 import { toggleTheme, isDark } from './lib/theme'
 import Account from './routes/Account'
 import { useTranslation } from 'react-i18next'
+import { FiHome, FiUserPlus, FiLayers, FiUsers, FiUser, FiBook, FiSettings } from 'react-icons/fi'
+import ConfirmModal from './components/ConfirmModal'
+import NotificationToast from './components/NotificationToast'
 
 type FontSizePref = 'normal' | 'large'
 
@@ -80,7 +83,7 @@ function Shell() {
   // Si hay sesión pero rol aún no llega (primer render), refresca perfil una sola vez
   useEffect(() => {
     if (user && role == null) {
-      refresh().catch(() => {})
+      refresh().catch(() => { })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!user])
@@ -143,6 +146,29 @@ function Shell() {
     { to: '/cuenta', label: t('nav.settings') },
   ] as const
 
+  function getIconForPath(path: string) {
+    switch (path) {
+      case '/dashboard':
+        return <FiHome className="w-5 h-5 flex-none" />
+      case '/inscripciones':
+        return <FiUserPlus className="w-5 h-5 flex-none" />
+      case '/grupos':
+        return <FiLayers className="w-5 h-5 flex-none" />
+      case '/grupos/aula':
+        return <FiUsers className="w-5 h-5 flex-none" />
+      case '/docentes':
+        return <FiUser className="w-5 h-5 flex-none" />
+      case '/materias':
+        return <FiBook className="w-5 h-5 flex-none" />
+      case '/estudiantes':
+        return <FiUsers className="w-5 h-5 flex-none" />
+      case '/cuenta':
+        return <FiSettings className="w-5 h-5 flex-none" />
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="min-h-screen-fix grid grid-cols-1 lg:grid-cols-[260px_1fr] app-root">
       {/* Enlace para saltar al contenido principal (para teclado/lector) */}
@@ -154,7 +180,7 @@ function Shell() {
       </a>
 
       {/* Sidebar */}
-      <aside className="sidebar p-4 lg:min-h-screen-fix shadow-xl" aria-label={t('layout.sidebarAria')}>
+      <aside className="sidebar p-4 lg:min-h-screen-fix lg:min-w-[260px] shadow-xl" aria-label={t('layout.sidebarAria')}>
         {/* Marca */}
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
@@ -267,7 +293,10 @@ function Shell() {
                     ].join(' ')
                   }
                 >
-                  <span className="truncate">{item.label}</span>
+                  <span className="flex items-center gap-3 w-full min-w-0">
+                    {getIconForPath(item.to)}
+                    <span className="truncate">{item.label}</span>
+                  </span>
                 </NavLink>
               </li>
             ))}
@@ -302,6 +331,11 @@ function Shell() {
           </button>
         </div>
       </aside>
+
+      {/* Global confirm modal (listens to confirmService) */}
+      <ConfirmModal />
+      {/* Global notification toasts */}
+      <NotificationToast />
 
       {/* Columna principal */}
       <div>

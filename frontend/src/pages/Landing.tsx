@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FiSave } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import useAuth from '../store/useAuth'
 
@@ -98,7 +99,7 @@ export default function Landing() {
 
           <div>
             <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-              Correo
+              Correo <span className="text-red-500">*</span>
             </label>
             <input
               className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -107,13 +108,14 @@ export default function Landing() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="docente@correo.com"
               required
+              aria-required="true"
               disabled={loading}
             />
           </div>
 
           <div>
             <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-              Contraseña
+              Contraseña <span className="text-red-500">*</span>
             </label>
             <input
               className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -122,6 +124,7 @@ export default function Landing() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              aria-required="true"
               disabled={loading}
             />
           </div>
@@ -129,8 +132,9 @@ export default function Landing() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center"
           >
+            <FiSave className="mr-2" size={16} />
             {loading ? (isSignup ? 'Creando cuenta…' : 'Entrando…') : (isSignup ? 'Crear cuenta' : 'Iniciar sesión')}
           </button>
 

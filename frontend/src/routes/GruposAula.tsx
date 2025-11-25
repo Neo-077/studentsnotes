@@ -5,8 +5,10 @@ import { Catalogos } from "../lib/catalogos"
 import MateriaPicker from "../components/inscripciones/MateriaPicker"
 import CarreraPicker from "../components/inscripciones/CarreraPicker"
 import api from "../lib/api"
+import confirmService from '../lib/confirmService'
 import * as XLSX from "xlsx"
 import { useTranslation } from "react-i18next"
+import { FiArrowRight, FiArrowLeft, FiPlus, FiDownload, FiUpload, FiFilter, FiTrash2 } from 'react-icons/fi'
 
 type Grupo = {
   id_grupo: number
@@ -87,7 +89,7 @@ export default function GruposAula() {
     return () => {
       window.removeEventListener("focus", handler)
       window.removeEventListener("online", handler)
-      document.removeEventListener("visibilitychange", () => {})
+      document.removeEventListener("visibilitychange", () => { })
     }
   }, [terminoId, carreraId, materiaId, t])
 
@@ -104,8 +106,7 @@ export default function GruposAula() {
       const mat = g.materia?.nombre?.toLowerCase() || ""
       const cod = g.grupo_codigo?.toLowerCase() || ""
       const doc = `${g.docente?.nombre || ""} ${g.docente?.ap_paterno || ""}`.toLowerCase()
-      const hor = g.horario?.toLowerCase() || ""
-      return mat.includes(q) || cod.includes(q) || doc.includes(q) || hor.includes(q)
+      return mat.includes(q) || cod.includes(q) || doc.includes(q)
     })
   }, [grupos, query])
 
@@ -159,7 +160,7 @@ export default function GruposAula() {
     } catch (e: any) {
       setMsgAlu(
         e?.message ||
-          t("classGroups.studentsModal.messages.errorGeneric")
+        t("classGroups.studentsModal.messages.errorGeneric")
       )
     } finally {
       setLoadingAlu(false)
@@ -190,12 +191,12 @@ export default function GruposAula() {
       await api.post("/inscripciones", {
         id_estudiante: est.id_estudiante,
         id_grupo: openAlumnos.id_grupo,
-      })
+      }, { skipConfirm: true } as any)
       await loadAlumnos(openAlumnos.id_grupo)
     } catch (e: any) {
       setMsgAlu(
         e?.message ||
-          t("classGroups.studentsModal.messages.errorGeneric")
+        t("classGroups.studentsModal.messages.errorGeneric")
       )
     }
   }
@@ -211,7 +212,7 @@ export default function GruposAula() {
     if (!isFinite(num)) return
     try {
       const payload = { unidades: [{ unidad, [campo]: num }] }
-      await api.put(`/inscripciones/${id_inscripcion}/unidades`, payload)
+      await api.put(`/inscripciones/${id_inscripcion}/unidades`, payload, { skipConfirm: true } as any)
     } catch {
       // silencioso
     }
@@ -220,13 +221,21 @@ export default function GruposAula() {
   async function bajaInscripcion(id_inscripcion: number) {
     if (!openAlumnos) return
     try {
-      await api.delete(`/inscripciones/${id_inscripcion}`)
+      const ok = await confirmService.requestConfirm({
+        titleKey: 'confirm.delete.title',
+        descriptionText: t('classGroups.studentsModal.confirmUnsubscribe') || t('confirm.delete.description'),
+        confirmLabelKey: 'confirm.yes',
+        cancelLabelKey: 'confirm.no',
+        danger: true,
+      })
+      if (!ok) return
+      await api.delete(`/inscripciones/${id_inscripcion}`, { skipConfirm: true } as any)
       await loadAlumnos(openAlumnos.id_grupo)
+        ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: t('classGroups.studentsModal.messages.unsubscribed') || 'Inscripción eliminada' })
     } catch (e: any) {
-      setMsgAlu(
-        e?.message ||
-          t("classGroups.studentsModal.messages.errorGeneric")
-      )
+      const format = (await import('../lib/errorFormatter')).default
+      const msg = format(e, { entity: 'la inscripción', action: 'delete' })
+        ; (await import('../lib/notifyService')).default.notify({ type: 'error', message: msg })
     }
   }
 
@@ -264,7 +273,7 @@ export default function GruposAula() {
     } catch (e: any) {
       setMsgAlu(
         e?.message ||
-          t("classGroups.studentsModal.messages.importError")
+        t("classGroups.studentsModal.messages.importError")
       )
     } finally {
       setImporting(false)
@@ -285,7 +294,7 @@ export default function GruposAula() {
     <div className="space-y-6">
       {/* Filtros superiores */}
       <div className="rounded-2xl border bg-white p-4 shadow-sm flex flex-wrap items-end gap-4">
-        <div className="grid gap-1">
+        <div className="grid gap-1 w-40">
           <label className="text-xs text-slate-500">
             {t("classGroups.filters.termLabel")}
           </label>
@@ -315,7 +324,7 @@ export default function GruposAula() {
           </select>
         </div>
 
-        <div className="grid gap-1">
+        <div className="grid gap-1 w-56">
           <label className="text-xs text-slate-500">
             {t("classGroups.filters.careerLabel")}
           </label>
@@ -328,7 +337,7 @@ export default function GruposAula() {
           />
         </div>
 
-        <div className="grid gap-1">
+        <div className="grid gap-1 w-56">
           <label className="text-xs text-slate-500">
             {t("classGroups.filters.subjectLabel")}
           </label>
@@ -340,12 +349,12 @@ export default function GruposAula() {
           />
         </div>
 
-        <div className="grid gap-1">
+        <div className="grid gap-1 flex-1 min-w-[220px]">
           <label className="text-xs text-slate-500">
             {t("classGroups.filters.searchLabel")}
           </label>
           <input
-            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full"
             placeholder={t("classGroups.filters.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -405,9 +414,8 @@ export default function GruposAula() {
                 <div className="mt-3 grid gap-1 text-sm">
                   <div className="truncate">
                     {g.docente
-                      ? `${g.docente.nombre} ${
-                          g.docente.ap_paterno ?? ""
-                        }`
+                      ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""
+                      }`
                       : "N/D"}
                   </div>
                   <div className="text-slate-600">{g.horario}</div>
@@ -419,17 +427,17 @@ export default function GruposAula() {
                 </div>
                 <div className="mt-4 flex gap-2">
                   <button
-                    className="rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50"
+                    className="rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50 inline-flex items-center"
                     onClick={() => {
-                      const titulo = `${g.materia?.nombre ?? ""} • ${
-                        g.grupo_codigo
-                      }`
+                      const titulo = `${g.materia?.nombre ?? ""} • ${g.grupo_codigo
+                        }`
                       navigate(`/grupos/aula/${g.id_grupo}`, {
                         state: { id_grupo: g.id_grupo, titulo },
                       })
                     }}
                   >
                     {t("classGroups.cards.details")}
+                    <FiArrowRight className="ml-2" size={14} />
                   </button>
 
                   {/* Si quieres volver a usar el modal de alumnos, puedes descomentar:
@@ -527,7 +535,7 @@ export default function GruposAula() {
                     disabled={alumnosCount >= (alumnos.cupo || 0)}
                   />
                   <button
-                    className="h-9 rounded-md border px-3 text-sm"
+                    className="h-9 rounded-md border px-3 text-sm inline-flex items-center"
                     disabled={alumnosCount >= (alumnos.cupo || 0)}
                     onClick={() => {
                       const el = document.getElementById(
@@ -536,6 +544,7 @@ export default function GruposAula() {
                       if (el?.value) agregarPorNoControl(el.value)
                     }}
                   >
+                    <FiPlus className="mr-2" size={14} />
                     {t("classGroups.studentsModal.addButton")}
                   </button>
                   <input
@@ -549,18 +558,20 @@ export default function GruposAula() {
                     }}
                   />
                   <button
-                    className="h-9 rounded-md border px-3 text-sm disabled:opacity-50"
+                    className="h-9 rounded-md border px-3 text-sm disabled:opacity-50 inline-flex items-center"
                     disabled={importing}
                     onClick={() => fileRef.current?.click()}
                   >
+                    <FiUpload className="mr-2" size={14} />
                     {importing
                       ? t("classGroups.studentsModal.importing")
                       : t("classGroups.studentsModal.importButton")}
                   </button>
                   <button
-                    className="h-9 rounded-md border px-3 text-sm"
+                    className="h-9 rounded-md border px-3 text-sm inline-flex items-center"
                     onClick={downloadTemplate}
                   >
+                    <FiDownload className="mr-2" size={14} />
                     {t("classGroups.studentsModal.templateButton")}
                   </button>
                 </div>
@@ -644,9 +655,8 @@ export default function GruposAula() {
                             {r.estudiante?.no_control}
                           </td>
                           <td className="whitespace-nowrap">
-                            {`${r.estudiante?.nombre ?? ""} ${
-                              r.estudiante?.ap_paterno ?? ""
-                            }`}
+                            {`${r.estudiante?.nombre ?? ""} ${r.estudiante?.ap_paterno ?? ""
+                              }`}
                           </td>
                           {Array.from(
                             { length: alumnos.unidades || 0 },
@@ -703,11 +713,12 @@ export default function GruposAula() {
                           })}
                           <td className="text-right">
                             <button
-                              className="rounded-md border px-3 py-1 text-xs text-red-600 hover:bg-red-50"
+                              className="rounded-md border px-3 py-1 text-xs text-red-600 hover:bg-red-50 inline-flex items-center"
                               onClick={() =>
                                 bajaInscripcion(r.id_inscripcion)
                               }
                             >
+                              <FiTrash2 className="mr-2" size={12} />
                               {t(
                                 "classGroups.studentsModal.dropButton"
                               )}

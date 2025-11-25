@@ -11,6 +11,7 @@ import ControlChart from "../pages/ControlChart"
 import ModalBaja from "../components/grupoAulaDetalle/ModalBaja"
 import ParetoChart from "../pages/ParetoChart"
 import { useTranslation } from "react-i18next"
+import { FiDownload, FiUpload, FiArrowLeft, FiPlus, FiFilter, FiTrash2, FiRefreshCw, FiArrowRight } from 'react-icons/fi'
 
 type AlumnoRow = {
   id_inscripcion: number
@@ -27,7 +28,7 @@ type AlumnoRow = {
 }
 
 type AlumnosState = { cupo: number; unidades: number; rows: AlumnoRow[] }
-type GrupoResumen = { total?: number; aprobados?: number; reprobados?: number; [k: string]: any }
+type GrupoResumen = { total?: number; aprobados?: number; reprobados?: number;[k: string]: any }
 type Elegible = { no_control?: string; nombre?: string; ap_paterno?: string; ap_materno?: string }
 
 // --- util local: bloquear/rehabilitar scroll mientras exporta overlays ---
@@ -198,7 +199,6 @@ export default function GrupoAulaDetalle() {
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
-
   function getEstado(row: AlumnoRow): string {
     return String(row?.status ?? row?.estado ?? row?.inscripcion_status ?? "ACTIVA").toUpperCase()
   }
@@ -248,7 +248,7 @@ export default function GrupoAulaDetalle() {
         setMsgAlu(t("classGroupDetail.messages.studentNotFound"))
         return
       }
-      await api.post("/inscripciones", { id_estudiante: est.id_estudiante, id_grupo })
+      await api.post("/inscripciones", { id_estudiante: est.id_estudiante, id_grupo }, { skipConfirm: true } as any)
       await loadAlumnos(id_grupo)
       setMsgKind("ok")
       setMsgAlu(t("classGroupDetail.messages.enrollmentAdded"))
@@ -268,7 +268,7 @@ export default function GrupoAulaDetalle() {
     if (!isFinite(num)) return
     try {
       const payload = { unidades: [{ unidad, [campo]: num }] }
-      await api.put(`/inscripciones/${id_inscripcion}/unidades`, payload)
+      await api.put(`/inscripciones/${id_inscripcion}/unidades`, payload, { skipConfirm: true } as any)
     } catch {
       /* noop */
     }
@@ -335,7 +335,7 @@ export default function GrupoAulaDetalle() {
         setMsgAlu(t("classGroupDetail.messages.fileWithoutNoControl"))
         return
       }
-      await api.post("/inscripciones/bulk", { id_grupo, no_control: list })
+      await api.post("/inscripciones/bulk", { id_grupo, no_control: list }, { skipConfirm: true } as any)
       await loadAlumnos(id_grupo)
       setMsgKind("ok")
       setMsgAlu(t("classGroupDetail.messages.importEnrollmentsCompleted"))
@@ -487,7 +487,9 @@ export default function GrupoAulaDetalle() {
     headRow.push(t("classGroupDetail.table.averageShort"))
     const head = [headRow]
 
-    const body = (alumnos?.rows || []).map((r) => {
+    // Export the currently visible (active) students, sorted as in the UI
+    const exportRows = pagedAlu && pagedAlu.length ? sortedActiveRows : sortedActiveRows
+    const body = (exportRows || []).map((r) => {
       const base = [
         String(r?.estudiante?.no_control || ""),
         `${(r?.estudiante?.nombre || "").toString().toUpperCase()} ${(r?.estudiante?.ap_paterno || "").toString().toUpperCase()}`.trim(),
@@ -551,9 +553,9 @@ export default function GrupoAulaDetalle() {
       if (y && y < doc.internal.pageSize.getHeight() - 20) {
         doc.setFontSize(10)
         doc.setTextColor(60)
-        const total = Number((grupo?.total ?? alumnos?.rows?.length ?? 0) as number)
-        const aprob = Number(grupo?.aprobados ?? 0)
-        const reprob = Number(grupo?.reprobados ?? 0)
+        const total = Number((exportRows?.length ?? 0) as number)
+        const aprob = Number((exportRows || []).filter((x) => estaAprobado(x?.unidades)).length ?? 0)
+        const reprob = Math.max(0, total - aprob)
         const resumen = t("classGroupDetail.charts.pdfFooterSummary", {
           total,
           approved: aprob,
@@ -818,7 +820,7 @@ export default function GrupoAulaDetalle() {
   async function reactivarInscripcion(id: number) {
     try {
       setMsgAlu(null)
-      await api.put(`/inscripciones/${id}`, { status: "ACTIVA" })
+      await api.put(`/inscripciones/${id}`, { status: "ACTIVA" }, { skipConfirm: true } as any)
       await loadAlumnos(id_grupo)
       setMsgKind("ok")
       setMsgAlu(t("classGroupDetail.messages.enrollmentReactivated"))
@@ -1097,11 +1099,12 @@ export default function GrupoAulaDetalle() {
         <div className="flex gap-2">
           <button
             onClick={() => exportarGraficasPDF()}
-            className="h-9 rounded-md border px-3 text-sm font-medium transition-colors 
+            className="h-9 rounded-md border px-3 text-sm font-medium transition-colors inline-flex items-center justify-center
                      bg-[var(--surface)] hover:bg-[color-mix(in_oklab,var(--text),transparent_92%)]
                      text-[var(--text)] disabled:opacity-60"
             disabled={exportingCharts}
           >
+            <FiDownload className="mr-2" size={16} />
             {exportingCharts
               ? t("classGroupDetail.buttons.exportChartsLoading")
               : t("classGroupDetail.buttons.exportCharts")}
@@ -1109,14 +1112,16 @@ export default function GrupoAulaDetalle() {
 
           <button
             onClick={() => exportarPDF()}
-            className="h-9 rounded-md border px-3 text-sm font-medium transition-colors 
+            className="h-9 rounded-md border px-3 text-sm font-medium transition-colors inline-flex items-center justify-center
                      bg-[var(--surface)] hover:bg-[color-mix(in_oklab,var(--text),transparent_92%)]
                      text-[var(--text)]"
           >
+            <FiDownload className="mr-2" size={16} />
             {t("classGroupDetail.buttons.exportPDF")}
           </button>
 
-          <Link to="/grupos/aula" className="rounded-md border px-3 py-1 text-sm">
+          <Link to="/grupos/aula" className="rounded-md border px-3 py-1 text-sm inline-flex items-center">
+            <FiArrowLeft className="mr-2" size={16} />
             {t("classGroupDetail.buttons.back")}
           </Link>
         </div>
@@ -1152,13 +1157,14 @@ export default function GrupoAulaDetalle() {
               disabled={sortedActiveRows.length >= (alumnos.cupo || 0)}
             />
             <button
-              className="h-9 rounded-md border px-3 text-sm"
+              className="h-9 rounded-md border px-3 text-sm inline-flex items-center"
               disabled={sortedActiveRows.length >= (alumnos.cupo || 0)}
               onClick={() => {
                 const el = document.getElementById("alu_noctrl") as HTMLInputElement
                 if (el?.value) agregarPorNoControl(el.value)
               }}
             >
+              <FiPlus className="mr-2" size={14} />
               {t("classGroupDetail.buttons.addStudent")}
             </button>
 
@@ -1174,13 +1180,13 @@ export default function GrupoAulaDetalle() {
               }}
             />
             <button
-              className="h-9 rounded-md border px-3 text-sm font-medium transition-colors
-                       bg-[var(--surface)] hover:bg-[color-mix(in_oklab,var(--text),transparent_92%)]
-                       disabled:opacity-50"
+              className="h-9 rounded-md border px-3 text-sm font-medium transition-colors inline-flex items-center"
+
               disabled={importing}
               onClick={() => fileRef.current?.click()}
               title={t("classGroupDetail.tooltips.importEnrollments")}
             >
+              <FiUpload className="mr-2" size={14} />
               {importing
                 ? t("classGroupDetail.buttons.importEnrollmentsLoading")
                 : t("classGroupDetail.buttons.importEnrollments")}
@@ -1198,13 +1204,12 @@ export default function GrupoAulaDetalle() {
               }}
             />
             <button
-              className="h-9 rounded-md border px-3 text-sm font-medium transition-colors
-                       bg-[var(--surface)] hover:bg-[color-mix(in_oklab,var(--text),transparent_92%)]
-                       disabled:opacity-50"
+              className="h-9 rounded-md border px-3 text-sm font-medium transition-colors inline-flex items-center"
               disabled={importingGrades}
               onClick={() => gradesFileRef.current?.click()}
               title={t("classGroupDetail.tooltips.importGrades")}
             >
+              <FiUpload className="mr-2" size={14} />
               {importingGrades
                 ? t("classGroupDetail.buttons.uploadGradesLoading")
                 : t("classGroupDetail.buttons.uploadGrades")}
@@ -1213,10 +1218,10 @@ export default function GrupoAulaDetalle() {
             {/* Menú de plantillas */}
             <div ref={templateButtonRef} className="relative">
               <button
-                className="h-9 rounded-md border px-3 text-sm font-medium transition-colors
-                         bg-[var(--surface)] hover:bg-[color-mix(in_oklab,var(--text),transparent_92%)]"
+                className="h-9 rounded-md border px-3 text-sm font-medium transition-colors inline-flex items-center"
                 onClick={() => setShowTemplateOptions((v) => !v)}
               >
+                <FiFilter className="mr-2" size={14} />
                 {t("classGroupDetail.buttons.template")}
               </button>
 
@@ -1230,7 +1235,7 @@ export default function GrupoAulaDetalle() {
                     <li>
                       <a
                         className="dropdown-item"
-                        href="#" 
+                        href="#"
                         onClick={(e) => {
                           e.preventDefault()
                           void downloadTemplateXLSX()
@@ -1424,18 +1429,20 @@ export default function GrupoAulaDetalle() {
                       <td className="text-right whitespace-nowrap">
                         {esBaja ? (
                           <button
-                            className="rounded border px-2 py-0.5 text-[10px] text-emerald-700 hover:bg-emerald-50"
+                            className="rounded border px-2 py-0.5 text-[10px] text-emerald-700 hover:bg-emerald-50 inline-flex items-center"
                             onClick={() => reactivarInscripcion(r.id_inscripcion)}
                             title={t("classGroupDetail.tooltips.reactivate")}
                           >
+                            <FiRefreshCw className="mr-1" size={12} />
                             {t("classGroupDetail.buttons.reactivate")}
                           </button>
                         ) : (
                           <button
-                            className="rounded border px-2 py-0.5 text-[10px] text-orange-700 hover:bg-orange-50"
+                            className="rounded border px-2 py-0.5 text-[10px] text-orange-700 hover:bg-orange-50 inline-flex items-center"
                             onClick={() => bajaInscripcion(r.id_inscripcion)}
                             title={t("classGroupDetail.tooltips.drop")}
                           >
+                            <FiTrash2 className="mr-1" size={12} />
                             {t("classGroupDetail.buttons.drop")}
                           </button>
                         )}
@@ -1451,10 +1458,11 @@ export default function GrupoAulaDetalle() {
         {totalPagesAlu > 1 && (
           <div className="flex items-center justify-end gap-2">
             <button
-              className="rounded-md border px-2 py-1 text-sm disabled:opacity-50"
+              className="rounded-md border px-2 py-1 text-sm disabled:opacity-50 inline-flex items-center"
               onClick={() => setPageAlu((p) => Math.max(1, p - 1))}
               disabled={pageSafeAlu <= 1}
             >
+              <FiArrowLeft className="mr-1" size={14} />
               {t("classGroupDetail.buttons.paginationPrev")}
             </button>
             <span className="text-sm text-slate-600">
@@ -1464,11 +1472,12 @@ export default function GrupoAulaDetalle() {
               })}
             </span>
             <button
-              className="rounded-md border px-2 py-1 text-sm disabled:opacity-50"
+              className="rounded-md border px-2 py-1 text-sm disabled:opacity-50 inline-flex items-center"
               onClick={() => setPageAlu((p) => Math.min(totalPagesAlu, p + 1))}
               disabled={pageSafeAlu >= totalPagesAlu}
             >
               {t("classGroupDetail.buttons.paginationNext")}
+              <FiArrowRight className="ml-1" size={14} />
             </button>
           </div>
         )}

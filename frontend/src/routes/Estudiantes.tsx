@@ -5,6 +5,7 @@ import { Catalogos } from '../lib/catalogos'
 import * as XLSX from 'xlsx'
 import ModalBajaEstudiante from '../components/inscripciones/ModalBajaEstudiante'
 import { useTranslation } from 'react-i18next'
+import { FiDownload, FiUpload, FiSearch, FiTrash2, FiFilter, FiArrowLeft, FiArrowRight } from 'react-icons/fi'
 
 type Row = {
   id_estudiante: number
@@ -32,11 +33,17 @@ export default function Estudiantes() {
   const [q, setQ] = useState('')
   const [carreras, setCarreras] = useState<any[]>([])
   const [idCarrera, setIdCarrera] = useState<number | ''>('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'dropped'>('active')
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [modalBaja, setModalBaja] = useState<{ open: boolean; id?: number }>({ open: false })
 
-  useEffect(() => { Catalogos.carreras().then(setCarreras) }, [])
+  useEffect(() => {
+    Catalogos.carreras().then((res: any) => {
+      const arr = Array.isArray(res) ? res : (res?.rows ?? res?.data ?? [])
+      setCarreras(arr)
+    })
+  }, [])
 
   const reqRef = useRef(0)
   async function load(silent = false) {
@@ -45,10 +52,13 @@ export default function Estudiantes() {
     setMsg(null)
     try {
       let path = '/estudiantes'
+      // If applying a client-side status filter, request a large pageSize
+      // so we can filter across the full dataset when backend doesn't support it.
+      const effectivePageSize = statusFilter && statusFilter !== 'all' ? 100000 : pageSize
       const qs = new URLSearchParams({
         q,
         page: String(page),
-        pageSize: String(pageSize),
+        pageSize: String(effectivePageSize),
       })
 
       if (role === 'maestro') {
@@ -56,6 +66,9 @@ export default function Estudiantes() {
       } else {
         if (idCarrera) {
           qs.append('id_carrera', String(idCarrera))
+        }
+        if (statusFilter && statusFilter !== 'all') {
+          qs.append('activo', statusFilter === 'active' ? '1' : '0')
         }
       }
 
@@ -65,17 +78,26 @@ export default function Estudiantes() {
         setRows(data.rows || [])
         setTotal(data.total || 0)
       }
+      return data
     } catch (e: any) {
       if (reqRef.current === my) {
         const message = e?.message || ''
         setMsg(t('students.errors.loadFailed', { message }))
       }
+      return null
     } finally {
       if (reqRef.current === my) { if (!silent) setLoading(false) }
     }
   }
 
   useEffect(() => { if (initialized) load(false) }, [initialized, page, pageSize])
+
+  useEffect(() => {
+    // when status filter changes, reset to first page and reload
+    setPage(1)
+    if (initialized) load(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter])
 
   // Búsqueda reactiva (debounce) al escribir o cambiar carrera (solo para admin)
   useEffect(() => {
@@ -102,6 +124,32 @@ export default function Estudiantes() {
 
   const maxPage = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize])
 
+  // Client-side filtered rows when backend doesn't support 'activo' filter
+  const filteredRows = useMemo(() => {
+    if (statusFilter === 'all') return rows
+    return rows.filter(r => (statusFilter === 'active') ? !!r.activo : !r.activo)
+  }, [rows, statusFilter])
+
+  const totalForPagination = statusFilter === 'all' ? total : filteredRows.length
+  const maxPageEffective = useMemo(() => Math.max(1, Math.ceil(totalForPagination / pageSize)), [totalForPagination, pageSize])
+  const pageSafeEffective = Math.min(page, maxPageEffective)
+  const startIdx = (pageSafeEffective - 1) * pageSize
+  const endIdx = startIdx + pageSize
+  const pagedRows = statusFilter === 'all' ? rows : filteredRows.slice(startIdx, endIdx)
+
+  // Apply consistent sorting before rendering/pagination
+  const sortedRows = useMemo(() => {
+    const base = statusFilter === 'all' ? rows : filteredRows
+    return [...base].sort(
+      (a, b) =>
+        a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }) ||
+        (a.ap_paterno || '').localeCompare(b.ap_paterno || '', 'es', { sensitivity: 'base' }) ||
+        (a.ap_materno || '').localeCompare(b.ap_materno || '', 'es', { sensitivity: 'base' })
+    )
+  }, [rows, filteredRows, statusFilter])
+
+  const displayedRows = statusFilter === 'all' ? sortedRows : sortedRows.slice(startIdx, endIdx)
+
   async function onSearch(e: React.FormEvent) {
     e.preventDefault()
     setPage(1)
@@ -114,8 +162,18 @@ export default function Estudiantes() {
 
   async function handleConfirmBaja() {
     setModalBaja({ open: false })
-    await load()
-    setMsg(t('students.messages.dropped'))
+    const data = await load()
+    // Ajustar paginación si la cantidad total disminuyó y la página actual queda fuera de rango
+    try {
+      const newTotal = data?.total ?? total
+      const newMax = Math.max(1, Math.ceil((newTotal || 0) / pageSize))
+      if (page > newMax) {
+        setPage(newMax)
+      }
+    } catch {
+      // noop
+    }
+    ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: t('students.messages.dropped') })
   }
 
   /** ========= Helpers ========= **/
@@ -251,7 +309,7 @@ export default function Estudiantes() {
         parts.push(t('students.import.duplicatesInDb', { count: dupInDbCount }))
       }
 
-      setMsg(parts.join(' | '))
+      ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: parts.join(' | ') })
       await load()
     } catch (e: any) {
       const fallback = t('students.import.errorGeneric')
@@ -308,10 +366,12 @@ export default function Estudiantes() {
 
         {role === 'admin' && (
           <div className="flex items-center gap-2">
-            <button onClick={downloadTemplateXLSX} className="rounded-lg border px-3 py-2 text-sm">
+            <button onClick={downloadTemplateXLSX} className="rounded-lg border px-3 py-2 text-sm inline-flex items-center">
+              <FiDownload className="mr-2" size={16} />
               {t('students.buttons.downloadTemplate')}
             </button>
-            <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
+            <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer inline-flex items-center">
+              <FiUpload className="mr-2" size={16} />
               {t('students.buttons.importFile')}
               <input
                 type="file"
@@ -348,10 +408,21 @@ export default function Estudiantes() {
             ))}
           </select>
         )}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as any)}
+          className="h-10 rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          title="Filtrar por estado"
+        >
+          <option value="active">Activos</option>
+          <option value="dropped">Bajas</option>
+          <option value="all">Todos</option>
+        </select>
         <button
           type="submit"
-          className="h-10 rounded-lg bg-blue-600 px-4 text-white shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="h-10 rounded-lg bg-blue-600 px-4 text-white shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 inline-flex items-center"
         >
+          <FiSearch className="mr-2" size={16} />
           {t('students.buttons.search')}
         </button>
       </form>
@@ -374,67 +445,61 @@ export default function Estudiantes() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {loading && rows.length === 0 ? (
+              {loading && displayedRows.length === 0 ? (
                 <tr>
                   <td colSpan={role === 'admin' ? 10 : 9} className="px-3 py-6 text-center text-slate-500">
                     {t('students.table.loading')}
                   </td>
                 </tr>
-              ) : rows.length === 0 ? (
+              ) : displayedRows.length === 0 ? (
                 <tr>
                   <td colSpan={role === 'admin' ? 10 : 9} className="px-3 py-6 text-center text-slate-500">
                     {t('students.table.empty')}
                   </td>
                 </tr>
               ) : (
-                [...rows]
-                  .sort(
-                    (a, b) =>
-                      a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }) ||
-                      (a.ap_paterno || '').localeCompare(b.ap_paterno || '', 'es', { sensitivity: 'base' }) ||
-                      (a.ap_materno || '').localeCompare(b.ap_materno || '', 'es', { sensitivity: 'base' })
-                  )
-                  .map(r => (
-                    <tr
-                      key={r.id_estudiante}
-                      className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60"
-                    >
-                      <td className="font-mono">{r.no_control ?? '—'}</td>
-                      <td>{r.nombre}</td>
-                      <td>{r.ap_paterno ?? '—'}</td>
-                      <td>{r.ap_materno ?? '—'}</td>
+                displayedRows.map(r => (
+                  <tr
+                    key={r.id_estudiante}
+                    className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60"
+                  >
+                    <td className="font-mono">{r.no_control ?? '—'}</td>
+                    <td>{r.nombre}</td>
+                    <td>{r.ap_paterno ?? '—'}</td>
+                    <td>{r.ap_materno ?? '—'}</td>
+                    <td>
+                      {r.carrera?.clave ? `${r.carrera.clave} — ` : ''}
+                      {r.carrera?.nombre ?? r.id_carrera}
+                    </td>
+                    <td>{r.genero?.descripcion ?? r.id_genero}</td>
+                    <td>{r.fecha_nacimiento ?? '—'}</td>
+                    <td>{r.fecha_ingreso ?? '—'}</td>
+                    <td>
+                      <span>
+                        {r.activo ? t('students.status.active') : t('students.status.inactive')}
+                      </span>
+                    </td>
+                    {role === 'admin' && (
                       <td>
-                        {r.carrera?.clave ? `${r.carrera.clave} — ` : ''}
-                        {r.carrera?.nombre ?? r.id_carrera}
+                        {r.activo ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center px-3 py-1.5 text-xs text-orange-700 hover:bg-orange-50 rounded-md border"
+                            onClick={() => askBaja(r)}
+                            title={t('students.actions.dropTitle')}
+                          >
+                            <FiTrash2 className="mr-2" size={16} />
+                            {t('students.actions.drop')}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-500">
+                            {t('students.labels.dropped')}
+                          </span>
+                        )}
                       </td>
-                      <td>{r.genero?.descripcion ?? r.id_genero}</td>
-                      <td>{r.fecha_nacimiento ?? '—'}</td>
-                      <td>{r.fecha_ingreso ?? '—'}</td>
-                      <td>
-                        <span>
-                          {r.activo ? t('students.status.active') : t('students.status.inactive')}
-                        </span>
-                      </td>
-                      {role === 'admin' && (
-                        <td>
-                          {r.activo ? (
-                            <button
-                              type="button"
-                              className="inline-flex items-center px-3 py-1.5 text-xs text-orange-700 hover:bg-orange-50 rounded-md border"
-                              onClick={() => askBaja(r)}
-                              title={t('students.actions.dropTitle')}
-                            >
-                              {t('students.actions.drop')}
-                            </button>
-                          ) : (
-                            <span className="text-xs text-slate-500">
-                              {t('students.labels.dropped')}
-                            </span>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  ))
+                    )}
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -442,25 +507,27 @@ export default function Estudiantes() {
 
         <div className="flex items-center justify-between px-3 py-2">
           <div className="text-xs text-slate-500">
-            {t('students.footer.total', { count: total.toLocaleString() })}
+            {t('students.footer.total', { count: totalForPagination })}
           </div>
           <div className="flex items-center gap-2">
             <button
-              className="rounded border px-2 py-1"
+              className="rounded border px-2 py-1 inline-flex items-center"
               disabled={page <= 1}
               onClick={() => setPage(p => Math.max(1, p - 1))}
             >
+              <FiArrowLeft className="mr-2" size={14} />
               {t('students.pagination.prev')}
             </button>
             <span className="text-sm">
-              {t('students.pagination.pageOf', { page, maxPage })}
+              {t('students.pagination.pageOf', { page: pageSafeEffective, maxPage: maxPageEffective })}
             </span>
             <button
-              className="rounded border px-2 py-1"
-              disabled={page >= maxPage}
-              onClick={() => setPage(p => Math.min(maxPage, p + 1))}
+              className="rounded border px-2 py-1 inline-flex items-center"
+              disabled={page >= maxPageEffective}
+              onClick={() => setPage(p => Math.min(maxPageEffective, p + 1))}
             >
               {t('students.pagination.next')}
+              <FiArrowRight className="ml-2" size={14} />
             </button>
             <select
               value={pageSize}

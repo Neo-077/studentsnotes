@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { supabase } from "../../lib/supabaseClient"
+import { FiPlus, FiTrash2 } from 'react-icons/fi'
 
 type Props = { groupId: number | null }
 
@@ -109,9 +110,10 @@ export default function QuickEnroll({ groupId }: Props) {
           <button
             onClick={inscribir}
             disabled={!groupReady || !match || busy}
-            className="h-10 rounded-lg bg-blue-600 px-4 text-white text-sm disabled:opacity-50"
+            className="h-10 rounded-lg bg-blue-600 px-4 text-white text-sm disabled:opacity-50 inline-flex items-center"
             title={match ? "Inscribir" : "Escribe un número de control válido"}
           >
+            <FiPlus className="mr-2" size={14} />
             {busy ? "Inscribiendo…" : "Inscribir"}
           </button>
         </div>
@@ -145,8 +147,9 @@ export default function QuickEnroll({ groupId }: Props) {
               </div>
               <button
                 onClick={() => desinscribir(i.id_inscripcion)}
-                className="text-xs rounded-md border px-2 py-1 hover:bg-slate-50"
+                className="text-xs rounded-md border px-2 py-1 hover:bg-slate-50 inline-flex items-center"
               >
+                <FiTrash2 className="mr-1" size={12} />
                 Quitar
               </button>
             </div>
