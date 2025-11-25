@@ -11,7 +11,12 @@ type Props = {
 
 export default function CarreraPicker({ value, onChange, label = true, className }: Props) {
   const [list, setList] = useState<any[]>([])
-  useEffect(() => { Catalogos.carreras().then(setList) }, [])
+  useEffect(() => {
+    Catalogos.carreras().then((res: any) => {
+      const arr = Array.isArray(res) ? res : (res?.rows ?? res?.data ?? [])
+      setList(arr)
+    })
+  }, [])
   const select = (
     <select
       className={`border rounded-xl px-3 py-2 ${className ?? ''}`}

@@ -3,8 +3,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import api from '../lib/api'
 import * as XLSX from 'xlsx'
 import { Catalogos } from '../lib/catalogos'
-import ConfirmModal from '../components/ConfirmModal'
+import confirmService from '../lib/confirmService'
 import { useTranslation } from 'react-i18next'
+import { FiDownload, FiUpload, FiPlus, FiEdit, FiTrash2, FiSearch } from 'react-icons/fi'
 
 export default function Docentes() {
   const { t } = useTranslation()
@@ -33,10 +34,10 @@ export default function Docentes() {
   )
 
   const [edit, setEdit] = useState<{
-    open:boolean; id?: number; rfc?: string; nombre?: string; ap_paterno?: string; ap_materno?: string;
+    open: boolean; id?: number; rfc?: string; nombre?: string; ap_paterno?: string; ap_materno?: string;
     // correo ya NO es editable: se regenera si cambian nombre o ap_paterno
     id_genero?: number | ''
-  }>({ open:false })
+  }>({ open: false })
 
   // crear (sin correo)
   const [f, setF] = useState({
@@ -53,18 +54,18 @@ export default function Docentes() {
       .replace(/\s+/g, ' ')
       .trim()
 
-  const normalizeRFC = (s: string) => String(s ?? '').toUpperCase().replace(/\s+/g,'').trim()
+  const normalizeRFC = (s: string) => String(s ?? '').toUpperCase().replace(/\s+/g, '').trim()
   const isValidRFC = (rfc: string) => /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{2,3}$/.test(normalizeRFC(rfc))
 
   const takeFirstToken = (s: string) => {
     const t = norm(s).split(' ').filter(Boolean)
     return t[0] || ''
   }
-  const onlyLetters = (s: string) => norm(s).replace(/[^a-z0-9. ]/g,'').replace(/\s+/g,'') // tras norm, quitamos espacios
+  const onlyLetters = (s: string) => norm(s).replace(/[^a-z0-9. ]/g, '').replace(/\s+/g, '') // tras norm, quitamos espacios
 
   function buildEmailLocalBase(nombre: string, ap_paterno: string) {
     const first = onlyLetters(takeFirstToken(nombre))
-    const last  = onlyLetters(takeFirstToken(ap_paterno))
+    const last = onlyLetters(takeFirstToken(ap_paterno))
     const baseLocal = [first, last].filter(Boolean).join('.')
     return baseLocal || 'usuario'
   }
@@ -83,7 +84,7 @@ export default function Docentes() {
     let i = 0
     const maxAttempts = 100
     while (i < maxAttempts) {
-      const candidateLocal = i === 0 ? baseLocal : `${baseLocal}${i+1}` // marco.perez, marco.perez2, ...
+      const candidateLocal = i === 0 ? baseLocal : `${baseLocal}${i + 1}` // marco.perez, marco.perez2, ...
       const candidate = emailFromLocal(candidateLocal)
       if (!takenUI.has(candidate)) {
         // pre-chequeo opcional en BD
@@ -107,7 +108,7 @@ export default function Docentes() {
     if (v == null || v === '') return null
     const asNum = Number(v)
     if (!isNaN(asNum)) return asNum
-    const byText = generos.find((g:any)=> norm(g.descripcion) === norm(v))
+    const byText = generos.find((g: any) => norm(g.descripcion) === norm(v))
     return byText ? byText.id_genero : null
   }
 
@@ -131,30 +132,30 @@ export default function Docentes() {
       }
     }
   }
-  useEffect(()=>{ load(false) }, [])
+  useEffect(() => { load(false) }, [])
 
   // refrescar silencioso
-  useEffect(()=>{
+  useEffect(() => {
     const handler = () => load(true)
     window.addEventListener('focus', handler)
-    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') handler() })
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') handler() })
     window.addEventListener('online', handler)
-    return ()=>{
+    return () => {
       window.removeEventListener('focus', handler)
       window.removeEventListener('online', handler)
-      document.removeEventListener('visibilitychange', ()=>{})
+      document.removeEventListener('visibilitychange', () => { })
     }
   }, [])
 
-  useEffect(()=>{
+  useEffect(() => {
     if (!edit.open) return
-    const onKey = (e: KeyboardEvent)=>{ if (e.key === 'Escape') setEdit({ open:false }) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setEdit({ open: false }) }
     window.addEventListener('keydown', onKey)
-    return ()=> window.removeEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [edit.open])
 
   /** ========= Listado + búsqueda ========= **/
-  const dlist = useMemo(()=>{
+  const dlist = useMemo(() => {
     const list = [...rows]
     const filterFn = (arr: Docente[]) => arr.filter(d =>
       [d.rfc, d.correo, `${d.nombre} ${d.ap_paterno ?? ''} ${d.ap_materno ?? ''}`]
@@ -163,14 +164,14 @@ export default function Docentes() {
         .includes(q.trim().toLowerCase())
     )
     const base = q.trim() ? filterFn(list) : list
-    base.sort((a,b)=> a.nombre.localeCompare(b.nombre,'es',{sensitivity:'base'})
-      || (a.ap_paterno||'').localeCompare(b.ap_paterno||'','es',{sensitivity:'base'})
-      || (a.ap_materno||'').localeCompare(b.ap_materno||'','es',{sensitivity:'base'}))
+    base.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })
+      || (a.ap_paterno || '').localeCompare(b.ap_paterno || '', 'es', { sensitivity: 'base' })
+      || (a.ap_materno || '').localeCompare(b.ap_materno || '', 'es', { sensitivity: 'base' }))
     return base
   }, [rows, q])
 
   /** ========= Crear (correo auto) ========= **/
-  async function onCreate(e: React.FormEvent){
+  async function onCreate(e: React.FormEvent) {
     e.preventDefault(); setMsg(null)
 
     const payloadBase = {
@@ -182,7 +183,7 @@ export default function Docentes() {
     }
 
     // Reglas mínimas
-    if (!payloadBase.rfc || !payloadBase.nombre || !payloadBase.ap_paterno){
+    if (!payloadBase.rfc || !payloadBase.nombre || !payloadBase.ap_paterno) {
       setMsg(t('teachers.errors.requiredFields'))
       return
     }
@@ -206,18 +207,19 @@ export default function Docentes() {
     const payload = { ...payloadBase, correo }
 
     try {
-      await api.post('/docentes', payload)
-      setMsg(t('teachers.messages.created'))
-      setF({ rfc:'', nombre:'', ap_paterno:'', ap_materno:'', id_genero:'' })
+      await api.post('/docentes', payload, { skipConfirm: true } as any)
+      const createdMsg = t('teachers.messages.created')
+        ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${createdMsg}: ${payload.nombre} ${payload.ap_paterno || ''}` })
+      setF({ rfc: '', nombre: '', ap_paterno: '', ap_materno: '', id_genero: '' })
       await load()
-    } catch(e:any){
+    } catch (e: any) {
       setMsg('❌ ' + (e.message || t('teachers.errors.createFailed')))
     }
   }
 
   /** ========= Editar (correo auto si cambian nombre/ap_paterno) ========= **/
-  async function onSaveEdit(){
-    if (!edit.id) { setEdit({ open:false }); return }
+  async function onSaveEdit() {
+    if (!edit.id) { setEdit({ open: false }); return }
     const upd: any = {}
 
     if (edit.rfc != null) {
@@ -231,7 +233,7 @@ export default function Docentes() {
       try {
         const check = await api.post('/docentes/dedup-check', { rfcs: [rfc], exclude_id: edit.id })
         if (check?.exists?.rfcs?.length) { setMsg(t('teachers.errors.duplicateRFCDB')); return }
-      } catch {}
+      } catch { }
       upd.rfc = rfc
     }
 
@@ -243,31 +245,35 @@ export default function Docentes() {
 
     // Si cambió nombre o ap_paterno → regenerar correo manteniendo unicidad
     if (willRegenEmail) {
-      const useNombre = upd.nombre ?? rows.find(r => r.id_docente===edit.id)?.nombre ?? ''
-      const useApPat  = upd.ap_paterno ?? rows.find(r => r.id_docente===edit.id)?.ap_paterno ?? ''
+      const useNombre = upd.nombre ?? rows.find(r => r.id_docente === edit.id)?.nombre ?? ''
+      const useApPat = upd.ap_paterno ?? rows.find(r => r.id_docente === edit.id)?.ap_paterno ?? ''
       const baseLocal = buildEmailLocalBase(useNombre, useApPat)
       upd.correo = await ensureUniqueEmail(baseLocal, edit.id)
     }
 
-    try{
-      await api.put(`/docentes/${edit.id}`, upd)
-      setMsg(t('teachers.messages.updated'))
-      setEdit({ open:false })
+    try {
+      // Close edit modal (it acts as the user's confirmation) and skip global confirm
+      setEdit({ open: false })
+      await api.put(`/docentes/${edit.id}`, upd, { skipConfirm: true } as any)
+      const msg = t('teachers.messages.updated')
+        ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${msg}: ${upd.nombre || ''}` })
       await load()
-    }catch(e:any){
-      setMsg('❌ ' + (e.message || t('teachers.errors.updateFailed')))
+    } catch (e: any) {
+      const format = (await import('../lib/errorFormatter')).default
+      const msg = format(e, { entity: 'el docente', action: 'update' }) || t('teachers.errors.updateFailed')
+        ; (await import('../lib/notifyService')).default.notify({ type: 'error', message: msg })
     }
   }
 
   /** ========= Importación (sin columna correo; se genera) ========= **/
-  function downloadTemplateXLSX(){
-    const headers = ['rfc','nombre','ap_paterno','ap_materno','genero'] // correo eliminado
+  function downloadTemplateXLSX() {
+    const headers = ['rfc', 'nombre', 'ap_paterno', 'ap_materno', 'genero'] // correo eliminado
     const wsMain = XLSX.utils.aoa_to_sheet([headers])
-    const listaGeneros = (generos ?? []).map((g:any) => [g.descripcion, g.id_genero])
+    const listaGeneros = (generos ?? []).map((g: any) => [g.descripcion, g.id_genero])
     const wsHelp = XLSX.utils.aoa_to_sheet([
       ['LISTAS'],
       [],
-      ['Géneros: descripcion','id'],
+      ['Géneros: descripcion', 'id'],
       ...listaGeneros,
       [],
       ['Instrucciones'],
@@ -335,7 +341,7 @@ export default function Docentes() {
       // 6) Pre-chequeo opcional en BD (RFC)
       let rfcsInDb: string[] = []
       try {
-        const rfcs = notInUI.map((r:any)=> r.rfc)
+        const rfcs = notInUI.map((r: any) => r.rfc)
         if (rfcs.length) {
           const res = await api.post('/docentes/dedup-check', { rfcs })
           rfcsInDb = Array.isArray(res?.exists?.rfcs) ? res.exists.rfcs : []
@@ -352,7 +358,7 @@ export default function Docentes() {
         const baseLocal = buildEmailLocalBase(r.nombre, r.ap_paterno)
         let i = 0
         while (i < 200) {
-          const candidate = emailFromLocal(i===0 ? baseLocal : `${baseLocal}${i+1}`)
+          const candidate = emailFromLocal(i === 0 ? baseLocal : `${baseLocal}${i + 1}`)
           if (!takenLocal.has(candidate)) {
             takenLocal.add(candidate)
             prepared.push({ ...r, correo: candidate })
@@ -371,15 +377,15 @@ export default function Docentes() {
         const correos = prepared.map(p => p.correo)
         if (correos.length) {
           const res = await api.post('/docentes/dedup-check', { correos })
-          const mailsInDb = Array.isArray(res?.exists?.correos) ? new Set(res.exists.correos.map((m:string)=>m.toLowerCase())) : new Set()
+          const mailsInDb = Array.isArray(res?.exists?.correos) ? new Set(res.exists.correos.map((m: string) => m.toLowerCase())) : new Set()
           if (mailsInDb.size) {
             // re-asignar los que chocaron con BD
             for (const p of prepared) {
               if (mailsInDb.has(p.correo.toLowerCase())) {
-                const baseLocal = p.correo.split('@')[0].replace(/\d+$/,'') // quita sufijo numérico si hay
+                const baseLocal = p.correo.split('@')[0].replace(/\d+$/, '') // quita sufijo numérico si hay
                 let j = 0
                 while (j < 200) {
-                  const candidate = emailFromLocal(j===0 ? baseLocal : `${baseLocal}${j+1}`)
+                  const candidate = emailFromLocal(j === 0 ? baseLocal : `${baseLocal}${j + 1}`)
                   if (!takenLocal.has(candidate) && !mailsInDb.has(candidate.toLowerCase())) {
                     takenLocal.add(candidate)
                     p.correo = candidate
@@ -394,10 +400,10 @@ export default function Docentes() {
       } catch { /* si no existe endpoint, seguimos */ }
 
       // 8) XLSX limpio (ahora sí incluye correo generado)
-      const headers = ['rfc','nombre','ap_paterno','ap_materno','id_genero','correo']
+      const headers = ['rfc', 'nombre', 'ap_paterno', 'ap_materno', 'id_genero', 'correo']
       const dataAoA = [
         headers,
-        ...prepared.map((r:any)=> [r.rfc, r.nombre, r.ap_paterno, r.ap_materno, r.id_genero, r.correo])
+        ...prepared.map((r: any) => [r.rfc, r.nombre, r.ap_paterno, r.ap_materno, r.id_genero, r.correo])
       ]
       const cleanSheet = XLSX.utils.aoa_to_sheet(dataAoA)
       const cleanBook = XLSX.utils.book_new()
@@ -407,7 +413,7 @@ export default function Docentes() {
       const fd = new FormData()
       fd.append('file', cleanBlob, `docentes_limpios_${Date.now()}.xlsx`)
 
-      const report = await api.post('/docentes/bulk', fd as any)
+      const report = await api.post('/docentes/bulk', fd as any, { skipConfirm: true } as any)
 
       const inserted: number = report?.summary?.inserted ?? 0
       const errors: number = report?.summary?.errors ?? 0
@@ -426,9 +432,9 @@ export default function Docentes() {
         summary += ' | ' + t('teachers.import.duplicatesInDb', { count: dupVsDb })
       }
 
-      setMsg(summary)
+      ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: summary })
       await load()
-    } catch (err:any) {
+    } catch (err: any) {
       setMsg('❌ ' + (err.message || t('teachers.errors.importFailed')))
     } finally {
       const input = document.querySelector<HTMLInputElement>('input[type=file]')
@@ -438,30 +444,39 @@ export default function Docentes() {
   }
 
   /** ========= Acciones de fila ========= **/
-  function askDelete(d: Docente){
-    setConfirmDel({
-      open: true, id: d.id_docente,
-      nombre: `${d.nombre} ${d.ap_paterno ?? ''} ${d.ap_materno ?? ''}`.trim(),
-      rfc: d.rfc
-    })
+  function askDelete(d: Docente) {
+    // close any local confirm state
+    setConfirmDel({ open: false })
+      ; (async () => {
+        const title = t('teachers.deleteModal.title')
+        const question = t('teachers.deleteModal.question')
+        const desc = `${question}\n${d.nombre} ${d.ap_paterno ?? ''} ${d.ap_materno ?? ''}`.trim() + `\n${t('teachers.deleteModal.rfcLabel')}: ${d.rfc}`
+        const ok = await confirmService.requestConfirm({
+          titleText: title,
+          descriptionText: desc,
+          confirmLabelText: t('teachers.deleteModal.confirmLabel'),
+          cancelLabelText: t('confirm.no'),
+          danger: true,
+        })
+        if (!ok) return
+        try {
+          await api.delete(`/docentes/${d.id_docente}`, { skipConfirm: true } as any)
+          await load()
+          const msg = t('teachers.messages.deleted')
+            ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${msg}: ${d.nombre}` })
+        } catch (e: any) {
+          const format = (await import('../lib/errorFormatter')).default
+          const msg = format(e, { entity: 'el docente', action: 'delete' })
+            ; (await import('../lib/notifyService')).default.notify({ type: 'error', message: msg })
+        }
+      })()
   }
-  function askEdit(d: Docente){
+  function askEdit(d: Docente) {
     setEdit({
-      open:true, id: d.id_docente, rfc: d.rfc, nombre: d.nombre,
+      open: true, id: d.id_docente, rfc: d.rfc, nombre: d.nombre,
       ap_paterno: d.ap_paterno, ap_materno: d.ap_materno ?? '',
       id_genero: d.id_genero ?? ''
     })
-  }
-  async function confirmDelete(){
-    if (!confirmDel.id){ setConfirmDel({ open:false }); return }
-    try{
-      await api.delete(`/docentes/${confirmDel.id}`)
-      setConfirmDel({ open:false })
-      await load()
-      setMsg(t('teachers.messages.deleted'))
-    } catch(e:any){
-      setMsg('❌ ' + (e.message || t('teachers.errors.deleteFailed')))
-    }
   }
 
   /** ========= Render ========= **/
@@ -482,38 +497,56 @@ export default function Docentes() {
 
       {/* Crear (sin correo) */}
       <form onSubmit={onCreate} className="rounded-2xl border bg-white p-3 shadow-sm grid md:grid-cols-3 gap-3">
-        <input
-          className="h-10 rounded-xl border px-3 text-sm"
-          placeholder={t('teachers.form.rfcPlaceholder')}
-          value={f.rfc}
-          onChange={e=>setF({...f, rfc:e.target.value})}
-        />
-        <input
-          className="h-10 rounded-xl border px-3 text-sm"
-          placeholder={t('teachers.form.firstNamePlaceholder')}
-          value={f.nombre}
-          onChange={e=>setF({...f, nombre:e.target.value})}
-        />
-        <input
-          className="h-10 rounded-xl border px-3 text-sm"
-          placeholder={t('teachers.form.lastName1Placeholder')}
-          value={f.ap_paterno}
-          onChange={e=>setF({...f, ap_paterno:e.target.value})}
-        />
-        <input
-          className="h-10 rounded-xl border px-3 text-sm"
-          placeholder={t('teachers.form.lastName2Placeholder')}
-          value={f.ap_materno}
-          onChange={e=>setF({...f, ap_materno:e.target.value})}
-        />
-        <select
-          className="h-10 rounded-xl border px-3 text-sm md:col-span-1"
-          value={f.id_genero}
-          onChange={e=>setF({...f, id_genero:e.target.value})}
-        >
-          <option value="">{t('teachers.form.genderPlaceholder')}</option>
-          {generos.map((g:any)=> <option key={g.id_genero} value={g.id_genero}>{g.descripcion}</option>)}
-        </select>
+        <div className="grid gap-1">
+          <label className="text-xs text-slate-500">{t('teachers.form.rfcPlaceholder')} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <input
+            className="h-10 rounded-xl border px-3 text-sm"
+            placeholder={t('teachers.form.rfcPlaceholder')}
+            value={f.rfc}
+            aria-required="true"
+            onChange={e => setF({ ...f, rfc: e.target.value })}
+          />
+        </div>
+        <div className="grid gap-1">
+          <label className="text-xs text-slate-500">{t('teachers.form.firstNamePlaceholder')} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <input
+            className="h-10 rounded-xl border px-3 text-sm"
+            placeholder={t('teachers.form.firstNamePlaceholder')}
+            value={f.nombre}
+            aria-required="true"
+            onChange={e => setF({ ...f, nombre: e.target.value })}
+          />
+        </div>
+        <div className="grid gap-1">
+          <label className="text-xs text-slate-500">{t('teachers.form.lastName1Placeholder')} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <input
+            className="h-10 rounded-xl border px-3 text-sm"
+            placeholder={t('teachers.form.lastName1Placeholder')}
+            value={f.ap_paterno}
+            aria-required="true"
+            onChange={e => setF({ ...f, ap_paterno: e.target.value })}
+          />
+        </div>
+        <div className="grid gap-1">
+          <label className="text-xs text-slate-500">{t('teachers.form.lastName2Placeholder')}</label>
+          <input
+            className="h-10 rounded-xl border px-3 text-sm"
+            placeholder={t('teachers.form.lastName2Placeholder')}
+            value={f.ap_materno}
+            onChange={e => setF({ ...f, ap_materno: e.target.value })}
+          />
+        </div>
+        <div className="grid gap-1">
+          <label className="text-xs text-slate-500">{t('teachers.form.genderPlaceholder')}</label>
+          <select
+            className="h-10 rounded-xl border px-3 text-sm"
+            value={f.id_genero}
+            onChange={e => setF({ ...f, id_genero: e.target.value })}
+          >
+            <option value="">{t('teachers.form.genderPlaceholder')}</option>
+            {generos.map((g: any) => <option key={g.id_genero} value={g.id_genero}>{g.descripcion}</option>)}
+          </select>
+        </div>
 
         {/* Vista previa del correo generado */}
         <div className="md:col-span-3 text-xs text-slate-600">
@@ -521,7 +554,8 @@ export default function Docentes() {
         </div>
 
         <div className="md:col-span-3 flex items-center gap-2">
-          <button className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm">
+          <button className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm inline-flex items-center">
+            <FiPlus className="mr-2" size={16} />
             {t('teachers.form.submit')}
           </button>
           {msg && <span className="text-sm">{msg}</span>}
@@ -533,23 +567,25 @@ export default function Docentes() {
         <div className="flex items-center gap-2 mb-3">
           <input
             value={q}
-            onChange={e=>setQ(e.target.value)}
+            onChange={e => setQ(e.target.value)}
             placeholder={t('teachers.search.placeholder')}
             className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 text-sm"
           />
           <button
             onClick={downloadTemplateXLSX}
-            className="rounded-lg border px-3 py-2 text-sm"
+            className="rounded-lg border px-3 py-2 text-sm inline-flex items-center"
           >
+            <FiDownload className="mr-2" size={16} />
             {t('teachers.buttons.downloadTemplate')}
           </button>
-          <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
+          <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer inline-flex items-center">
+            <FiUpload className="mr-2" size={16} />
             {t('teachers.buttons.importFile')}
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
               className="hidden"
-              onChange={(e)=> e.target.files?.[0] && onImport(e.target.files[0])}
+              onChange={(e) => e.target.files?.[0] && onImport(e.target.files[0])}
             />
           </label>
         </div>
@@ -567,13 +603,13 @@ export default function Docentes() {
               </tr>
             </thead>
             <tbody>
-              {loading && rows.length===0 ? (
+              {loading && rows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-3 py-6 text-center">
                     {t('teachers.table.loading')}
                   </td>
                 </tr>
-              ) : dlist.length===0 ? (
+              ) : dlist.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-3 py-6 text-center">
                     {t('teachers.table.empty')}
@@ -586,18 +622,20 @@ export default function Docentes() {
                   <td>{d.ap_paterno ?? '—'}</td>
                   <td>{d.ap_materno ?? '—'}</td>
                   <td>{d.correo}</td>
-                  <td>{(generos.find(g => g.id_genero===d.id_genero)?.descripcion) ?? '—'}</td>
+                  <td>{(generos.find(g => g.id_genero === d.id_genero)?.descripcion) ?? '—'}</td>
                   <td className="text-right flex items-center gap-2 justify-end">
                     <button
-                      onClick={()=> askEdit(d)}
-                      className="px-3 py-1.5 text-xs"
+                      onClick={() => askEdit(d)}
+                      className="px-3 py-1.5 text-xs inline-flex items-center"
                     >
+                      <FiEdit className="mr-2" size={16} />
                       {t('teachers.buttons.edit')}
                     </button>
                     <button
-                      onClick={()=> askDelete(d)}
-                      className="px-3 py-1.5 text-xs"
+                      onClick={() => askDelete(d)}
+                      className="px-3 py-1.5 text-xs inline-flex items-center"
                     >
+                      <FiTrash2 className="mr-2" size={16} />
                       {t('teachers.buttons.delete')}
                     </button>
                   </td>
@@ -608,36 +646,17 @@ export default function Docentes() {
         </div>
       </div>
 
-      {/* Modal eliminar */}
-      <ConfirmModal
-        open={confirmDel.open}
-        title={t('teachers.deleteModal.title')}
-        subtitle={t('teachers.deleteModal.subtitle')}
-        confirmLabel={t('teachers.deleteModal.confirmLabel')}
-        danger
-        onCancel={()=> setConfirmDel({ open:false })}
-        onConfirm={confirmDelete}
-      >
-        <div className="space-y-2 text-sm">
-          <div>{t('teachers.deleteModal.question')}</div>
-          <div className="rounded-lg border bg-slate-50 px-3 py-2">
-            <div className="font-medium">{confirmDel.nombre}</div>
-            <div className="text-slate-600">
-              {t('teachers.deleteModal.rfcLabel')}: {confirmDel.rfc}
-            </div>
-          </div>
-        </div>
-      </ConfirmModal>
+      {/* global confirmService used instead of local ConfirmModal */}
 
       {/* Modal editar (correo no editable; se regenera si cambian nombre/ap_paterno) */}
       {edit.open && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
-          onClick={()=> setEdit({ open:false })}
+          onClick={() => setEdit({ open: false })}
         >
           <div
             className="w-full max-w-xl rounded-2xl border bg-white shadow-lg"
-            onClick={(e)=> e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="px-4 py-3 border-b">
               <div className="text-sm font-semibold">
@@ -652,7 +671,7 @@ export default function Docentes() {
                 <input
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.rfc ?? ''}
-                  onChange={e=> setEdit(s=>({...s, rfc:e.target.value}))}
+                  onChange={e => setEdit(s => ({ ...s, rfc: e.target.value }))}
                 />
               </div>
               <div className="grid gap-1">
@@ -662,7 +681,7 @@ export default function Docentes() {
                 <input
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.nombre ?? ''}
-                  onChange={e=> setEdit(s=>({...s, nombre:e.target.value}))}
+                  onChange={e => setEdit(s => ({ ...s, nombre: e.target.value }))}
                 />
               </div>
               <div className="grid gap-1">
@@ -672,7 +691,7 @@ export default function Docentes() {
                 <input
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.ap_paterno ?? ''}
-                  onChange={e=> setEdit(s=>({...s, ap_paterno:e.target.value}))}
+                  onChange={e => setEdit(s => ({ ...s, ap_paterno: e.target.value }))}
                 />
               </div>
               <div className="grid gap-1">
@@ -682,7 +701,7 @@ export default function Docentes() {
                 <input
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.ap_materno ?? ''}
-                  onChange={e=> setEdit(s=>({...s, ap_materno:e.target.value}))}
+                  onChange={e => setEdit(s => ({ ...s, ap_materno: e.target.value }))}
                 />
               </div>
 
@@ -709,13 +728,13 @@ export default function Docentes() {
                 <select
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.id_genero ?? ''}
-                  onChange={e=> setEdit(s=>({
+                  onChange={e => setEdit(s => ({
                     ...s,
                     id_genero: e.target.value ? Number(e.target.value) : ''
                   }))}
                 >
                   <option value="">{t('teachers.editModal.genderPlaceholder')}</option>
-                  {generos.map((g:any)=> (
+                  {generos.map((g: any) => (
                     <option key={g.id_genero} value={g.id_genero}>
                       {g.descripcion}
                     </option>
@@ -726,7 +745,7 @@ export default function Docentes() {
             <div className="flex items-center justify-end gap-2 px-4 py-3 border-t">
               <button
                 className="rounded-md border px-3 py-2 text-sm"
-                onClick={()=> setEdit({ open:false })}
+                onClick={() => setEdit({ open: false })}
               >
                 {t('teachers.editModal.cancel')}
               </button>

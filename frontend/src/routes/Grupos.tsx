@@ -2,11 +2,12 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Catalogos } from "../lib/catalogos"
-import ConfirmModal from "../components/ConfirmModal"
+import confirmService from "../lib/confirmService"
 import MateriaPicker from "../components/inscripciones/MateriaPicker"
 import CarreraPicker from "../components/inscripciones/CarreraPicker"
 import api from "../lib/api"
 import * as XLSX from "xlsx"
+import { FiDownload, FiUpload, FiPlus, FiSearch } from 'react-icons/fi'
 
 type Grupo = {
   id_grupo: number
@@ -145,7 +146,7 @@ export default function Grupos() {
       window.removeEventListener("focus", handler)
       window.removeEventListener("online", handler)
       window.removeEventListener("pageshow", handler)
-      document.removeEventListener("visibilitychange", () => {})
+      document.removeEventListener("visibilitychange", () => { })
     }
   }, [])
 
@@ -161,8 +162,7 @@ export default function Grupos() {
       const mat = g.materia?.nombre?.toLowerCase() || ""
       const cod = g.grupo_codigo?.toLowerCase() || ""
       const doc = `${g.docente?.nombre || ""} ${g.docente?.ap_paterno || ""}`.toLowerCase()
-      const hor = g.horario?.toLowerCase() || ""
-      return mat.includes(q) || cod.includes(q) || doc.includes(q) || hor.includes(q)
+      return mat.includes(q) || cod.includes(q) || doc.includes(q)
     })
   }, [grupos, query])
 
@@ -206,15 +206,16 @@ export default function Grupos() {
       }
 
       setSaving(true)
-      await api.post("/grupos", payload)
-      setMsg(t("groups.messages.created"))
+      await api.post("/grupos", payload, { skipConfirm: true } as any)
+      const createdMsg = t("groups.messages.created")
+        ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${createdMsg}: ${payload.id_materia ? payload.id_materia : ''}` })
       setForm((f) => ({ ...f, horario: "", cupo: "" }))
       await load()
       setPage(1)
     } catch (e: any) {
       setMsg(
         (t("groups.messages.createErrorPrefix") as string) +
-          (e.message || t("groups.messages.createGenericError"))
+        (e.message || t("groups.messages.createGenericError"))
       )
     } finally {
       setSaving(false)
@@ -276,10 +277,10 @@ export default function Grupos() {
       })
       const dupMsg = res?.summary?.duplicatesSkipped
         ? t("groups.messages.importDuplicatesSkipped", {
-            count: res.summary.duplicatesSkipped,
-          })
+          count: res.summary.duplicatesSkipped,
+        })
         : ""
-      setMsg(`${baseMsg}${dupMsg}`)
+        ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${baseMsg}${dupMsg}` })
 
       if (Array.isArray(res.errors)) setImportErrors(res.errors)
 
@@ -293,7 +294,7 @@ export default function Grupos() {
     } catch (e: any) {
       setMsg(
         (t("groups.messages.importErrorPrefix") as string) +
-          (e.message || t("groups.messages.importGenericError"))
+        (e.message || t("groups.messages.importGenericError"))
       )
       const rep = e?.response?.data
       if (rep?.errors && Array.isArray(rep.errors)) setImportErrors(rep.errors)
@@ -364,26 +365,29 @@ export default function Grupos() {
       ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`.trim()
       : t("groups.table.noTeacher")
     const label = `${g.materia?.nombre ?? "—"} — ${g.grupo_codigo} — ${docente}`
-    setConfirmDel({ open: true, id: g.id_grupo, label })
-  }
-
-  async function confirmDelete() {
-    if (!confirmDel.id) {
-      setConfirmDel({ open: false })
-      return
-    }
-    setMsg(null)
-    try {
-      await api.delete(`/grupos/${confirmDel.id}`)
-      setConfirmDel({ open: false })
-      await load()
-      setMsg(t("groups.messages.deleted"))
-    } catch (e: any) {
-      setMsg(
-        (t("groups.messages.deleteErrorPrefix") as string) +
-          (e.message || t("groups.messages.deleteGenericError"))
-      )
-    }
+    // close any local confirm state
+    setConfirmDel({ open: false })
+      ; (async () => {
+        const ok = await confirmService.requestConfirm({
+          titleText: t('groups.deleteModal.title'),
+          descriptionText: `${t('groups.deleteModal.question')}\n${label}`,
+          confirmLabelText: t('groups.deleteModal.confirm'),
+          cancelLabelText: t('confirm.no'),
+          danger: true,
+        })
+        if (!ok) return
+        setMsg(null)
+        try {
+          await api.delete(`/grupos/${g.id_grupo}`, { skipConfirm: true } as any)
+          await load()
+          const msg = t('groups.messages.deleted')
+            ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${msg}: ${label}` })
+        } catch (e: any) {
+          const format = (await import('../lib/errorFormatter')).default
+          const msg = format(e, { entity: 'el grupo', action: 'delete' })
+            ; (await import('../lib/notifyService')).default.notify({ type: 'error', message: msg })
+        }
+      })()
   }
 
   const totalVisible = lista.length
@@ -402,7 +406,7 @@ export default function Grupos() {
     <div className="space-y-6">
       {/* ===== Filtros ===== */}
       <div className="rounded-2xl border bg-white p-4 shadow-sm flex flex-wrap items-end gap-4">
-        <div className="grid gap-1">
+        <div className="grid gap-1 w-40">
           <label className="text-xs text-slate-500">
             {t("groups.filters.termLabel")}
           </label>
@@ -430,22 +434,7 @@ export default function Grupos() {
           </select>
         </div>
 
-        <ConfirmModal
-          open={confirmDel.open}
-          title={t("groups.deleteModal.title")}
-          subtitle={t("groups.deleteModal.subtitle")}
-          confirmLabel={t("groups.deleteModal.confirm")}
-          danger
-          onCancel={() => setConfirmDel({ open: false })}
-          onConfirm={confirmDelete}
-        >
-          <div className="space-y-2 text-sm">
-            <div>{t("groups.deleteModal.question")}</div>
-            <div className="rounded-lg border bg-slate-50 px-3 py-2">
-              {confirmDel.label}
-            </div>
-          </div>
-        </ConfirmModal>
+        {/* global confirmService used instead of local ConfirmModal */}
 
         <div className="grid gap-1">
           <label className="text-xs text-slate-500">
@@ -458,11 +447,11 @@ export default function Grupos() {
               setMateriaId(null)
             }}
             label={false}
-            className="h-10 w-full rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="h-10 w-56 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           />
         </div>
 
-        <div className="grid gap-1">
+        <div className="grid gap-1 w-56">
           <label className="text-xs text-slate-500">
             {t("groups.filters.subjectLabel")}
           </label>
@@ -475,12 +464,12 @@ export default function Grupos() {
           />
         </div>
 
-        <div className="grid gap-1">
+        <div className="grid gap-1 flex-1 min-w-[220px]">
           <label className="text-xs text-slate-500">
             {t("groups.filters.searchLabel")}
           </label>
           <input
-            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full"
             placeholder={t("groups.filters.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -489,12 +478,14 @@ export default function Grupos() {
 
         <button
           onClick={downloadTemplateXLSX}
-          className="rounded-lg border px-3 py-2 text-sm shadow-sm hover:bg-slate-50"
+          className="rounded-lg border px-3 py-2 text-sm shadow-sm hover:bg-slate-50 inline-flex items-center"
         >
+          <FiDownload className="mr-2" size={16} />
           {t("groups.buttons.downloadTemplate")}
         </button>
 
-        <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
+        <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer inline-flex items-center">
+          <FiUpload className="mr-2" size={16} />
           {t("groups.buttons.importFile")}
           <input
             type="file"
@@ -526,67 +517,83 @@ export default function Grupos() {
           </div>
 
           {/* Materia */}
-          <select
-            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            value={form.id_materia ?? ""}
-            onChange={(e) =>
-              setForm({ ...form, id_materia: Number(e.target.value) || null })
-            }
-          >
-            <option value="">{t("groups.form.subjectPlaceholder")}</option>
-            {materias.map((m) => (
-              <option key={m.id_materia} value={m.id_materia}>
-                {m.nombre}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className="text-xs text-slate-500">{t("groups.form.subjectPlaceholder")} <span className="text-red-500" aria-hidden="true">*</span></label>
+            <select
+              className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              value={form.id_materia ?? ""}
+              onChange={(e) =>
+                setForm({ ...form, id_materia: Number(e.target.value) || null })
+              }
+              aria-required="true"
+            >
+              <option value="">{t("groups.form.subjectPlaceholder")}</option>
+              {materias.map((m) => (
+                <option key={m.id_materia} value={m.id_materia}>
+                  {m.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Docente */}
-          <select
-            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            value={form.id_docente ?? ""}
-            onChange={(e) =>
-              setForm({ ...form, id_docente: Number(e.target.value) || null })
-            }
-          >
-            <option value="">{t("groups.form.teacherPlaceholder")}</option>
-            {docentes.map((d) => (
-              <option key={d.id_docente} value={d.id_docente}>
-                {d.nombre} {d.ap_paterno ?? ""}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className="text-xs text-slate-500">{t("groups.form.teacherPlaceholder")} <span className="text-red-500" aria-hidden="true">*</span></label>
+            <select
+              className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              value={form.id_docente ?? ""}
+              onChange={(e) =>
+                setForm({ ...form, id_docente: Number(e.target.value) || null })
+              }
+              aria-required="true"
+            >
+              <option value="">{t("groups.form.teacherPlaceholder")}</option>
+              {docentes.map((d) => (
+                <option key={d.id_docente} value={d.id_docente}>
+                  {d.nombre} {d.ap_paterno ?? ""}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Modalidad */}
-          <select
-            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            value={form.id_modalidad ?? ""}
-            onChange={(e) =>
-              setForm({ ...form, id_modalidad: Number(e.target.value) || null })
-            }
-          >
-            <option value="">{t("groups.form.modalityPlaceholder")}</option>
-            {modalidades.map((m) => (
-              <option key={m.id_modalidad} value={m.id_modalidad}>
-                {m.nombre}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className="text-xs text-slate-500">{t("groups.form.modalityPlaceholder")} <span className="text-red-500" aria-hidden="true">*</span></label>
+            <select
+              className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              value={form.id_modalidad ?? ""}
+              onChange={(e) =>
+                setForm({ ...form, id_modalidad: Number(e.target.value) || null })
+              }
+              aria-required="true"
+            >
+              <option value="">{t("groups.form.modalityPlaceholder")}</option>
+              {modalidades.map((m) => (
+                <option key={m.id_modalidad} value={m.id_modalidad}>
+                  {m.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Horario obligatorio */}
-          <select
-            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            value={form.horario}
-            onChange={(e) => setForm({ ...form, horario: e.target.value })}
-            required
-          >
-            <option value="">{t("groups.form.schedulePlaceholder")}</option>
-            {HORARIOS.map((h) => (
-              <option key={h} value={h}>
-                {h}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className="text-xs text-slate-500">{t("groups.form.schedulePlaceholder")} <span className="text-red-500" aria-hidden="true">*</span></label>
+            <select
+              className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              value={form.horario}
+              onChange={(e) => setForm({ ...form, horario: e.target.value })}
+              required
+              aria-required="true"
+            >
+              <option value="">{t("groups.form.schedulePlaceholder")}</option>
+              {HORARIOS.map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Cupo */}
           <input
@@ -600,16 +607,17 @@ export default function Grupos() {
 
         <button
           type="submit"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 inline-flex items-center"
           disabled={saving || !carreraId || !form.id_materia}
         >
+          <FiPlus className="mr-2" size={16} />
           {saving
             ? t("groups.form.submitSaving")
             : !carreraId
-            ? t("groups.form.submitSelectCareer")
-            : !form.id_materia
-            ? t("groups.form.submitSelectSubject")
-            : t("groups.form.submitDefault")}
+              ? t("groups.form.submitSelectCareer")
+              : !form.id_materia
+                ? t("groups.form.submitSelectSubject")
+                : t("groups.form.submitDefault")}
         </button>
 
         {(msg || err) && <div className="text-sm mt-2">{msg || err}</div>}

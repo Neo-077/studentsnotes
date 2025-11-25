@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { FiDownload, FiUpload, FiSearch, FiArrowLeft, FiArrowRight } from 'react-icons/fi'
 import api from '../lib/api'
 import { Catalogos } from '../lib/catalogos'
 
@@ -28,7 +29,12 @@ export default function Students() {
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
-  useEffect(() => { Catalogos.carreras().then(setCarreras) }, [])
+  useEffect(() => {
+    Catalogos.carreras().then((res: any) => {
+      const arr = Array.isArray(res) ? res : (res?.rows ?? res?.data ?? [])
+      setCarreras(arr)
+    })
+  }, [])
 
   async function load() {
     setLoading(true)
@@ -65,7 +71,7 @@ export default function Students() {
         extra = ` — Ejemplos: ${preview}${report.errors.length > 3 ? ' …' : ''}`
         console.warn('Errores de importación:', report.errors)
       }
-      setMsg(`✅ Importación: ${report.summary.valid}/${report.summary.received} válidos, insertados ${report.summary.inserted}, errores ${report.summary.errors}${extra}`)
+      ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `✅ Importación: ${report.summary.valid}/${report.summary.received} válidos, insertados ${report.summary.inserted}, errores ${report.summary.errors}${extra}` })
       await load()
     } catch (e: any) {
       setMsg('❌ ' + (e.message || 'Error importando'))
@@ -73,7 +79,7 @@ export default function Students() {
   }
 
   function downloadTemplate() {
-    const headers = ['no_control','nombre','ap_paterno','ap_materno','genero','carrera','fecha_nacimiento'].join(',')
+    const headers = ['no_control', 'nombre', 'ap_paterno', 'ap_materno', 'genero', 'carrera', 'fecha_nacimiento'].join(',')
     const blob = new Blob([headers + '\n'], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -91,8 +97,12 @@ export default function Students() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button onClick={downloadTemplate} className="rounded-lg border px-3 py-2 text-sm">Descargar plantilla (CSV)</button>
-          <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer">
+          <button onClick={downloadTemplate} className="rounded-lg border px-3 py-2 text-sm inline-flex items-center">
+            <FiDownload className="mr-2" size={14} />
+            Descargar plantilla (CSV)
+          </button>
+          <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer inline-flex items-center">
+            <FiUpload className="mr-2" size={14} />
             Importar (.xlsx/.xls/.csv)
             <input
               type="file"
@@ -112,7 +122,10 @@ export default function Students() {
             <option key={c.id_carrera} value={c.id_carrera}>{c.clave ? `${c.clave} — ` : ''}{c.nombre}</option>
           ))}
         </select>
-        <button type="submit" className="h-10 rounded-lg bg-blue-600 px-4 text-white">Buscar</button>
+        <button type="submit" className="h-10 rounded-lg bg-blue-600 px-4 text-white inline-flex items-center">
+          <FiSearch className="mr-2" size={16} />
+          Buscar
+        </button>
       </form>
 
       <div className="rounded-xl border bg-white">
@@ -154,9 +167,9 @@ export default function Students() {
         <div className="flex items-center justify-between px-3 py-2">
           <div className="text-xs text-slate-500">{total.toLocaleString()} en total</div>
           <div className="flex items-center gap-2">
-            <button className="rounded border px-2 py-1" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Anterior</button>
+            <button className="rounded border px-2 py-1 inline-flex items-center" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}><FiArrowLeft className="mr-2" size={14} />Anterior</button>
             <span className="text-sm">Página {page} / {Math.max(1, Math.ceil(total / pageSize))}</span>
-            <button className="rounded border px-2 py-1" disabled={page >= maxPage} onClick={() => setPage(p => Math.min(maxPage, p + 1))}>Siguiente</button>
+            <button className="rounded border px-2 py-1 inline-flex items-center" disabled={page >= maxPage} onClick={() => setPage(p => Math.min(maxPage, p + 1))}>Siguiente<FiArrowRight className="ml-2" size={14} /></button>
             <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }} className="rounded border px-2 py-1 text-sm">
               {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n} / pág.</option>)}
             </select>

@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import api from '../lib/api'
 import { toggleTheme, isDark } from '../lib/theme'
+import { FiSave, FiPlus } from 'react-icons/fi'
 
 const schema = z.object({
   email: z.string().email(),
@@ -37,7 +38,7 @@ export default function Login() {
             email: values.email,
             password: values.password
           })
-          setMsg('✅ Cuenta creada. Iniciando sesión…')
+            ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: 'Cuenta creada. Iniciando sesión…' })
         } catch (err: any) {
           const status = err?.response?.status
           const errorMessage = err?.response?.data?.error?.message || err?.message
@@ -151,27 +152,36 @@ export default function Login() {
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-                <input
-                  placeholder="Email"
-                  className="w-full rounded-xl px-3 py-2 border"
-                  {...register('email')}
-                />
-                {errors.email && <p className="text-red-600 text-sm">Email inválido</p>}
+                <div className="grid gap-1">
+                  <label className="text-xs text-slate-500">Email <span className="text-red-500" aria-hidden="true">*</span></label>
+                  <input
+                    placeholder="Email"
+                    aria-required="true"
+                    className="w-full rounded-xl px-3 py-2 border"
+                    {...register('email')}
+                  />
+                  {errors.email && <p className="text-red-600 text-sm">Email inválido</p>}
+                </div>
 
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className="w-full rounded-xl px-3 py-2 border"
-                  {...register('password')}
-                />
-                {errors.password && <p className="text-red-600 text-sm">Mínimo 6 caracteres</p>}
+                <div className="grid gap-1">
+                  <label className="text-xs text-slate-500">Password <span className="text-red-500" aria-hidden="true">*</span></label>
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    aria-required="true"
+                    className="w-full rounded-xl px-3 py-2 border"
+                    {...register('password')}
+                  />
+                  {errors.password && <p className="text-red-600 text-sm">Mínimo 6 caracteres</p>}
+                </div>
 
                 {msg && <div className="text-sm">{msg}</div>}
 
                 <button
                   disabled={loading}
-                  className="w-full rounded-xl py-2 bg-blue-600 hover:bg-blue-600/90 text-[color:var(--primary-ctr)] disabled:opacity-60"
+                  className="w-full rounded-xl py-2 bg-blue-600 hover:bg-blue-600/90 text-[color:var(--primary-ctr)] disabled:opacity-60 inline-flex items-center justify-center"
                 >
+                  <FiSave className="mr-2" size={18} />
                   {loading ? 'Procesando…' : (isRegister && mode === 'maestro' ? 'Crear y entrar' : 'Entrar')}
                 </button>
               </form>
