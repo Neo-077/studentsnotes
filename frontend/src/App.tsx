@@ -18,6 +18,10 @@ import { useTranslation } from 'react-i18next'
 import { FiHome, FiUserPlus, FiLayers, FiUsers, FiUser, FiBook, FiSettings } from 'react-icons/fi'
 import ConfirmModal from './components/ConfirmModal'
 import NotificationToast from './components/NotificationToast'
+import ReadingMask from './components/ReadingMask'
+import ReadingGuide from './components/ReadingGuide'
+import { useAccessibility } from './store/useAccessibility'
+import { AccessibilityMenu } from './components/AccessibilityMenu'
 
 type FontSizePref = 'normal' | 'large'
 
@@ -64,6 +68,23 @@ function getStoredHighContrast(): boolean {
 
 function Shell() {
   const { user, logout, role, avatarUrl, refresh } = useAuth()
+  const {
+    readingMaskEnabled,
+    readingMaskHeight,
+    readingMaskOpacity,
+    readingMaskColor,
+    readingGuideEnabled,
+    readingGuideThickness,
+    readingGuideColor,
+    readingGuideOpacity,
+    contrastMode,
+    customColorsEnabled,
+    customBgColor,
+    customTextColor,
+    customPrimaryColor,
+    customSidebarBgColor,
+    customSidebarFgColor,
+  } = useAccessibility()
   const [dark, setDark] = useState(false)
   const [fontSize, setFontSize] = useState<FontSizePref>('normal')
   const [highContrast, setHighContrast] = useState(false)
@@ -96,6 +117,87 @@ function Shell() {
     applyHighContrast(highContrast)
   }, [highContrast])
 
+  // Aplicar contraste según accessibility store (contrastMode)
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+    // limpiar primero clases previas para evitar acumulación
+    root.classList.remove('high-contrast')
+    // 'dark' se gestiona por toggleTheme, no lo forzamos si usuario decidió claro
+    if (contrastMode === 'high') {
+      root.classList.add('high-contrast')
+      // permitir que estilos de alto contraste definan sus propios colores
+      root.style.removeProperty('--sidebar-bg')
+      root.style.removeProperty('--sidebar-fg')
+    } else if (contrastMode === 'dark') {
+      // si no está en modo oscuro, activar tema oscuro
+      if (!root.classList.contains('dark')) {
+        toggleTheme() // alterna; si ya está oscuro lo deja oscuro
+        setDark(isDark())
+      }
+      // limpiamos override de sidebar para usar variables de modo oscuro por defecto
+      root.style.removeProperty('--sidebar-bg')
+      root.style.removeProperty('--sidebar-fg')
+    } else if (contrastMode === 'default') {
+      // Forzar modo claro (fondo blanco) si estaba oscuro
+      if (root.classList.contains('dark')) {
+        root.classList.remove('dark')
+        setDark(false)
+      }
+      // high-contrast ya se quitó arriba, dejamos variables CSS base (blanco)
+      // Ajustar sidebar a blanco si no hay colores personalizados activos
+      if (!customColorsEnabled) {
+        root.style.setProperty('--sidebar-bg', '#FFFFFF')
+        root.style.setProperty('--sidebar-fg', '#1E3452')
+      }
+    }
+  }, [contrastMode, customColorsEnabled])
+
+  // Aplicar colores personalizados como CSS variables
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+    if (customColorsEnabled) {
+      root.style.setProperty('--bg', customBgColor)
+      root.style.setProperty('--text', customTextColor)
+      root.style.setProperty('--primary', customPrimaryColor)
+      // Derivar --primary-ctr simple (negro/blanco según luminancia rudimentaria)
+      const ctr = getContrastCounterpart(customPrimaryColor)
+      root.style.setProperty('--primary-ctr', ctr)
+      root.style.setProperty('--sidebar-bg', customSidebarBgColor)
+      root.style.setProperty('--sidebar-fg', customSidebarFgColor)
+    } else {
+      // Limpia para permitir que las clases (dark/high-contrast) definan valores por defecto
+      root.style.removeProperty('--bg')
+      root.style.removeProperty('--text')
+      root.style.removeProperty('--primary')
+      root.style.removeProperty('--primary-ctr')
+      // No limpiar sidebar si estamos en modo normal, ya que necesita override blanco
+      if (contrastMode !== 'default') {
+        root.style.removeProperty('--sidebar-bg')
+        root.style.removeProperty('--sidebar-fg')
+      }
+    }
+  }, [customColorsEnabled, customBgColor, customTextColor, customPrimaryColor, customSidebarBgColor, customSidebarFgColor, contrastMode])
+
+  function getContrastCounterpart(hex: string) {
+    // Quita # y parsea
+    const h = hex.replace('#', '')
+    if (h.length === 3) {
+      const r = parseInt(h[0] + h[0], 16)
+      const g = parseInt(h[1] + h[1], 16)
+      const b = parseInt(h[2] + h[2], 16)
+      return (r * 0.299 + g * 0.587 + b * 0.114) > 186 ? '#000000' : '#FFFFFF'
+    }
+    if (h.length === 6) {
+      const r = parseInt(h.slice(0, 2), 16)
+      const g = parseInt(h.slice(2, 4), 16)
+      const b = parseInt(h.slice(4, 6), 16)
+      return (r * 0.299 + g * 0.587 + b * 0.114) > 186 ? '#000000' : '#FFFFFF'
+    }
+    return '#000000'
+  }
+
   const displayName =
     (user?.user_metadata?.full_name as string) ||
     (user?.user_metadata?.name as string) ||
@@ -127,6 +229,21 @@ function Shell() {
     const next = currentLng === 'es' ? 'en' : 'es'
     i18n.changeLanguage(next)
   }
+
+  // When language changes, dispatch a global event so components can
+  // re-fetch their data immediately without a full page reload.
+  useEffect(() => {
+    const onLang = () => {
+      try {
+        window.dispatchEvent(new Event('app:languageChanged'))
+      } catch { }
+    }
+    i18n.on && i18n.on('languageChanged', onLang)
+    return () => {
+      i18n.off && i18n.off('languageChanged', onLang)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const navItemsAdmin = [
     { to: '/dashboard', label: t('nav.home') },
@@ -180,7 +297,15 @@ function Shell() {
       </a>
 
       {/* Sidebar */}
-      <aside className="sidebar p-4 lg:min-h-screen-fix lg:min-w-[260px] shadow-xl" aria-label={t('layout.sidebarAria')}>
+      <aside
+        className="sidebar p-4 lg:min-h-screen-fix lg:min-w-[260px] shadow-xl"
+        aria-label={t('layout.sidebarAria')}
+        style={contrastMode === 'default' && !customColorsEnabled ? {
+          background: '#FFFFFF',
+          color: '#1E3452',
+          borderRight: '1px solid #E2E8F0'
+        } : undefined}
+      >
         {/* Marca */}
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
@@ -193,88 +318,16 @@ function Shell() {
         <section
           className="mb-6 rounded-xl p-3 text-xs space-y-3"
           aria-label={t('accessibility.panelAria')}
-          style={{
-            background: 'color-mix(in oklab, var(--sidebar-bg), white 6%)',
-            border: '1px solid color-mix(in oklab, var(--sidebar-fg), transparent 80%)',
+          style={contrastMode === 'default' && !customColorsEnabled ? {
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0'
+          } : {
+            background: 'var(--surface)',
+            border: '1px solid var(--border)'
           }}
         >
-          <h2 className="mb-2 flex items-center gap-2 font-semibold text-[0.8rem] uppercase tracking-wide">
-            <span>{t('accessibility.title')}</span>
-          </h2>
-
-          <div className="space-y-3">
-            {/* Tema claro / oscuro */}
-            <button
-              type="button"
-              onClick={handleThemeToggle}
-              className="theme-toggle inline-flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs"
-            >
-              <span className="flex items-center gap-2">
-                <span>{t('accessibility.theme')}</span>
-              </span>
-              <span className="opacity-80">
-                {dark ? t('accessibility.themeDark') : t('accessibility.themeLight')}
-              </span>
-            </button>
-
-            {/* Tamaño de fuente */}
-            <div className="space-y-1">
-              <span className="block text-[0.7rem] font-semibold uppercase tracking-wide">
-                {t('accessibility.fontSize')}
-              </span>
-
-              <div className="inline-flex gap-1 rounded-md bg-white/10 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => handleFontSizeChange('normal')}
-                  className={[
-                    'px-2 py-1 text-[0.7rem] rounded-md transition',
-                    fontSize === 'normal' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-700',
-                  ].join(' ')}
-                  aria-pressed={fontSize === 'normal'}
-                >
-                  {t('accessibility.fontSizeNormal')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFontSizeChange('large')}
-                  className={[
-                    'px-2 py-1 text-[0.8rem] rounded-md transition',
-                    fontSize === 'large' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-700',
-                  ].join(' ')}
-                  aria-pressed={fontSize === 'large'}
-                >
-                  {t('accessibility.fontSizeLarge')}
-                </button>
-              </div>
-            </div>
-
-            {/* Alto contraste */}
-            <label className="mt-1 flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="size-3"
-                checked={highContrast}
-                onChange={handleHighContrastToggle}
-              />
-              <span>{t('accessibility.highContrast')}</span>
-            </label>
-
-            {/* Idioma - mismo diseño que el botón de tema */}
-            <button
-              type="button"
-              onClick={handleLanguageToggle}
-              className="theme-toggle inline-flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs"
-              aria-label={t('accessibility.languageAria')}
-            >
-              <span className="flex items-center gap-2">
-                <span>{t('accessibility.language')}</span>
-              </span>
-              <span className="opacity-80">
-                {currentLng === 'es' ? 'Español' : 'English'}
-              </span>
-            </button>
-          </div>
+          {/* Menú de accesibilidad completo (inline en sidebar) */}
+          <AccessibilityMenu inline />
         </section>
 
         {/* Navegación principal */}
@@ -336,6 +389,19 @@ function Shell() {
       <ConfirmModal />
       {/* Global notification toasts */}
       <NotificationToast />
+      {/* Reading mask overlay */}
+      <ReadingMask
+        enabled={readingMaskEnabled}
+        height={readingMaskHeight}
+        opacity={readingMaskOpacity}
+        color={readingMaskColor}
+      />
+      <ReadingGuide
+        enabled={readingGuideEnabled}
+        thickness={readingGuideThickness}
+        color={readingGuideColor}
+        opacity={readingGuideOpacity}
+      />
 
       {/* Columna principal */}
       <div>

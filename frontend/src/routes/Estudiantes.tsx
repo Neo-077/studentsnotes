@@ -5,6 +5,7 @@ import { Catalogos } from '../lib/catalogos'
 import * as XLSX from 'xlsx'
 import ModalBajaEstudiante from '../components/inscripciones/ModalBajaEstudiante'
 import { useTranslation } from 'react-i18next'
+import { getCareerLabel, getGenderLabel } from '../lib/labels'
 import { FiDownload, FiUpload, FiSearch, FiTrash2, FiFilter, FiArrowLeft, FiArrowRight } from 'react-icons/fi'
 
 type Row = {
@@ -24,7 +25,7 @@ type Row = {
 
 export default function Estudiantes() {
   const { initialized, role } = useAuth()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [rows, setRows] = useState<Row[]>([])
   const [total, setTotal] = useState(0)
@@ -43,7 +44,7 @@ export default function Estudiantes() {
       const arr = Array.isArray(res) ? res : (res?.rows ?? res?.data ?? [])
       setCarreras(arr)
     })
-  }, [])
+  }, [i18n?.language])
 
   const reqRef = useRef(0)
   async function load(silent = false) {
@@ -329,8 +330,8 @@ export default function Estudiantes() {
       Catalogos.generos(),
       Catalogos.carreras()
     ])
-    const listaGeneros = (gen ?? []).map((g: any) => [g.descripcion, g.clave ?? '', g.id_genero])
-    const listaCarreras = (car ?? []).map((c: any) => [c.nombre, c.clave ?? '', c.id_carrera])
+    const listaGeneros = (gen ?? []).map((g: any) => [getGenderLabel(g) || g.descripcion, g.clave ?? '', g.id_genero])
+    const listaCarreras = (car ?? []).map((c: any) => [getCareerLabel(c) || c.nombre, c.clave ?? '', c.id_carrera])
 
     const wsHelp = XLSX.utils.aoa_to_sheet([
       ['LISTAS DE REFERENCIA'],
@@ -392,7 +393,7 @@ export default function Estudiantes() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t('students.searchPlaceholder')}
-          className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="h-10 flex-1 min-w-0 rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full max-w-full box-border"
         />
         {role === 'admin' && (
           <select
@@ -403,7 +404,7 @@ export default function Estudiantes() {
             <option value="">{t('students.filters.allCareers')}</option>
             {carreras.map((c) => (
               <option key={c.id_carrera} value={c.id_carrera}>
-                {c.clave ? `${c.clave} — ` : ''}{c.nombre}
+                {c.clave ? `${c.clave} — ` : ''}{getCareerLabel(c) || c.nombre}
               </option>
             ))}
           </select>
@@ -412,11 +413,11 @@ export default function Estudiantes() {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as any)}
           className="h-10 rounded-xl border px-3 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          title="Filtrar por estado"
+          title={t('students.table.status')}
         >
-          <option value="active">Activos</option>
-          <option value="dropped">Bajas</option>
-          <option value="all">Todos</option>
+          <option value="active">{t('students.status.active')}</option>
+          <option value="dropped">{t('students.status.inactive')}</option>
+          <option value="all">{t('classGroups.filters.termAll')}</option>
         </select>
         <button
           type="submit"
@@ -469,9 +470,9 @@ export default function Estudiantes() {
                     <td>{r.ap_materno ?? '—'}</td>
                     <td>
                       {r.carrera?.clave ? `${r.carrera.clave} — ` : ''}
-                      {r.carrera?.nombre ?? r.id_carrera}
+                      {(getCareerLabel(r.carrera) || r.carrera?.nombre) ?? r.id_carrera}
                     </td>
-                    <td>{r.genero?.descripcion ?? r.id_genero}</td>
+                    <td>{getGenderLabel(r.genero) || r.id_genero}</td>
                     <td>{r.fecha_nacimiento ?? '—'}</td>
                     <td>{r.fecha_ingreso ?? '—'}</td>
                     <td>

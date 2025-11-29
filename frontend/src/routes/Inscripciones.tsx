@@ -2,7 +2,7 @@ import AddStudentForm from "../components/inscripciones/AddStudentForm"
 import { useTranslation } from "react-i18next"
 
 export default function Inscripciones() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   return (
     <div className="grid md:grid-cols-[1fr_420px] gap-6">

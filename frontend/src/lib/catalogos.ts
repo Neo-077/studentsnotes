@@ -1,5 +1,6 @@
 // src/lib/catalogos.ts
 import api from "./api"
+import i18n from 'i18next'
 
 type MateriasParams = {
   carrera_id?: number
@@ -7,20 +8,41 @@ type MateriasParams = {
 }
 
 export const Catalogos = {
-  carreras: () => api.get("/catalogos/carreras"),
-  generos: () => api.get("/catalogos/generos"),
-  terminos: () => api.get("/catalogos/terminos"),
-  modalidades: () => api.get("/catalogos/modalidades"),
-  docentes: () => api.get("/catalogos/docentes"),
+  carreras: () => {
+    let path = "/catalogos/carreras"
+    if (i18n?.language && String(i18n.language).startsWith("en")) path += "?lang=en"
+    return api.get(path)
+  },
+  generos: () => {
+    let path = "/catalogos/generos"
+    if (i18n?.language && String(i18n.language).startsWith("en")) path += "?lang=en"
+    return api.get(path)
+  },
+  terminos: () => {
+    let path = "/catalogos/terminos"
+    if (i18n?.language && String(i18n.language).startsWith("en")) path += "?lang=en"
+    return api.get(path)
+  },
+  modalidades: () => {
+    let path = "/catalogos/modalidades"
+    if (i18n?.language && String(i18n.language).startsWith("en")) path += "?lang=en"
+    return api.get(path)
+  },
+  docentes: () => {
+    let path = "/catalogos/docentes"
+    if (i18n?.language && String(i18n.language).startsWith("en")) path += "?lang=en"
+    return api.get(path)
+  },
 
   // ✅ acepta filtros opcionales
   materias: (params?: MateriasParams) => {
     const qs = new URLSearchParams()
     if (params?.carrera_id) qs.set("carrera_id", String(params.carrera_id))
     if (params?.termino_id) qs.set("termino_id", String(params.termino_id))
-    const path = qs.toString()
-      ? `/catalogos/materias?${qs.toString()}`
-      : "/catalogos/materias"
+    let path = qs.toString() ? `/catalogos/materias?${qs.toString()}` : "/catalogos/materias"
+    if (i18n?.language && String(i18n.language).startsWith("en")) {
+      path += (path.includes("?") ? "&" : "?") + "lang=en"
+    }
     return api.get(path)
   },
 

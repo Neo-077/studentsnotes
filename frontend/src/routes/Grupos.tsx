@@ -19,6 +19,8 @@ type Grupo = {
   modalidad?: { nombre: string }
 }
 
+import { getSubjectLabel, getCareerLabel, formatHorario, getGenericLabel, getTermLabel } from "../lib/labels"
+
 const HORARIOS = Array.from({ length: 15 }, (_, i) => {
   const start = 7 + i
   const end = start + 1
@@ -27,7 +29,7 @@ const HORARIOS = Array.from({ length: 15 }, (_, i) => {
 })
 
 export default function Grupos() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   // ===== filtros superiores =====
   const [terminos, setTerminos] = useState<any[]>([])
@@ -42,7 +44,13 @@ export default function Grupos() {
 
   // ===== datos =====
   const [grupos, setGrupos] = useState<Grupo[]>([])
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState<string>(() => {
+    try {
+      return localStorage.getItem("grupos.query") ?? ""
+    } catch {
+      return ""
+    }
+  })
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -87,7 +95,8 @@ export default function Grupos() {
       }
     }
     void boot()
-  }, [])
+    // Re-run boot when language changes so translated catalog labels are fetched
+  }, [i18n?.language])
 
   // materias por carrera
   useEffect(() => {
@@ -96,7 +105,8 @@ export default function Grupos() {
       setMaterias(mats ?? [])
     }
     void loadMaterias()
-  }, [carreraId])
+    // reload materias when carrera or language changes
+  }, [carreraId, i18n?.language])
 
   // actualizar id_materia del formulario cuando se elige materia en el filtro
   useEffect(() => {
@@ -115,7 +125,10 @@ export default function Grupos() {
       if (carreraId) q.set("carrera_id", String(carreraId))
       if (materiaId) q.set("materia_id", String(materiaId))
       const qs = q.toString()
-      const path = qs ? `/grupos?${qs}` : "/grupos"
+      let path = qs ? `/grupos?${qs}` : "/grupos"
+      if (i18n?.language && String(i18n.language).startsWith("en")) {
+        path += (path.includes("?") ? "&" : "?") + "lang=en"
+      }
       const data = await api.get(path)
       if (reqRef.current === my) setGrupos(data || [])
     } catch (e: any) {
@@ -130,8 +143,9 @@ export default function Grupos() {
   useEffect(() => {
     setPage(1)
     void load()
+    // Re-run when filters or language change so server can return translated fields
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [terminoId, carreraId, materiaId])
+  }, [terminoId, carreraId, materiaId, i18n?.language])
 
   // refrescar en segundo plano al volver de background/enfocar/reconectar
   useEffect(() => {
@@ -159,7 +173,7 @@ export default function Grupos() {
     const q = query.trim().toLowerCase()
     if (!q) return grupos
     return grupos.filter((g) => {
-      const mat = g.materia?.nombre?.toLowerCase() || ""
+      const mat = (getSubjectLabel(g.materia) || g.materia?.nombre || "").toLowerCase()
       const cod = g.grupo_codigo?.toLowerCase() || ""
       const doc = `${g.docente?.nombre || ""} ${g.docente?.ap_paterno || ""}`.toLowerCase()
       return mat.includes(q) || cod.includes(q) || doc.includes(q)
@@ -174,6 +188,15 @@ export default function Grupos() {
   const start = (pageSafe - 1) * pageSize
   const end = start + pageSize
   const paged = useMemo(() => lista.slice(start, end), [lista, start, end])
+
+  // Persistir query en localStorage para que no se pierda al recargar
+  useEffect(() => {
+    try {
+      localStorage.setItem("grupos.query", query)
+    } catch {
+      // noop
+    }
+  }, [query])
 
   // ===== crear grupo =====
   async function onCreate(e: React.FormEvent) {
@@ -200,7 +223,9 @@ export default function Grupos() {
       q.set("docente_id", String(payload.id_docente))
       q.set("termino_id", String(payload.id_termino))
       q.set("horario", payload.horario)
-      const conflictos = await api.get(`/grupos?${q.toString()}`)
+      let conflictosPath = `/grupos?${q.toString()}`
+      if (i18n?.language && String(i18n.language).startsWith("en")) conflictosPath += "&lang=en"
+      const conflictos = await api.get(conflictosPath)
       if (Array.isArray(conflictos) && conflictos.length > 0) {
         return setMsg(t("groups.messages.teacherConflict"))
       }
@@ -309,20 +334,20 @@ export default function Grupos() {
 
     const carreras = await Catalogos.carreras().catch(() => [])
 
-    const listaMaterias = (materias ?? []).map((m: any) => [m.nombre, m.clave ?? "", m.id_materia])
+    const listaMaterias = (materias ?? []).map((m: any) => [getSubjectLabel(m) || m.nombre, m.clave ?? "", m.id_materia])
     const listaCarreras = (Array.isArray(carreras) ? carreras : (carreras as any)?.data ?? []).map(
-      (c: any) => [c.nombre, c.clave ?? "", c.id_carrera]
+      (c: any) => [getCareerLabel(c) || c.nombre, c.clave ?? "", c.id_carrera]
     )
     const listaDocentes = (docentes ?? []).map((d: any) => [
       `${d.nombre} ${d.ap_paterno ?? ""} ${d.ap_materno ?? ""}`.trim(),
       d.id_docente,
     ])
-    const listaModalidades = (modalidades ?? []).map((m: any) => [m.nombre, m.id_modalidad])
+    const listaModalidades = (modalidades ?? []).map((m: any) => [getGenericLabel(m) || m.nombre, m.id_modalidad])
     const listaTerminos = (terminos ?? []).map((t: any) => [
-      `${t.anio} ${String(t.periodo).toUpperCase()}`,
+      getTermLabel(t),
       t.id_termino,
     ])
-    const listaHorarios = HORARIOS.map((h) => [h])
+    const listaHorarios = HORARIOS.map((h) => [formatHorario(h)])
 
     const ayudaAOA = [
       ["LISTAS DE REFERENCIA (no editar encabezados)"],
@@ -364,7 +389,7 @@ export default function Grupos() {
     const docente = g.docente
       ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`.trim()
       : t("groups.table.noTeacher")
-    const label = `${g.materia?.nombre ?? "—"} — ${g.grupo_codigo} — ${docente}`
+    const label = `${getSubjectLabel(g.materia) || "—"} — ${g.grupo_codigo} — ${docente}`
     // close any local confirm state
     setConfirmDel({ open: false })
       ; (async () => {
@@ -406,7 +431,7 @@ export default function Grupos() {
     <div className="space-y-6">
       {/* ===== Filtros ===== */}
       <div className="rounded-2xl border bg-white p-4 shadow-sm flex flex-wrap items-end gap-4">
-        <div className="grid gap-1 w-40">
+        <div className="grid gap-1 w-40 min-w-0">
           <label className="text-xs text-slate-500">
             {t("groups.filters.termLabel")}
           </label>
@@ -428,7 +453,7 @@ export default function Grupos() {
             <option value="">{t("groups.filters.termAll")}</option>
             {terminos.map((tTerm) => (
               <option key={tTerm.id_termino} value={tTerm.id_termino}>
-                {tTerm.anio} {tTerm.periodo}
+                {getTermLabel(tTerm)}
               </option>
             ))}
           </select>
@@ -436,7 +461,7 @@ export default function Grupos() {
 
         {/* global confirmService used instead of local ConfirmModal */}
 
-        <div className="grid gap-1">
+        <div className="grid gap-1 min-w-0">
           <label className="text-xs text-slate-500">
             {t("groups.filters.careerLabel")}
           </label>
@@ -447,11 +472,11 @@ export default function Grupos() {
               setMateriaId(null)
             }}
             label={false}
-            className="h-10 w-56 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="h-10 w-full max-w-[14rem] rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           />
         </div>
 
-        <div className="grid gap-1 w-56">
+        <div className="grid gap-1 w-56 min-w-0">
           <label className="text-xs text-slate-500">
             {t("groups.filters.subjectLabel")}
           </label>
@@ -464,12 +489,12 @@ export default function Grupos() {
           />
         </div>
 
-        <div className="grid gap-1 flex-1 min-w-[220px]">
+        <div className="grid gap-1 flex-1 min-w-0">
           <label className="text-xs text-slate-500">
             {t("groups.filters.searchLabel")}
           </label>
           <input
-            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full max-w-full box-border min-w-0 truncate"
             placeholder={t("groups.filters.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -484,7 +509,7 @@ export default function Grupos() {
           {t("groups.buttons.downloadTemplate")}
         </button>
 
-        <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer inline-flex items-center">
+        <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer inline-flex items-center min-w-0">
           <FiUpload className="mr-2" size={16} />
           {t("groups.buttons.importFile")}
           <input
@@ -512,7 +537,7 @@ export default function Grupos() {
                 setForm((f) => ({ ...f, id_materia: null }))
               }}
               label={false}
-              className="h-10 w-full rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="h-10 w-full max-w-[14rem] rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             />
           </div>
 
@@ -530,7 +555,7 @@ export default function Grupos() {
               <option value="">{t("groups.form.subjectPlaceholder")}</option>
               {materias.map((m) => (
                 <option key={m.id_materia} value={m.id_materia}>
-                  {m.nombre}
+                  {getSubjectLabel(m)}
                 </option>
               ))}
             </select>
@@ -570,7 +595,7 @@ export default function Grupos() {
               <option value="">{t("groups.form.modalityPlaceholder")}</option>
               {modalidades.map((m) => (
                 <option key={m.id_modalidad} value={m.id_modalidad}>
-                  {m.nombre}
+                  {getGenericLabel(m)}
                 </option>
               ))}
             </select>
@@ -589,7 +614,7 @@ export default function Grupos() {
               <option value="">{t("groups.form.schedulePlaceholder")}</option>
               {HORARIOS.map((h) => (
                 <option key={h} value={h}>
-                  {h}
+                  {formatHorario(h)}
                 </option>
               ))}
             </select>
@@ -684,11 +709,9 @@ export default function Grupos() {
                     key={g.id_grupo}
                     className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60"
                   >
-                    <td>{g.materia?.nombre ?? "—"}</td>
+                    <td>{getSubjectLabel(g.materia) || "—"}</td>
                     <td>
-                      {(g as any)?.materia?.carrera?.nombre ||
-                        (g as any)?.materia?.carrera_nombre ||
-                        "—"}
+                      {(g as any)?.materia ? getCareerLabel((g as any).materia.carrera || (g as any).materia) : ((g as any)?.materia?.carrera_nombre || '—')}
                     </td>
                     <td>{g.grupo_codigo}</td>
                     <td>
@@ -696,8 +719,8 @@ export default function Grupos() {
                         ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`
                         : t("groups.table.noTeacher")}
                     </td>
-                    <td>{g.modalidad?.nombre ?? "—"}</td>
-                    <td>{g.horario}</td>
+                    <td>{getGenericLabel(g.modalidad) || "—"}</td>
+                    <td>{formatHorario(g.horario)}</td>
                     <td>{g.cupo}</td>
                     <td>
                       <button

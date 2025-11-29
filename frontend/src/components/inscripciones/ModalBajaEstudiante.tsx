@@ -42,7 +42,7 @@ export default function ModalBajaEstudiante({
     onConfirm,
     onCancel
 }: Props) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const userId = Number(getUserIdFromLocalStorage()) || 1
 
     const [form, setForm] = useState<BajaEstudianteFormData>({

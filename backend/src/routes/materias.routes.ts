@@ -1,13 +1,18 @@
 // src/routes/materias.route.ts
 import { Router } from "express"
 import { createMateria, bulkMaterias, deleteMateria, updateMateria } from "../services/materias.service.js"
+import { translateObjectFields, translateObjectFieldsAsync, detectLangFromReq } from '../utils/translate.js'
 import multer from 'multer'
 
 const upload = multer()
 const router = Router()
 
 router.post("/", async (req, res, next) => {
-  try { res.json(await createMateria(req.body)) } catch (e) { next(e) }
+  try {
+    const data = await createMateria(req.body)
+    const lang = detectLangFromReq(req)
+    res.json(await translateObjectFieldsAsync(data, lang))
+  } catch (e) { next(e) }
 })
 
 router.post("/bulk", upload.single('file'), async (req: any, res, next) => {
@@ -32,7 +37,8 @@ router.put('/:id', async (req, res, next) => {
     if (!id) return res.status(400).json({ error: { message: 'id inválido' } })
     const { nombre, unidades, creditos } = req.body || {}
     const result = await updateMateria(id, { nombre, unidades, creditos })
-    res.json(result)
+    const lang = detectLangFromReq(req)
+    res.json(await translateObjectFieldsAsync(result, lang))
   } catch (e) { next(e) }
 })
 

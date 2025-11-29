@@ -5,10 +5,11 @@ import * as XLSX from 'xlsx'
 import { Catalogos } from '../lib/catalogos'
 import confirmService from '../lib/confirmService'
 import { useTranslation } from 'react-i18next'
+import { getGenderLabel } from '../lib/labels'
 import { FiDownload, FiUpload, FiPlus, FiEdit, FiTrash2, FiSearch } from 'react-icons/fi'
 
 export default function Docentes() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   type Docente = {
     id_docente: number
@@ -269,7 +270,7 @@ export default function Docentes() {
   function downloadTemplateXLSX() {
     const headers = ['rfc', 'nombre', 'ap_paterno', 'ap_materno', 'genero'] // correo eliminado
     const wsMain = XLSX.utils.aoa_to_sheet([headers])
-    const listaGeneros = (generos ?? []).map((g: any) => [g.descripcion, g.id_genero])
+    const listaGeneros = (generos ?? []).map((g: any) => [getGenderLabel(g) || g.descripcion, g.id_genero])
     const wsHelp = XLSX.utils.aoa_to_sheet([
       ['LISTAS'],
       [],
@@ -544,7 +545,7 @@ export default function Docentes() {
             onChange={e => setF({ ...f, id_genero: e.target.value })}
           >
             <option value="">{t('teachers.form.genderPlaceholder')}</option>
-            {generos.map((g: any) => <option key={g.id_genero} value={g.id_genero}>{g.descripcion}</option>)}
+            {generos.map((g: any) => <option key={g.id_genero} value={g.id_genero}>{getGenderLabel(g) || g.descripcion}</option>)}
           </select>
         </div>
 
@@ -569,7 +570,7 @@ export default function Docentes() {
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder={t('teachers.search.placeholder')}
-            className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 text-sm"
+            className="h-10 flex-1 min-w-0 rounded-xl border px-3 text-sm w-full max-w-full box-border"
           />
           <button
             onClick={downloadTemplateXLSX}
@@ -622,7 +623,7 @@ export default function Docentes() {
                   <td>{d.ap_paterno ?? '—'}</td>
                   <td>{d.ap_materno ?? '—'}</td>
                   <td>{d.correo}</td>
-                  <td>{(generos.find(g => g.id_genero === d.id_genero)?.descripcion) ?? '—'}</td>
+                  <td>{getGenderLabel(generos.find(g => g.id_genero === d.id_genero)) || '—'}</td>
                   <td className="text-right flex items-center gap-2 justify-end">
                     <button
                       onClick={() => askEdit(d)}
@@ -736,7 +737,7 @@ export default function Docentes() {
                   <option value="">{t('teachers.editModal.genderPlaceholder')}</option>
                   {generos.map((g: any) => (
                     <option key={g.id_genero} value={g.id_genero}>
-                      {g.descripcion}
+                      {getGenderLabel(g) || g.descripcion}
                     </option>
                   ))}
                 </select>

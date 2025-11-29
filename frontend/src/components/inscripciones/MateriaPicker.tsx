@@ -1,5 +1,7 @@
 // src/components/inscripciones/MateriaPicker.tsx
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { getSubjectLabel, getCareerLabel } from '../../lib/labels'
 import { Catalogos } from '../../lib/catalogos'
 
 type Materia = {
@@ -32,6 +34,8 @@ export default function MateriaPicker({
   const [items, setItems] = useState<Materia[]>([])
   const [loading, setLoading] = useState(false)
 
+  const { t, i18n } = useTranslation()
+
   useEffect(() => {
     let cancel = false
     async function load() {
@@ -48,28 +52,32 @@ export default function MateriaPicker({
         if (!cancel) setLoading(false)
       }
     }
-    load()
+    void load()
     return () => { cancel = true }
-  }, [carreraId, terminoId])
+    // reload materias when carrera, termino or language change
+  }, [carreraId, terminoId, i18n?.language])
 
-  return (
+  const selectEl = (
     <select
-      className={`h-10 rounded-xl border px-3 text-sm ${className ?? ''}`}
+      className={`h-10 w-full truncate box-border ${className ?? ''}`}
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
       disabled={disabled || loading}
     >
-      <option value="">Todas</option>
+      <option value="">{t('pickers.subjectAll')}</option>
       {(() => {
-        const byName = (a: string, b: string) => a.localeCompare(b, 'es', { sensitivity: 'base' })
-        const labelFor = (m: Materia) => `${m.clave ? `${m.clave} — ` : ''}${m.nombre}`
+        const byName = (a: string, b: string) => a.localeCompare(b, i18n?.language?.startsWith('en') ? 'en' : 'es', { sensitivity: 'base' })
+        const labelFor = (m: Materia) => {
+          const s = getSubjectLabel(m)
+          return s || `${m.clave ? `${m.clave} — ` : ''}${m.nombre}`
+        }
 
         // Si hay carrera seleccionada, lista plana ordenada por nombre/clave
         if (carreraId) {
           const list = [...items].sort((a, b) => byName(labelFor(a), labelFor(b)))
           return list.map(m => (
             <option key={`${m.id_materia}`} value={m.id_materia}>
-              {labelFor(m)}
+              {getSubjectLabel(m)}
             </option>
           ))
         }
@@ -77,7 +85,8 @@ export default function MateriaPicker({
         // Sin carrera: agrupar por carrera y ordenar
         const groups = new Map<string, Materia[]>()
         for (const m of items) {
-          const carreraLabel = m.carrera?.nombre || m.carrera_nombre || m.carrera_clave || '— Sin carrera'
+          const carreraObj = m.carrera || (m.carrera_nombre ? { nombre: m.carrera_nombre } : undefined)
+          const carreraLabel = getCareerLabel(carreraObj) || m.carrera_nombre || m.carrera_clave || '— Sin carrera'
           const arr = groups.get(carreraLabel) || []
           arr.push(m)
           groups.set(carreraLabel, arr)
@@ -89,7 +98,7 @@ export default function MateriaPicker({
             <optgroup key={car} label={car}>
               {list.map(m => (
                 <option key={`${car}:${m.id_materia}`} value={m.id_materia}>
-                  {labelFor(m)}
+                  {getSubjectLabel(m)}
                 </option>
               ))}
             </optgroup>
@@ -97,5 +106,12 @@ export default function MateriaPicker({
         })
       })()}
     </select>
+  )
+
+  // Wrap select in shrinkable container so long labels don't expand it
+  return (
+    <div className={`select-wrapper min-w-0 overflow-hidden`}>
+      {selectEl}
+    </div>
   )
 }

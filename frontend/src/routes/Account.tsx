@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 export default function Account() {
   const { role, refresh } = useAuth()
   const isMaestro = role === 'maestro'
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [oldPw, setOldPw] = useState('')
   const [pw, setPw] = useState('')

@@ -1,0 +1,42 @@
+{
+    "MICTA": {
+        "es": "Mixta",
+        "en": "Hybrid"
+    },
+    "MIXTA": {
+        "es": "Mixta",
+        "en": "Hybrid"
+    },
+    "ESCOLARIZADO": {
+        "es": "Escolarizado",
+        "en": "On-site"
+    },
+    "INGENIERÍA ARTIFICIAL": {
+        "es": "Ingeniería Artificial",
+        "en": "Artificial Intelligence Engineering"
+    },
+    "INGENIERIA ARTIFICIAL": {
+        "es": "Ingeniería Artificial",
+        "en": "Artificial Intelligence Engineering"
+    },
+    "ACTIVA": {
+        "es": "Activa",
+        "en": "Active"
+    },
+    "BAJA": {
+        "es": "Baja",
+        "en": "Dropped"
+    },
+    "APROBADA": {
+        "es": "Aprobada",
+        "en": "Passed"
+    },
+    "REPROBADA": {
+        "es": "Reprobada",
+        "en": "Failed"
+    },
+    "N/D": {
+        "es": "N/D",
+        "en": "N/A"
+    }
+}

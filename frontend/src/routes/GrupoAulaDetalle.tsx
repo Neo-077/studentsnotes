@@ -108,7 +108,7 @@ function estaAprobado(unidades?: Array<{ unidad: number; calificacion?: number }
 }
 
 export default function GrupoAulaDetalle() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { id_grupo: idParam } = useParams()
   const id_grupo = Number(idParam)
@@ -207,7 +207,9 @@ export default function GrupoAulaDetalle() {
     setLoadingAlu(true)
     setMsgAlu(null)
     try {
-      const data = await api.get(`/inscripciones?grupo_id=${id}`)
+      let path = `/inscripciones?grupo_id=${id}`
+      if (i18n?.language && String(i18n.language).startsWith("en")) path += "&lang=en"
+      const data = await api.get(path)
       setAlumnos({
         cupo: data?.cupo || 0,
         unidades: data?.unidades || 0,
@@ -238,7 +240,9 @@ export default function GrupoAulaDetalle() {
         return
       }
       const q = encodeURIComponent(no_control.trim())
-      const res = await api.get(`/estudiantes?q=${q}`)
+      let estPath = `/estudiantes?q=${q}`
+      if (i18n?.language && String(i18n.language).startsWith("en")) estPath += "&lang=en"
+      const res = await api.get(estPath)
       const lista = Array.isArray(res?.rows) ? res.rows : res
       const est =
         (lista || []).find((x: any) => String(x.no_control) === no_control.trim()) ||
@@ -351,12 +355,16 @@ export default function GrupoAulaDetalle() {
   // === Elegibles para plantilla de inscripciones
   async function fetchElegiblesParaGrupo(id: number): Promise<Elegible[]> {
     try {
-      const r1 = await api.get(`/grupos/${id}/elegibles`)
+      let r1Path = `/grupos/${id}/elegibles`
+      if (i18n?.language && String(i18n.language).startsWith("en")) r1Path += "?lang=en"
+      const r1 = await api.get(r1Path)
       if (Array.isArray(r1?.rows)) return r1.rows as Elegible[]
       if (Array.isArray(r1)) return r1 as Elegible[]
     } catch { }
     try {
-      const r2 = await api.get(`/plantilla-inscripciones?grupo_id=${id}`)
+      let r2Path = `/plantilla-inscripciones?grupo_id=${id}`
+      if (i18n?.language && String(i18n.language).startsWith("en")) r2Path += "&lang=en"
+      const r2 = await api.get(r2Path)
       if (Array.isArray(r2?.rows)) return r2.rows as Elegible[]
       if (Array.isArray(r2)) return r2 as Elegible[]
     } catch { }

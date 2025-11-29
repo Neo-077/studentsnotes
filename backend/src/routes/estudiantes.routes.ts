@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import multer from 'multer'
 import { createEstudiante, listEstudiantes, bulkUpsertEstudiantes, deleteEstudiante, darBajaEstudiante, listEstudiantesElegiblesPorDocente } from '../services/estudiantes.service.js'
+import { translateObjectFields, translateObjectFieldsAsync, detectLangFromReq } from '../utils/translate.js'
 import { createBajaEstudianteSchema } from '../schemas/bajaEstudiante.schema.js'
 import { requireAuth as requireSupabaseAuth } from '../middleware/auth.js'
 
@@ -21,6 +22,7 @@ router.post('/', async (req, res, next) => {
   try {
     const body = bodySchema.parse(req.body)
     const data = await createEstudiante(body)
+    // don't translate personal names; return raw created estudiante
     res.status(201).json(data)
   } catch (e) {
     next(e)
@@ -35,7 +37,13 @@ router.get('/', async (req, res, next) => {
       page: req.query.page ? Number(req.query.page) : undefined,
       pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined,
     })
-    res.json(data)
+    // translate only nested carrera.nombre, do not translate student personal names
+    const lang = detectLangFromReq(req)
+    const rows = await Promise.all((data.rows || []).map(async (r: any) => {
+      if (r.carrera) r.carrera = await translateObjectFieldsAsync(r.carrera, lang)
+      return r
+    }))
+    res.json({ ...data, rows })
   } catch (e) {
     next(e)
   }
@@ -97,7 +105,12 @@ router.get('/elegibles/docente', requireSupabaseAuth, async (req, res, next) => 
       page: req.query.page ? Number(req.query.page) : undefined,
       pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined,
     })
-    res.json(data)
+    const lang = detectLangFromReq(req)
+    const rows = await Promise.all((data.rows || []).map(async (r: any) => {
+      if (r.carrera) r.carrera = await translateObjectFieldsAsync(r.carrera, lang)
+      return r
+    }))
+    res.json({ ...data, rows })
   } catch (e) {
     next(e)
   }

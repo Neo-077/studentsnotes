@@ -23,7 +23,7 @@ type AlumnoRow = {
 };
 
 export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const maxAsistenciasPorUnidad = useMemo(() => {
     const maxPorUnidad: Record<number, number> = {};
@@ -63,13 +63,12 @@ export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) 
         const promedioAsistencia =
           asistenciasPorcentaje.length > 0
             ? asistenciasPorcentaje.reduce((a, b) => a + b, 0) /
-              asistenciasPorcentaje.length
+            asistenciasPorcentaje.length
             : 0;
 
         return {
-          nombre: `${alumno.estudiante?.nombre || ""} ${
-            alumno.estudiante?.ap_paterno || ""
-          }`.trim(),
+          nombre: `${alumno.estudiante?.nombre || ""} ${alumno.estudiante?.ap_paterno || ""
+            }`.trim(),
           promedio: Math.round(promedio * 100) / 100,
           asistencia: Math.round(promedioAsistencia * 100) / 100,
         };

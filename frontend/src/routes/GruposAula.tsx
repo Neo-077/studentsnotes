@@ -9,6 +9,8 @@ import confirmService from '../lib/confirmService'
 import * as XLSX from "xlsx"
 import { useTranslation } from "react-i18next"
 import { FiArrowRight, FiArrowLeft, FiPlus, FiDownload, FiUpload, FiFilter, FiTrash2 } from 'react-icons/fi'
+import { getCareerLabel, getSubjectLabel, formatHorario, getGenericLabel, getTermLabel, shortLabel } from '../lib/labels'
+import SpeakOnClick from '../components/SpeakOnClick'
 
 type Grupo = {
   id_grupo: number
@@ -22,7 +24,7 @@ type Grupo = {
 
 export default function GruposAula() {
   const navigate = useNavigate()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [terminos, setTerminos] = useState<any[]>([])
   const [terminoId, setTerminoId] = useState<number | null>(null)
@@ -49,8 +51,9 @@ export default function GruposAula() {
         setTerminoId(null)
       }
     }
-    boot()
-  }, [])
+    void boot()
+    // re-run when language changes so translated term labels are fetched
+  }, [i18n?.language])
 
   // Cargar grupos según filtros seleccionados
   useEffect(() => {
@@ -63,7 +66,10 @@ export default function GruposAula() {
         if (carreraId) q.set("carrera_id", String(carreraId))
         if (materiaId) q.set("materia_id", String(materiaId))
         const qs = q.toString()
-        const path = qs ? `/grupos?${qs}` : "/grupos"
+        let path = qs ? `/grupos?${qs}` : "/grupos"
+        if (i18n?.language && String(i18n.language).startsWith("en")) {
+          path += (path.includes("?") ? "&" : "?") + "lang=en"
+        }
         const data = await api.get(path)
         setGrupos(data || [])
       } catch (e: any) {
@@ -77,10 +83,10 @@ export default function GruposAula() {
       }
     }
     setPage(1)
-    load()
+    void load()
 
     // refrescar silenciosamente al volver del background/enfocar/reconectar
-    const handler = () => load(true)
+    const handler = () => void load(true)
     window.addEventListener("focus", handler)
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") handler()
@@ -91,7 +97,8 @@ export default function GruposAula() {
       window.removeEventListener("online", handler)
       document.removeEventListener("visibilitychange", () => { })
     }
-  }, [terminoId, carreraId, materiaId, t])
+    // Re-run when filters or language change so server returns translated fields
+  }, [terminoId, carreraId, materiaId, t, i18n?.language])
 
   // Persistir selección de término
   useEffect(() => {
@@ -103,12 +110,12 @@ export default function GruposAula() {
     const q = query.trim().toLowerCase()
     if (!q) return grupos
     return grupos.filter((g) => {
-      const mat = g.materia?.nombre?.toLowerCase() || ""
+      const mat = (getSubjectLabel(g.materia) || g.materia?.nombre || "").toLowerCase()
       const cod = g.grupo_codigo?.toLowerCase() || ""
       const doc = `${g.docente?.nombre || ""} ${g.docente?.ap_paterno || ""}`.toLowerCase()
       return mat.includes(q) || cod.includes(q) || doc.includes(q)
     })
-  }, [grupos, query])
+  }, [grupos, query, i18n?.language])
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(lista.length / pageSize)),
@@ -145,7 +152,7 @@ export default function GruposAula() {
     setMsgAlu(null)
     setOpenAlumnos({
       id_grupo: g.id_grupo,
-      titulo: `${g.materia?.nombre ?? ""} • ${g.grupo_codigo}`,
+      titulo: `${getSubjectLabel(g.materia) ?? ""} • ${g.grupo_codigo}`,
     })
     setPageAlu(1)
     await loadAlumnos(g.id_grupo)
@@ -155,7 +162,9 @@ export default function GruposAula() {
     setLoadingAlu(true)
     setMsgAlu(null)
     try {
-      const data = await api.get(`/inscripciones?grupo_id=${id_grupo}`)
+      let path = `/inscripciones?grupo_id=${id_grupo}`
+      if (i18n?.language && String(i18n.language).startsWith("en")) path += "&lang=en"
+      const data = await api.get(path)
       setAlumnos(data || { cupo: 0, unidades: 0, rows: [] })
     } catch (e: any) {
       setMsgAlu(
@@ -176,7 +185,9 @@ export default function GruposAula() {
         return
       }
       const q = encodeURIComponent(no_control.trim())
-      const res = await api.get(`/estudiantes?q=${q}`)
+      let estPath = `/estudiantes?q=${q}`
+      if (i18n?.language && String(i18n.language).startsWith("en")) estPath += "&lang=en"
+      const res = await api.get(estPath)
       const listaRes = Array.isArray(res?.rows) ? res.rows : res
       const est =
         (listaRes || []).find(
@@ -294,7 +305,7 @@ export default function GruposAula() {
     <div className="space-y-6">
       {/* Filtros superiores */}
       <div className="rounded-2xl border bg-white p-4 shadow-sm flex flex-wrap items-end gap-4">
-        <div className="grid gap-1 w-40">
+        <div className="grid gap-1 w-40 min-w-0">
           <label className="text-xs text-slate-500">
             {t("classGroups.filters.termLabel")}
           </label>
@@ -318,26 +329,26 @@ export default function GruposAula() {
             </option>
             {terminos.map((tmo) => (
               <option key={tmo.id_termino} value={tmo.id_termino}>
-                {tmo.anio} {tmo.periodo}
+                {getTermLabel(tmo)}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="grid gap-1 w-56">
-          <label className="text-xs text-slate-500">
-            {t("classGroups.filters.careerLabel")}
-          </label>
+        <div className="grid gap-1 w-56 min-w-0">
+          <label className="text-xs text-slate-500">{t("classGroups.filters.careerLabel")}</label>
           <CarreraPicker
             value={carreraId ?? undefined}
             onChange={(id) => {
               setCarreraId(id as number | null)
               setMateriaId(null)
             }}
+            label={false}
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           />
         </div>
 
-        <div className="grid gap-1 w-56">
+        <div className="grid gap-1 w-56 min-w-0">
           <label className="text-xs text-slate-500">
             {t("classGroups.filters.subjectLabel")}
           </label>
@@ -349,12 +360,12 @@ export default function GruposAula() {
           />
         </div>
 
-        <div className="grid gap-1 flex-1 min-w-[220px]">
+        <div className="grid gap-1 flex-1 min-w-0">
           <label className="text-xs text-slate-500">
             {t("classGroups.filters.searchLabel")}
           </label>
           <input
-            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full"
+            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full max-w-full box-border"
             placeholder={t("classGroups.filters.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -390,35 +401,31 @@ export default function GruposAula() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-xs text-slate-500 truncate">
-                      {g.materia?.nombre ?? "—"}
+                      <SpeakOnClick className="block">{getSubjectLabel(g.materia) || "—"}</SpeakOnClick>
                     </div>
                     {/* Carrera si está disponible */}
                     {(() => {
-                      const carrera =
-                        (g as any)?.materia?.carrera?.nombre ||
-                        (g as any)?.materia?.carrera_nombre
-                      return carrera ? (
+                      const carreraObj = (g as any)?.materia?.carrera || ((g as any)?.materia?.carrera_nombre ? { nombre: (g as any)?.materia?.carrera_nombre } : undefined)
+                      const carreraLabel = getCareerLabel(carreraObj)
+                      return carreraLabel ? (
                         <div className="text-[11px] text-slate-400 truncate">
-                          {carrera}
+                          <SpeakOnClick className="block">{shortLabel(carreraLabel, 2)}</SpeakOnClick>
                         </div>
                       ) : null
                     })()}
                     <div className="text-lg font-semibold leading-tight truncate">
-                      {g.grupo_codigo}
+                      <SpeakOnClick className="block">{g.grupo_codigo}</SpeakOnClick>
                     </div>
                   </div>
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 ring-1 ring-sky-100 whitespace-nowrap">
-                    {g.modalidad?.nombre ?? "—"}
+                    {getGenericLabel(g.modalidad) || "—"}
                   </span>
                 </div>
                 <div className="mt-3 grid gap-1 text-sm">
                   <div className="truncate">
-                    {g.docente
-                      ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""
-                      }`
-                      : "N/D"}
+                    <SpeakOnClick className="block">{g.docente ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}` : "N/D"}</SpeakOnClick>
                   </div>
-                  <div className="text-slate-600">{g.horario}</div>
+                  <div className="text-slate-600">{formatHorario(g.horario)}</div>
                   <div className="text-slate-500 text-xs">
                     {t("classGroups.cards.capacity", {
                       capacity: g.cupo,
@@ -429,8 +436,7 @@ export default function GruposAula() {
                   <button
                     className="rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50 inline-flex items-center"
                     onClick={() => {
-                      const titulo = `${g.materia?.nombre ?? ""} • ${g.grupo_codigo
-                        }`
+                      const titulo = `${getSubjectLabel(g.materia) ?? ""} • ${g.grupo_codigo}`
                       navigate(`/grupos/aula/${g.id_grupo}`, {
                         state: { id_grupo: g.id_grupo, titulo },
                       })
