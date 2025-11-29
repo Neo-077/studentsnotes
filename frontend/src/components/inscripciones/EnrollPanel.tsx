@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import api from "../../lib/api"
+import i18n from 'i18next'
 import { FiPlus } from 'react-icons/fi'
 
 type Props = {
@@ -29,7 +30,9 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
     }
     const id = setTimeout(async () => {
       try {
-        const data = await api.get(`/estudiantes?q=${encodeURIComponent(q)}&page=1&pageSize=10`)
+        let path = `/estudiantes?q=${encodeURIComponent(q)}&page=1&pageSize=10`
+        if (i18n?.language && String(i18n.language).startsWith('en')) path += '&lang=en'
+        const data = await api.get(path)
         setResults(data?.rows ?? []) // 👈 la API devuelve { rows, total }
       } catch {
         setResults([])

@@ -4,6 +4,7 @@ import { listGrupos, createGrupo, bulkUpsertGrupos, checkDocenteHorarioConflict,
 import { listEstudiantesElegiblesPorGrupo } from '../services/estudiantes.service.js'
 import multer from 'multer'
 import { requireAuth as requireSupabaseAuth } from '../middleware/auth.js'
+import { translateObjectFields, translateObjectFieldsAsync, detectLangFromReq } from '../utils/translate.js'
 
 const upload = multer()
 const router = Router()
@@ -30,7 +31,9 @@ router.get('/', requireSupabaseAuth, async (req, res, next) => {
     }
 
     const data = await listGrupos({ termino_id, carrera_id, materia_id, docente_id, horario })
-    res.json(data)
+    const lang = detectLangFromReq(req)
+    const translated = await translateObjectFieldsAsync(data, lang)
+    res.json(translated)
   } catch (e) { next(e) }
 })
 
@@ -48,7 +51,8 @@ router.post('/', async (req, res, next) => {
       cupo: body.cupo != null ? Number(body.cupo) : null,
     }
     const data = await createGrupo(payload)
-    res.status(201).json(data)
+    const lang = detectLangFromReq(req)
+    res.status(201).json(await translateObjectFieldsAsync(data, lang))
   } catch (e) { next(e) }
 })
 

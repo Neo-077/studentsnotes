@@ -29,7 +29,7 @@ type SerieDatos = {
 }
 
 export default function ControlChart({ promedio }: { promedio: PuntoDatos[] }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [series, setSeries] = useState<SerieDatos[]>([])
   const darkMode = isDark()
 

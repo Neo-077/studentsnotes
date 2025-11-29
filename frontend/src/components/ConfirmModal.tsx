@@ -16,7 +16,7 @@ type Props = {
 }
 
 export default function ConfirmModal(props?: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [pending, setPending] = useState<any | null>(null)
 
   useEffect(() => {

@@ -10,6 +10,7 @@ import {
   obtenerReporteAprobadosReprobados,
   obtenerReportePromedioSemestre,
 } from '../services/inscripciones.service.js';
+import { translateObjectFields, translateObjectFieldsAsync, detectLangFromReq } from '../utils/translate.js'
 
 const router = Router();
 const bodySchema = z.object({ id_estudiante: z.number(), id_grupo: z.number() });
@@ -19,7 +20,8 @@ router.post('/', async (req, res, next) => {
   try {
     const body = bodySchema.parse(req.body);
     const data = await crearInscripcion(body);
-    res.status(201).json(data);
+    const lang = detectLangFromReq(req)
+    res.status(201).json(await translateObjectFieldsAsync(data, lang));
   } catch (e) { next(e); }
 });
 
@@ -28,7 +30,8 @@ router.post('/bulk', async (req, res, next) => {
   try {
     const body = bulkSchema.parse(req.body)
     const report = await bulkInscribirPorNoControl(body)
-    res.json(report)
+    const lang = detectLangFromReq(req)
+    res.json(await translateObjectFieldsAsync(report, lang))
   } catch (e) { next(e) }
 })
 
@@ -40,7 +43,8 @@ router.get('/', async (req, res, next) => {
     const data = await listarInscripcionesPorGrupo(id)
     const grupo = obtenerReporteAprobadosReprobados(data);
     const promedio = obtenerReportePromedioSemestre(data.rows);
-    res.json({ ...data, grupo, promedio })
+    const lang = detectLangFromReq(req)
+    res.json(await translateObjectFieldsAsync({ ...data, grupo, promedio }, lang))
   } catch (e) { next(e) }
 })
 
@@ -51,7 +55,8 @@ router.put('/:id/unidades', async (req, res, next) => {
     if (!id) return res.status(400).json({ error: { message: 'id inválido' } })
     const unidades = Array.isArray(req.body?.unidades) ? req.body.unidades : []
     const data = await actualizarUnidades({ id_inscripcion: id, unidades })
-    res.json(data)
+    const lang = detectLangFromReq(req)
+    res.json(await translateObjectFieldsAsync(data, lang))
   } catch (e) { next(e) }
 })
 
@@ -61,7 +66,8 @@ router.put('/:id', async (req, res, next) => {
     const id = Number(req.params.id)
     if (!id) return res.status(400).json({ error: { message: 'id inválido' } })
     const data = await actualizarInscripcion(id, req.body)
-    res.json(data)
+    const lang = detectLangFromReq(req)
+    res.json(await translateObjectFieldsAsync(data, lang))
   } catch (e) { next(e) }
 })
 

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FiDownload, FiUpload, FiSearch, FiArrowLeft, FiArrowRight } from 'react-icons/fi'
 import api from '../lib/api'
+import { useTranslation } from 'react-i18next'
+import { getCareerLabel, getGenderLabel } from '../lib/labels'
 import { Catalogos } from '../lib/catalogos'
 
 type Row = {
@@ -29,18 +31,21 @@ export default function Students() {
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
+  const { t, i18n } = useTranslation()
   useEffect(() => {
     Catalogos.carreras().then((res: any) => {
       const arr = Array.isArray(res) ? res : (res?.rows ?? res?.data ?? [])
       setCarreras(arr)
     })
-  }, [])
+  }, [i18n?.language])
 
   async function load() {
     setLoading(true)
     setMsg(null)
     try {
-      const data = await api.get(`/estudiantes?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}${idCarrera ? `&id_carrera=${idCarrera}` : ''}`)
+      let path = `/estudiantes?q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}${idCarrera ? `&id_carrera=${idCarrera}` : ''}`
+      if (i18n?.language && String(i18n.language).startsWith('en')) path += '&lang=en'
+      const data = await api.get(path)
       setRows(data.rows || [])
       setTotal(data.total || 0)
     } catch (e: any) {
@@ -49,7 +54,7 @@ export default function Students() {
       setLoading(false)
     }
   }
-  useEffect(() => { load() }, [page, pageSize]) // carga inicial + cambios
+  useEffect(() => { load() }, [page, pageSize, /* reload when language changes */ i18n?.language])
 
   const maxPage = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize])
 
@@ -115,11 +120,11 @@ export default function Students() {
       </div>
 
       <form onSubmit={onSearch} className="flex flex-wrap items-center gap-3 rounded-xl border bg-white p-3">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar (no_control, nombre, apellidos)" className="h-10 flex-1 min-w-[220px] rounded-lg border px-3" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar (no_control, nombre, apellidos)" className="h-10 flex-1 min-w-0 rounded-lg border px-3 w-full max-w-full box-border" />
         <select value={idCarrera} onChange={(e) => setIdCarrera(e.target.value ? Number(e.target.value) : '')} className="h-10 rounded-lg border px-3">
-          <option value="">Todas las carreras</option>
+          <option value="">{t ? t('students.filters.allCareers') : 'Todas las carreras'}</option>
           {carreras.map((c) => (
-            <option key={c.id_carrera} value={c.id_carrera}>{c.clave ? `${c.clave} — ` : ''}{c.nombre}</option>
+            <option key={c.id_carrera} value={c.id_carrera}>{c.clave ? `${c.clave} — ` : ''}{getCareerLabel(c) || c.nombre}</option>
           ))}
         </select>
         <button type="submit" className="h-10 rounded-lg bg-blue-600 px-4 text-white inline-flex items-center">
@@ -152,11 +157,11 @@ export default function Students() {
                   <tr key={r.id_estudiante} className="[&>td]:px-3 [&>td]:py-2">
                     <td className="font-mono">{r.no_control ?? '—'}</td>
                     <td>{r.nombre} {r.ap_paterno ?? ''} {r.ap_materno ?? ''}</td>
-                    <td>{r.carrera?.clave ? `${r.carrera.clave} — ` : ''}{r.carrera?.nombre ?? r.id_carrera}</td>
-                    <td>{r.genero?.descripcion ?? r.id_genero}</td>
+                    <td>{r.carrera?.clave ? `${r.carrera.clave} — ` : ''}{(getCareerLabel(r.carrera) || r.carrera?.nombre) ?? r.id_carrera}</td>
+                    <td>{getGenderLabel(r.genero) || r.id_genero}</td>
                     <td>{r.fecha_nacimiento ?? '—'}</td>
                     <td>{r.fecha_ingreso ?? '—'}</td>
-                    <td>{r.activo ? 'Activo' : 'Inactivo'}</td>
+                    <td>{r.activo ? (t ? t('students.status.active') : 'Activo') : (t ? t('students.status.inactive') : 'Inactivo')}</td>
                   </tr>
                 ))
               )}

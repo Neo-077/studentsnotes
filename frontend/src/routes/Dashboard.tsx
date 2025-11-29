@@ -26,7 +26,7 @@ function getCssVar(name: string, fallback: string): string {
 
 export default function Dashboard() {
   const { role } = useAuth()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

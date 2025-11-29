@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createBajaMateriaSchema } from '../schemas/bajaMateria.schema.js';
 import { bajaMateriaService } from '../services/bajaMateria.service.js';
 import { logSistemaService } from '../services/logSistema.service.js';
+import { translateObjectFields, translateObjectFieldsAsync, detectLangFromReq } from '../utils/translate.js'
 
 const router = Router();
 
@@ -10,14 +11,14 @@ router.post('/', async (req, res, next) => {
   try {
     // Validar los datos de entrada
     const input = createBajaMateriaSchema.parse(req.body);
-    
+
     // Crear el registro de baja de materia
     const bajaMateria = await bajaMateriaService.createBajaMateria(input);
 
     // Registrar la acción en el log del sistema
     try {
       // Asegurarse de que registrado_por sea un número
-      const userId = typeof input.registrado_por === 'string' 
+      const userId = typeof input.registrado_por === 'string'
         ? parseInt(input.registrado_por, 10)
         : input.registrado_por;
 
@@ -38,7 +39,8 @@ router.post('/', async (req, res, next) => {
       // No fallamos la operación principal si falla el log
     }
 
-    res.status(201).json(bajaMateria);
+    const lang = detectLangFromReq(req)
+    res.status(201).json(await translateObjectFieldsAsync(bajaMateria, lang));
   } catch (error) {
     next(error);
   }
@@ -53,17 +55,19 @@ router.get('/:id', async (req, res, next) => {
     }
 
     const bajaMateria = await bajaMateriaService.getBajaMateriaById(id);
-    res.json(bajaMateria);
+    const lang = detectLangFromReq(req)
+    res.json(await translateObjectFieldsAsync(bajaMateria, lang));
   } catch (error) {
     next(error);
   }
 });
 
 // GET /baja-materia - Obtener todos los registros de baja
-router.get('/', async (_req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const bajas = await bajaMateriaService.getAllBajas();
-    res.json(bajas);
+    const lang = detectLangFromReq(req)
+    res.json(await translateObjectFieldsAsync(bajas, lang));
   } catch (error) {
     next(error);
   }

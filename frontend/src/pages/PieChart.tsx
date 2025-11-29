@@ -22,7 +22,7 @@ export default function PieChartPage({
   grupo: GrupoResumen
   alumnos?: AlumnoRow[]
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   // Calcular aprobados y reprobados dinámicamente desde los datos de alumnos
   const { aprobados, reprobados, total } = useMemo(() => {

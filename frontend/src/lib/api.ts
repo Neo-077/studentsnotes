@@ -1,5 +1,6 @@
 // src/lib/api.ts
 import { supabase } from './supabaseClient'
+import i18n from 'i18next'
 import confirmService from './confirmService'
 
 const RAW_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'
@@ -21,6 +22,7 @@ async function request(path: string, opts: RequestInit = {}) {
 
     const headers: Record<string, string> = {
       Accept: 'application/json',
+      'Accept-Language': String(i18n.language || 'es'),
       ...(opts.headers as Record<string, string> | undefined),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     }

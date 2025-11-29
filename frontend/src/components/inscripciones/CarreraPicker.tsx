@@ -1,5 +1,7 @@
 // src/components/inscripciones/CarreraPicker.tsx
 import { useEffect, useState } from "react"
+import { useTranslation } from 'react-i18next'
+import { getCareerLabel } from '../../lib/labels'
 import { Catalogos } from "../../lib/catalogos"
 
 type Props = {
@@ -11,35 +13,49 @@ type Props = {
 
 export default function CarreraPicker({ value, onChange, label = true, className }: Props) {
   const [list, setList] = useState<any[]>([])
+  const { t, i18n } = useTranslation()
+
   useEffect(() => {
-    Catalogos.carreras().then((res: any) => {
+    let cancelled = false
+    async function load() {
+      const res = await Catalogos.carreras()
       const arr = Array.isArray(res) ? res : (res?.rows ?? res?.data ?? [])
-      setList(arr)
-    })
-  }, [])
-  const select = (
+      if (!cancelled) setList(arr)
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [i18n?.language])
+
+  const selectEl = (
     <select
-      className={`border rounded-xl px-3 py-2 ${className ?? ''}`}
+      className={`w-full truncate box-border ${className ?? ''}`}
       value={value ?? ""}
       onChange={(e) => {
         const v = e.target.value
         onChange?.(v === "" ? null : Number(v))
       }}
     >
-      <option value="">Carrera…</option>
+      <option value="">{t('pickers.careerPlaceholder')}</option>
       {list.map((c) => (
         <option key={c.id_carrera} value={c.id_carrera}>
-          {c.clave ? `${c.clave} — ` : ''}{c.nombre}
+          {getCareerLabel(c)}
         </option>
       ))}
     </select>
   )
 
-  if (!label) return select
+  // Wrap the select in a shrinkable container so long option text cannot expand the control
+  const wrapped = (
+    <div className={`select-wrapper min-w-0 overflow-hidden`}>
+      {selectEl}
+    </div>
+  )
+
+  if (!label) return wrapped
   return (
     <div className="flex items-center gap-3">
-      <label className="text-sm text-gray-600">Carrera</label>
-      {select}
+      <label className="text-sm text-gray-600">{t('pickers.careerLabel')}</label>
+      {wrapped}
     </div>
   )
 }

@@ -24,74 +24,78 @@ type Baja = {
 }
 
 export default function ParetoChart({ id_grupo }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        setError(null)
+      ; (async () => {
+        try {
+          setLoading(true)
+          setError(null)
 
-        // 1) Trae las inscripciones del grupo (para obtener sus ids)
-        const insRes = await api.get(`/inscripciones?grupo_id=${id_grupo}`)
-        const insRows = (insRes?.rows ?? (insRes as any)?.data?.rows ?? insRes) as any[]
-        const ids = new Set<number>((insRows || []).map(r => Number(r?.id_inscripcion)).filter(Boolean))
+          // 1) Trae las inscripciones del grupo (para obtener sus ids)
+          let insPath = `/inscripciones?grupo_id=${id_grupo}`
+          if (i18n?.language && String(i18n.language).startsWith('en')) insPath += '&lang=en'
+          const insRes = await api.get(insPath)
+          const insRows = (insRes?.rows ?? (insRes as any)?.data?.rows ?? insRes) as any[]
+          const ids = new Set<number>((insRows || []).map(r => Number(r?.id_inscripcion)).filter(Boolean))
 
-        if (ids.size === 0) {
-          if (alive) {
-            setData([])
+          if (ids.size === 0) {
+            if (alive) {
+              setData([])
+            }
+            return
           }
-          return
+
+          // 2) Trae todas las bajas y filtra por los ids de inscripcion del grupo
+          let bajasPath = `/baja-materia`
+          if (i18n?.language && String(i18n.language).startsWith('en')) bajasPath += '?lang=en'
+          const bajasRes = await api.get(bajasPath)
+          const bajasRaw = (bajasRes ?? (bajasRes as any)?.data ?? (bajasRes as any)?.data?.data) as Baja[] | any
+          const bajas: Baja[] = Array.isArray(bajasRaw) ? bajasRaw : []
+
+          const rows = bajas.filter(b => ids.has(Number((b as any)?.id_inscripcion)))
+
+          // 3) Agrupar por motivo (normalizado) y contar
+          const counts = new Map<string, number>()
+          for (const b of rows) {
+            const raw = (b.motivo_adicional ?? b.motivo ?? '').toString().trim()
+            if (!raw) continue
+            const key = normalize(raw)
+            counts.set(key, (counts.get(key) || 0) + 1)
+          }
+
+          // 4) Orden descendente + % acumulado
+          const arr = Array.from(counts.entries())
+            .map(([normKey, value]) => ({
+              name: prettyMotivo(normKey),
+              value,
+            }))
+            .sort((a, b) => b.value - a.value)
+
+          const total = arr.reduce((s, x) => s + x.value, 0) || 1
+          let cum = 0
+          const final = arr.map(x => {
+            cum += x.value
+            return { ...x, cumPct: +(cum / total * 100).toFixed(2) }
+          })
+
+          if (alive) setData(final)
+        } catch (e: any) {
+          if (alive) {
+            setError(e?.response?.data?.message || e?.message || t('classGroupDetail.charts.paretoError'))
+          }
+        } finally {
+          if (alive) setLoading(false)
         }
-
-        // 2) Trae todas las bajas y filtra por los ids de inscripcion del grupo
-        const bajasRes = await api.get(`/baja-materia`)
-        const bajasRaw = (bajasRes ?? (bajasRes as any)?.data ?? (bajasRes as any)?.data?.data) as Baja[] | any
-        const bajas: Baja[] = Array.isArray(bajasRaw) ? bajasRaw : []
-
-        const rows = bajas.filter(b => ids.has(Number((b as any)?.id_inscripcion)))
-
-        // 3) Agrupar por motivo (normalizado) y contar
-        const counts = new Map<string, number>()
-        for (const b of rows) {
-          const raw = (b.motivo_adicional ?? b.motivo ?? '').toString().trim()
-          if (!raw) continue
-          const key = normalize(raw)
-          counts.set(key, (counts.get(key) || 0) + 1)
-        }
-
-        // 4) Orden descendente + % acumulado
-        const arr = Array.from(counts.entries())
-          .map(([normKey, value]) => ({
-            name: prettyMotivo(normKey),
-            value,
-          }))
-          .sort((a, b) => b.value - a.value)
-
-        const total = arr.reduce((s, x) => s + x.value, 0) || 1
-        let cum = 0
-        const final = arr.map(x => {
-          cum += x.value
-          return { ...x, cumPct: +(cum / total * 100).toFixed(2) }
-        })
-
-        if (alive) setData(final)
-      } catch (e: any) {
-        if (alive) {
-          setError(e?.response?.data?.message || e?.message || t('classGroupDetail.charts.paretoError'))
-        }
-      } finally {
-        if (alive) setLoading(false)
-      }
-    })()
+      })()
     return () => {
       alive = false
     }
-  }, [id_grupo, t])
+  }, [id_grupo, t, i18n?.language])
 
   // ---------- helpers ----------
   function normalize(s: string) {

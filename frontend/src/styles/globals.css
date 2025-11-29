@@ -4,7 +4,8 @@
 :root {
   color-scheme: light dark;
   /* Paleta solicitada */
-  --c-bg: #EFF1EB;
+  /* Fondo base del tema normal ajustado a blanco puro */
+  --c-bg: #FFFFFF;
   /* fondo */
   --c-teal: #63C1CA;
   /* primario suave */
@@ -17,6 +18,7 @@
 
   /* Light theme mapping */
   --bg: var(--c-bg);
+  /* ahora blanco */
   --surface: #FFFFFF;
   --card: #FFFFFF;
   --text: #1E3452;
@@ -272,12 +274,15 @@ label.cursor-pointer.border:active {
 }
 
 .sidebar-link:hover {
-  background-color: color-mix(in oklab, var(--sidebar-fg), transparent 90%);
+  background-color: color-mix(in oklab, var(--sidebar-fg), transparent 92%);
+  transform: translateX(2px);
 }
 
 .sidebar-link.is-active {
-  background-color: color-mix(in oklab, var(--sidebar-fg), transparent 88%);
-  color: white;
+  background-color: color-mix(in oklab, var(--sidebar-fg), transparent 85%);
+  color: var(--sidebar-fg);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .sidebar-link.is-active::before {
@@ -286,9 +291,10 @@ label.cursor-pointer.border:active {
   left: -8px;
   top: 8px;
   bottom: 8px;
-  width: 3px;
+  width: 4px;
   border-radius: 2px;
   background: var(--primary);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
 }
 
 .sidebar .theme-toggle {
@@ -531,3 +537,50 @@ table button:active {
 }
 
 /* El resto se apoya en Tailwind: .sr-only, focus-visible, etc. */
+
+/* Accessibility: highlight interactive elements when enabled */
+html.interactive-highlight a:not(.no-highlight),
+html.interactive-highlight button:not([disabled]):not(.no-highlight),
+html.interactive-highlight select:not([disabled]):not(.no-highlight),
+html.interactive-highlight input[type="search"]:not([disabled]):not(.no-highlight),
+html.interactive-highlight input[type="submit"]:not([disabled]):not(.no-highlight),
+html.interactive-highlight [role="button"]:not([disabled]):not(.no-highlight),
+html.interactive-highlight [role="combobox"]:not([disabled]):not(.no-highlight),
+html.interactive-highlight .dropdown-toggle:not(.no-highlight),
+html.interactive-highlight .btn:not([disabled]):not(.no-highlight),
+html.interactive-highlight .link:not(.no-highlight),
+html.interactive-highlight .filter-btn:not(.no-highlight),
+html.interactive-highlight .select-wrapper:not(.no-highlight) {
+  outline: 3px solid #ffbf00;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(255, 191, 0, 0.12);
+  border-radius: 6px;
+}
+
+/* Slight visual tweak on hover to reinforce highlight without being aggressive */
+html.interactive-highlight a:hover:not(.no-highlight),
+html.interactive-highlight button:hover:not([disabled]):not(.no-highlight),
+html.interactive-highlight select:hover:not([disabled]):not(.no-highlight),
+html.interactive-highlight [role="button"]:hover:not([disabled]):not(.no-highlight),
+html.interactive-highlight .dropdown-toggle:hover:not(.no-highlight) {
+  box-shadow: 0 0 0 8px rgba(255, 191, 0, 0.14);
+}
+
+/* Keep focus-visible rule intact but make it compatible with highlight */
+html.interactive-highlight :focus-visible {
+  outline: 3px solid #ffbf00;
+  outline-offset: 2px;
+}
+
+/* When highlighting, hide the native select border so the wrapper's yellow outline looks clean */
+html.interactive-highlight .select-wrapper select,
+html.interactive-highlight .select-wrapper .select-input {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Also ensure the select keeps its border-radius and background so appearance remains consistent */
+html.interactive-highlight .select-wrapper select {
+  border-radius: inherit !important;
+  background-clip: padding-box !important;
+}

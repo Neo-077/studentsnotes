@@ -5,13 +5,14 @@ import { Catalogos } from '../lib/catalogos'
 import * as XLSX from 'xlsx'
 import confirmService from '../lib/confirmService'
 import { useTranslation } from 'react-i18next'
+import { getCareerLabel, getSubjectLabel } from '../lib/labels'
 import { FiPlus, FiSave, FiEdit, FiTrash2, FiDownload, FiUpload, FiSearch, FiFilter, FiArrowLeft } from 'react-icons/fi'
 
 export default function Materias() {
   type Materia = { id_materia: number; clave?: string; nombre: string; unidades: number; creditos: number }
   type RelMC = { id_materia: number; id_carrera: number; semestre: number | null; carrera?: { nombre: string; clave?: string } }
 
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [rows, setRows] = useState<Materia[]>([])
   const [carreras, setCarreras] = useState<any[]>([])
@@ -110,8 +111,8 @@ export default function Materias() {
   function downloadTemplateXLSX() {
     const headers = ['nombre', 'unidades', 'creditos', 'carrera', 'semestre']
     const wsMain = XLSX.utils.aoa_to_sheet([headers])
-    const listaCarreras = (carreras ?? []).map((c: any) => [c.nombre, c.clave ?? '', c.id_carrera])
-    const listaMaterias = (rows ?? []).map((m: any) => [m.nombre, m.clave ?? '', m.id_materia])
+    const listaCarreras = (carreras ?? []).map((c: any) => [getCareerLabel(c), c.clave ?? '', c.id_carrera])
+    const listaMaterias = (rows ?? []).map((m: any) => [getSubjectLabel(m) || m.nombre, m.clave ?? '', m.id_materia])
     const wsHelp = XLSX.utils.aoa_to_sheet([
       ['LISTAS'],
       [],
@@ -149,7 +150,9 @@ export default function Materias() {
         rowsOut.push({ id_materia: m.id_materia, clave: m.clave, nombre: m.nombre, unidades: m.unidades, creditos: m.creditos, carreraTexto: '—' })
       } else {
         for (const c of rels) {
-          const label = `${c.clave ? `${c.clave} — ` : ''}${c.nombreCarrera}${c.semestre ? ` · S${c.semestre}` : ''}`
+          const careerObj = carreras.find(cx => Number(cx.id_carrera) === Number(c.id_carrera)) || (c.nombreCarrera ? { nombre: c.nombreCarrera } : undefined)
+          const careerLabel = getCareerLabel(careerObj) || c.nombreCarrera || ''
+          const label = `${c.clave ? `${c.clave} — ` : ''}${careerLabel}${c.semestre ? ` · S${c.semestre}` : ''}`
           rowsOut.push({ id_materia: m.id_materia, clave: m.clave, nombre: m.nombre, unidades: m.unidades, creditos: m.creditos, carreraTexto: label })
         }
       }
@@ -439,7 +442,7 @@ export default function Materias() {
             <option value="">{t('subjects.form.careerPlaceholder')}</option>
             {carreras.map(c => (
               <option key={c.id_carrera} value={c.id_carrera}>
-                {c.clave ? `${c.clave} — ` : ''}{c.nombre}
+                {c.clave ? `${c.clave} — ` : ''}{getCareerLabel(c)}
               </option>
             ))}
           </select>
@@ -471,7 +474,7 @@ export default function Materias() {
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder={t('subjects.search.placeholder')}
-            className="h-10 flex-1 min-w-[220px] rounded-xl border px-3 text-sm"
+            className="h-10 flex-1 min-w-0 rounded-xl border px-3 text-sm w-full max-w-full box-border"
           />
           <button
             onClick={downloadTemplateXLSX}
@@ -520,7 +523,10 @@ export default function Materias() {
               ) : list.map(m => (
                 <tr key={`${m.id_materia}-${m.carreraTexto}`} className="[&>td]:px-3 [&>td]:py-2">
                   <td className="font-mono text-xs">{m.clave ?? '—'}</td>
-                  <td>{m.nombre}</td>
+                  <td>{(() => {
+                    const subj = rows.find(r => r.id_materia === m.id_materia)
+                    return getSubjectLabel(subj) || m.nombre
+                  })()}</td>
                   <td className="text-slate-600">{m.carreraTexto}</td>
                   <td>{m.unidades}</td>
                   <td>{m.creditos}</td>

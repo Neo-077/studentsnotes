@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import api from "../../lib/api"
 import { Catalogos } from "../../lib/catalogos"
 import { useTranslation } from "react-i18next"
+import { getGenderLabel, getCareerLabel } from '../../lib/labels'
 import { FiSave } from 'react-icons/fi'
 
 // ————————————————————————————————————————————————————————————————
@@ -143,7 +144,7 @@ export default function AddStudentForm({
   defaultCarreraId?: number
   anioCorte?: number
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [generos, setGeneros] = useState<any[]>([])
   const [carreras, setCarreras] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -287,7 +288,7 @@ export default function AddStudentForm({
       const arr = Array.isArray(res) ? res : (res?.rows ?? res?.data ?? [])
       setCarreras(arr)
     })
-  }, [])
+  }, [i18n?.language])
 
   useEffect(() => {
     if (defaultCarreraId) {
@@ -405,7 +406,7 @@ export default function AddStudentForm({
             </option>
             {generos.map(g => (
               <option key={g.id_genero} value={g.id_genero}>
-                {g.descripcion}
+                {getGenderLabel(g) || g.descripcion}
               </option>
             ))}
           </select>
@@ -429,7 +430,7 @@ export default function AddStudentForm({
             </option>
             {carreras.map(c => (
               <option key={c.id_carrera} value={c.id_carrera}>
-                {c.nombre}
+                {getCareerLabel(c) || c.nombre}
               </option>
             ))}
           </select>
