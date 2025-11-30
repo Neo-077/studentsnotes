@@ -1,0 +1,78 @@
+name: CI - StudentsNotes
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  frontend:
+    name: Frontend (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci || npm install
+
+      # 🔍 Análisis estático (lint)
+      - name: Lint (static analysis)
+        run: npm run lint --if-present
+
+      # 🧪 Pruebas automatizadas (si existen)
+      - name: Tests
+        run: npm test --if-present
+
+      # 🏗️ Compilar
+      - name: Build
+        run: npm run build
+
+  backend:
+    name: Backend (API)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci || npm install
+
+      # 🔍 Análisis estático para el backend
+      - name: Lint (static analysis)
+        run: npm run lint --if-present
+
+      # 🧪 Pruebas automatizadas (si existen)
+      - name: Tests
+        run: npm test --if-present
+
+      # 🏗️ Compilar backend (si tienes build)
+      - name: Build
+        run: npm run build --if-present
