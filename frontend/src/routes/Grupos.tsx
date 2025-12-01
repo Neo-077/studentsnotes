@@ -144,7 +144,6 @@ export default function Grupos() {
     setPage(1)
     void load()
     // Re-run when filters or language change so server can return translated fields
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terminoId, carreraId, materiaId, i18n?.language])
 
   // refrescar en segundo plano al volver de background/enfocar/reconectar

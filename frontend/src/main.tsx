@@ -86,7 +86,6 @@ function Root() {
       // ignore parse errors
     }
     // run only once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Global delegated click/keyboard handler for click-to-speak

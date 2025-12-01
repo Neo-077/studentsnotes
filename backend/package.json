@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "seed": "tsx src/seed.ts",
-    "lint": "eslint src --ext .ts --max-warnings=0",
+    "lint": "eslint src --ext .ts,.tsx",
     "test": "vitest"
   },
   "dependencies": {

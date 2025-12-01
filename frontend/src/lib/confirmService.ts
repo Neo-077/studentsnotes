@@ -34,7 +34,6 @@ export function requestConfirm(opts: ConfirmOptions): Promise<boolean> {
         // auto-confirm so actions aren't blocked; log a warning for developers
         // Consumers may rely on confirmation; ensure the app mounts the modal in App.tsx
         // during normal operation.
-        // eslint-disable-next-line no-console
         console.warn('[confirmService] no confirm listeners - auto-confirming')
         return Promise.resolve(true)
     }

@@ -97,7 +97,6 @@ export default function Estudiantes() {
     // when status filter changes, reset to first page and reload
     setPage(1)
     if (initialized) load(false)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter])
 
   // Búsqueda reactiva (debounce) al escribir o cambiar carrera (solo para admin)
