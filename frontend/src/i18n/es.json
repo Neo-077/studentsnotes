@@ -46,6 +46,7 @@
       "readingTools": "Herramientas de lectura",
       "readingMask": "Máscara de lectura",
       "readingGuide": "Guía de lectura",
+      "thickness": "Grosor",
       "height": "Altura",
       "opacity": "Opacidad",
       "maskColorAria": "Color de la máscara",
@@ -84,6 +85,7 @@
       "voice": "Voz",
       "voiceHint": "Haz clic sobre cualquier texto para escucharlo cuando esté activado."
     },
+    "pointerSize": "Tamaño del puntero",
     "enrollments": "Inscripciones",
     "groups": "Grupos",
     "classGroups": "Grupos (Aula)",
@@ -729,5 +731,44 @@
     "female": "Femenino",
     "other": "Otro",
     "unspecified": "Sin especificar"
+  },
+  "login": {
+    "title": "Bienvenido",
+    "subtitle": "Accede como Administrador o Docente para gestionar grupos y calificaciones.",
+    "bullets": {
+      "admin": "Administrador: catálogos, inscripciones, reportes.",
+      "teacher": "Docente: solo sus Grupos (Aula)."
+    },
+    "roles": {
+      "admin": "Administrador",
+      "teacher": "Docente"
+    },
+    "form": {
+      "titleLoginAdmin": "Iniciar sesión (Administrador)",
+      "titleLoginTeacher": "Iniciar sesión (Docente)",
+      "titleRegisterTeacher": "Crear cuenta (Docente)",
+      "toggleRegister": "Crear cuenta",
+      "toggleLogin": "Ya tengo cuenta",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Email",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Password",
+      "emailError": "Email inválido",
+      "passwordError": "Mínimo 6 caracteres",
+      "submitLogin": "Entrar",
+      "submitRegister": "Crear y entrar",
+      "processing": "Procesando…"
+    },
+    "messages": {
+      "accountCreated": "Cuenta creada. Iniciando sesión…"
+    },
+    "errors": {
+      "emailAlreadyRegistered": "⚠️ Este correo ya tiene una cuenta registrada. Inicia sesión con tu contraseña.",
+      "emailNotAllowed": "❌ Este correo no está autorizado para crear una cuenta. Contacta al administrador.",
+      "invalidData": "❌ Datos inválidos",
+      "createFailed": "❌ No se pudo crear la cuenta",
+      "invalidCredentials": "❌ Credenciales inválidas",
+      "generic": "Error"
+    }
   }
 }

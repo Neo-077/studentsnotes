@@ -1,4 +1,4 @@
-import React, { useState, memo } from "react"
+import React, { useState, memo, useRef, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { useAccessibility } from "../store/useAccessibility"
 import { TTS } from "../lib/tts"
@@ -70,6 +70,9 @@ const useVoice = () =>
     setVoiceRate: s.setVoiceRate
   }))
 
+const usePointer = () =>
+  useAccessibility(s => ({ pointerSize: s.pointerSize, setPointerSize: s.setPointerSize, bigPointer: s.bigPointer }))
+
 type Props = {
   inline?: boolean // render as inline panel (no popover)
 }
@@ -117,6 +120,9 @@ function AccessibilityMenuBase({ inline = false }: Props) {
     setCustomSidebarFgColor
   } = useCustomColors()
   const { t, i18n } = useTranslation()
+
+  const { pointerSize, setPointerSize } = useAccessibility(s => ({ pointerSize: s.pointerSize, setPointerSize: s.setPointerSize }))
+  const { pointerColor, setPointerColor } = useAccessibility(s => ({ pointerColor: (s as any).pointerColor, setPointerColor: (s as any).setPointerColor }))
 
   // Componente Toggle reutilizable para casillas más claras
   const Toggle = ({
@@ -302,7 +308,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                       aria-label="Altura de la máscara"
                     />
                     <span className="tabular-nums w-12 text-right shrink-0">
-                      {readingMaskHeight}px
+                      {readingMaskHeight}
                     </span>
                   </label>
                   <label className="flex items-center gap-2 text-xs">
@@ -319,7 +325,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                         setReadingMaskOpacity(Number(e.target.value))
                       }
                       className="flex-1 min-w-0"
-                      aria-label="Opacidad de la máscara"
+                      aria-label={`${t("nav.accessibility.opacity")} ${t("nav.accessibility.readingMask")}`}
                     />
                     <span className="tabular-nums w-12 text-right shrink-0">
                       {Math.round(readingMaskOpacity * 100)}%
@@ -327,15 +333,8 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                   </label>
                   <label className="flex items-center gap-1 text-xs">
                     <span className="w-16 shrink-0">Color</span>
-                    <input
-                      type="color"
-                      value={readingMaskColor}
-                      onChange={e => setReadingMaskColor(e.target.value)}
-                      aria-label={t("nav.accessibility.maskColorAria")}
-                      className="h-6 w-8 rounded border border-slate-500 bg-transparent shrink-0"
-                    />
                     <div className="flex gap-1 flex-wrap">
-                      {["#000000", "#1f2937", "#334155"].map(c => (
+                      {["#ffbf00", "#00bcd4", "#ff4444"].map(c => (
                         <button
                           key={c}
                           type="button"
@@ -343,6 +342,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                           className="h-5 w-5 rounded border border-slate-500 shrink-0"
                           style={{ backgroundColor: c }}
                           aria-label={`Usar color ${c}`}
+                          title={c}
                         />
                       ))}
                     </div>
@@ -383,11 +383,11 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                       aria-label="Grosor de la guía"
                     />
                     <span className="tabular-nums w-12 text-right shrink-0">
-                      {readingGuideThickness}px
+                      {readingGuideThickness}
                     </span>
                   </label>
                   <label className="flex items-center gap-2 text-xs">
-                    <span className="w-16 shrink-0">Opacidad</span>
+                    <span className="w-16 shrink-0">{t("nav.accessibility.opacity")}</span>
                     <input
                       type="range"
                       min={0}
@@ -398,7 +398,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                         setReadingGuideOpacity(Number(e.target.value))
                       }
                       className="flex-1 min-w-0"
-                      aria-label="Opacidad de la guía"
+                      aria-label={`${t("nav.accessibility.opacity")} ${t("nav.accessibility.readingGuide")}`}
                     />
                     <span className="tabular-nums w-12 text-right shrink-0">
                       {Math.round(readingGuideOpacity * 100)}%
@@ -406,13 +406,6 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                   </label>
                   <label className="flex items-center gap-1 text-xs">
                     <span className="w-16 shrink-0">Color</span>
-                    <input
-                      type="color"
-                      value={readingGuideColor}
-                      onChange={e => setReadingGuideColor(e.target.value)}
-                      aria-label={t("nav.accessibility.guideColorAria")}
-                      className="h-6 w-8 rounded border border-slate-500 bg-transparent shrink-0"
-                    />
                     <div className="flex gap-1 flex-wrap">
                       {["#ffbf00", "#00bcd4", "#ff4444"].map(c => (
                         <button
@@ -422,6 +415,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                           className="h-5 w-5 rounded border border-slate-500 shrink-0"
                           style={{ backgroundColor: c }}
                           aria-label={`Usar color ${c}`}
+                          title={c}
                         />
                       ))}
                     </div>
@@ -707,16 +701,61 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             >
               {t("nav.accessibility.otherOptions")}
             </h2>
-            <Toggle
-              checked={focusMode}
-              onChange={() => toggleFocusMode()}
-              label={t("nav.accessibility.focusMode")}
-            />
+
             <Toggle
               checked={bigPointer}
               onChange={() => toggleBigPointer()}
               label={t("nav.accessibility.bigPointer")}
             />
+            {bigPointer && (
+              <div className="pl-2">
+                <label className="flex items-center gap-3 text-xs">
+                  {/* Eliminada la etiqueta de i18n visual; se usa un aria-label más legible */}
+                  <input
+                    type="range"
+                    min={12}
+                    max={120}
+                    step={2}
+                    value={pointerSize}
+                    onChange={e => setPointerSize(Number(e.target.value))}
+                    className="accessibility-range flex-1 min-w-0"
+                    aria-label="Tamaño del puntero"
+                  />
+                  <span className="tabular-nums w-12 text-right shrink-0">
+                    {pointerSize}
+                  </span>
+                </label>
+              </div>
+            )}
+            {bigPointer && (
+              <div className="mt-2 pl-2">
+                <span className="text-xs block mb-1">Puntero</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className={`p-1 border rounded ${pointerColor === 'white' ? 'ring-2 ring-offset-1' : ''}`}
+                    onClick={() => setPointerColor('white')}
+                    aria-pressed={pointerColor === 'white'}
+                    title="Blanco"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
+                      <path d="M2 2 L14 12 L10 14 L12 20 L8 22 L6 16 L2 2" fill="#ffffff" stroke="#000" strokeWidth="0" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className={`p-1 border rounded ${pointerColor === 'black' ? 'ring-2 ring-offset-1' : ''}`}
+                    onClick={() => setPointerColor('black')}
+                    aria-pressed={pointerColor === 'black'}
+                    title="Negro"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
+                      <path d="M2 2 L14 12 L10 14 L12 20 L8 22 L6 16 L2 2" fill="#000000" stroke="#fff" strokeWidth="0" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
             {/* Highlight interactive elements */}
             <InteractiveHighlightToggle />
           </section>
@@ -775,6 +814,23 @@ function AccessibilityMenuBase({ inline = false }: Props) {
               })}
             </div>
           </section>
+          {/* Reset (solo visible cuando el panel está expandido) */}
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem('studentsnotes-accessibility')
+                  localStorage.removeItem('sn_high_contrast')
+                } catch { }
+                window.location.reload()
+              }}
+              className="text-[0.82rem] px-3 py-1 rounded-md border transition bg-transparent"
+              title={t('nav.accessibility.resetTitle')}
+            >
+              {t('nav.accessibility.reset') || 'Reestablecer'}
+            </button>
+          </div>
         </>
       )}
     </div>
@@ -782,14 +838,51 @@ function AccessibilityMenuBase({ inline = false }: Props) {
 
   if (inline) return Panel
 
+  const detailsRef = useRef<HTMLDetailsElement | null>(null)
+  const [open, setOpen] = useState<boolean>(false)
+
+  useEffect(() => {
+    if (!open) return
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (detailsRef.current) detailsRef.current.open = false
+        setOpen(false)
+      }
+    }
+
+    function onPointerDown(e: PointerEvent) {
+      const el = detailsRef.current
+      if (!el) return
+      const target = e.target as Node | null
+      if (target && !el.contains(target)) {
+        el.open = false
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener("keydown", onKey)
+    document.addEventListener("pointerdown", onPointerDown)
+
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      document.removeEventListener("pointerdown", onPointerDown)
+    }
+  }, [open])
+
   return (
     <div className="relative">
-      <details className="inline-block">
+      <details
+        className="inline-block"
+        ref={detailsRef}
+        onToggle={() => setOpen(detailsRef.current ? !!detailsRef.current.open : false)}
+      >
         <summary
           className="cursor-pointer px-2 py-1 text-sm border rounded"
           aria-label="Abrir ajustes de accesibilidad"
+          aria-expanded={open}
         >
-          ♿ Accesibilidad
+          Accesibilidad
         </summary>
         <div
           className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border rounded shadow-lg p-3 z-50"

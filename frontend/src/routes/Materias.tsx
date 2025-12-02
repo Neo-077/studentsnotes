@@ -137,10 +137,10 @@ export default function Materias() {
 
   // Construir filas por relación materia-carrera (una por vínculo, o una sola si no hay vínculos)
   const filasMateriaCarrera = useMemo(() => {
-    const map = new Map<number, Array<{ nombreCarrera: string; clave?: string; semestre: number | null }>>()
+    const map = new Map<number, Array<{ nombreCarrera: string; clave?: string; semestre: number | null; id_carrera?: number | null }>>()
     for (const r of relaciones) {
       const arr = map.get(r.id_materia) || []
-      arr.push({ nombreCarrera: r.carrera?.nombre || '', clave: r.carrera?.clave, semestre: r.semestre ?? null })
+      arr.push({ nombreCarrera: r.carrera?.nombre || '', clave: r.carrera?.clave, semestre: r.semestre ?? null, id_carrera: r.id_carrera ?? null })
       map.set(r.id_materia, arr)
     }
     const rowsOut: Array<{ id_materia: number; clave?: string; nombre: string; unidades: number; creditos: number; carreraTexto: string }> = []
@@ -627,7 +627,7 @@ export default function Materias() {
                     if (edit.creditos != null) payload.creditos = Number(edit.creditos)
                     // The edit modal itself is the user's confirmation, so call the API directly
                     // Pass `skipConfirm: true` so the central API wrapper doesn't show another confirm modal
-                    await api.put(`/materias/${edit.id}`, payload, { skipConfirm: true })
+                    await api.put(`/materias/${edit.id}`, payload, { skipConfirm: true } as any)
                     const msg = t('subjects.messages.updated')
                       ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${msg}: ${payload.nombre || ''}` })
                     setEdit({ open: false })

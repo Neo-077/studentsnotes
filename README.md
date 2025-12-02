@@ -16,7 +16,7 @@ studentsnotes/
 
 ---
 
-## 🚀 Tecnologías Principales
+## 🚀 Tecnologías Principales Usadas
 
 | Componente           | Tecnología / Herramienta                 |
 | -------------------- | ---------------------------------------- |
