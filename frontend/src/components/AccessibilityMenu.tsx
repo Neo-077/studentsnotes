@@ -826,9 +826,9 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                 window.location.reload()
               }}
               className="text-[0.82rem] px-3 py-1 rounded-md border transition bg-transparent"
-              title={t('nav.accessibility.resetTitle')}
+              title={"Reestablecer accesibilidad"}
             >
-              {t('nav.accessibility.reset') || 'Reestablecer'}
+              Reestablecer accesibilidad
             </button>
           </div>
         </>
