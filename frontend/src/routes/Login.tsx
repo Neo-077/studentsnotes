@@ -72,6 +72,8 @@ export default function Login() {
     root.classList.remove('high-contrast')
 
     if (contrastMode === 'high') {
+      // Remove dark class so high-contrast variables take precedence
+      root.classList.remove('dark')
       root.classList.add('high-contrast')
       root.style.removeProperty('--sidebar-bg')
       root.style.removeProperty('--sidebar-fg')
