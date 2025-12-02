@@ -729,5 +729,44 @@
     "female": "Female",
     "other": "Other",
     "unspecified": "Unspecified"
+  },
+  "login": {
+  "title": "Welcome",
+  "subtitle": "Sign in as Administrator or Teacher to manage groups and grades.",
+  "bullets": {
+    "admin": "Administrator: catalogs, enrollments, reports.",
+    "teacher": "Teacher: only their own Class Groups."
+  },
+  "roles": {
+    "admin": "Administrator",
+    "teacher": "Teacher"
+  },
+  "form": {
+    "titleLoginAdmin": "Sign in (Administrator)",
+    "titleLoginTeacher": "Sign in (Teacher)",
+    "titleRegisterTeacher": "Create account (Teacher)",
+    "toggleRegister": "Create account",
+    "toggleLogin": "I already have an account",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Password",
+    "emailError": "Invalid email",
+    "passwordError": "Minimum 6 characters",
+    "submitLogin": "Sign in",
+    "submitRegister": "Create and sign in",
+    "processing": "Processing…"
+  },
+  "messages": {
+    "accountCreated": "Account created. Signing in…"
+  },
+  "errors": {
+    "emailAlreadyRegistered": "⚠️ This email is already registered. Please sign in with your password.",
+    "emailNotAllowed": "❌ This email is not allowed to create an account. Contact the administrator.",
+    "invalidData": "❌ Invalid data",
+    "createFailed": "❌ Could not create the account",
+    "invalidCredentials": "❌ Invalid credentials",
+    "generic": "Error"
   }
+}
 }

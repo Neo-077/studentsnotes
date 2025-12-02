@@ -66,6 +66,23 @@ function getStoredHighContrast(): boolean {
   }
 }
 
+function getContrastCounterpart(hex: string) {
+  const h = hex.replace('#', '')
+  if (h.length === 3) {
+    const r = parseInt(h[0] + h[0], 16)
+    const g = parseInt(h[1] + h[1], 16)
+    const b = parseInt(h[2] + h[2], 16)
+    return (r * 0.299 + g * 0.587 + b * 0.114) > 186 ? '#000000' : '#FFFFFF'
+  }
+  if (h.length === 6) {
+    const r = parseInt(h.slice(0, 2), 16)
+    const g = parseInt(h.slice(2, 4), 16)
+    const b = parseInt(h.slice(4, 6), 16)
+    return (r * 0.299 + g * 0.587 + b * 0.114) > 186 ? '#000000' : '#FFFFFF'
+  }
+  return '#000000'
+}
+
 function Shell() {
   const { user, logout, role, avatarUrl, refresh } = useAuth()
   const {
@@ -101,7 +118,6 @@ function Shell() {
     applyHighContrast(storedHighContrast)
   }, [])
 
-  // Si hay sesión pero rol aún no llega (primer render), refresca perfil una sola vez
   useEffect(() => {
     if (user && role == null) {
       refresh().catch(() => { })
@@ -117,35 +133,27 @@ function Shell() {
     applyHighContrast(highContrast)
   }, [highContrast])
 
-  // Aplicar contraste según accessibility store (contrastMode)
   useEffect(() => {
     if (typeof document === 'undefined') return
     const root = document.documentElement
-    // limpiar primero clases previas para evitar acumulación
     root.classList.remove('high-contrast')
-    // 'dark' se gestiona por toggleTheme, no lo forzamos si usuario decidió claro
+
     if (contrastMode === 'high') {
       root.classList.add('high-contrast')
-      // permitir que estilos de alto contraste definan sus propios colores
       root.style.removeProperty('--sidebar-bg')
       root.style.removeProperty('--sidebar-fg')
     } else if (contrastMode === 'dark') {
-      // si no está en modo oscuro, activar tema oscuro
       if (!root.classList.contains('dark')) {
-        toggleTheme() // alterna; si ya está oscuro lo deja oscuro
+        toggleTheme()
         setDark(isDark())
       }
-      // limpiamos override de sidebar para usar variables de modo oscuro por defecto
       root.style.removeProperty('--sidebar-bg')
       root.style.removeProperty('--sidebar-fg')
     } else if (contrastMode === 'default') {
-      // Forzar modo claro (fondo blanco) si estaba oscuro
       if (root.classList.contains('dark')) {
         root.classList.remove('dark')
         setDark(false)
       }
-      // high-contrast ya se quitó arriba, dejamos variables CSS base (blanco)
-      // Ajustar sidebar a blanco si no hay colores personalizados activos
       if (!customColorsEnabled) {
         root.style.setProperty('--sidebar-bg', '#FFFFFF')
         root.style.setProperty('--sidebar-fg', '#1E3452')
@@ -153,7 +161,6 @@ function Shell() {
     }
   }, [contrastMode, customColorsEnabled])
 
-  // Aplicar colores personalizados como CSS variables
   useEffect(() => {
     if (typeof document === 'undefined') return
     const root = document.documentElement
@@ -161,42 +168,21 @@ function Shell() {
       root.style.setProperty('--bg', customBgColor)
       root.style.setProperty('--text', customTextColor)
       root.style.setProperty('--primary', customPrimaryColor)
-      // Derivar --primary-ctr simple (negro/blanco según luminancia rudimentaria)
       const ctr = getContrastCounterpart(customPrimaryColor)
       root.style.setProperty('--primary-ctr', ctr)
       root.style.setProperty('--sidebar-bg', customSidebarBgColor)
       root.style.setProperty('--sidebar-fg', customSidebarFgColor)
     } else {
-      // Limpia para permitir que las clases (dark/high-contrast) definan valores por defecto
       root.style.removeProperty('--bg')
       root.style.removeProperty('--text')
       root.style.removeProperty('--primary')
       root.style.removeProperty('--primary-ctr')
-      // No limpiar sidebar si estamos en modo normal, ya que necesita override blanco
       if (contrastMode !== 'default') {
         root.style.removeProperty('--sidebar-bg')
         root.style.removeProperty('--sidebar-fg')
       }
     }
   }, [customColorsEnabled, customBgColor, customTextColor, customPrimaryColor, customSidebarBgColor, customSidebarFgColor, contrastMode])
-
-  function getContrastCounterpart(hex: string) {
-    // Quita # y parsea
-    const h = hex.replace('#', '')
-    if (h.length === 3) {
-      const r = parseInt(h[0] + h[0], 16)
-      const g = parseInt(h[1] + h[1], 16)
-      const b = parseInt(h[2] + h[2], 16)
-      return (r * 0.299 + g * 0.587 + b * 0.114) > 186 ? '#000000' : '#FFFFFF'
-    }
-    if (h.length === 6) {
-      const r = parseInt(h.slice(0, 2), 16)
-      const g = parseInt(h.slice(2, 4), 16)
-      const b = parseInt(h.slice(4, 6), 16)
-      return (r * 0.299 + g * 0.587 + b * 0.114) > 186 ? '#000000' : '#FFFFFF'
-    }
-    return '#000000'
-  }
 
   const displayName =
     (user?.user_metadata?.full_name as string) ||
@@ -211,27 +197,8 @@ function Shell() {
     .map((w) => w[0]?.toUpperCase())
     .join('')
 
-  const handleThemeToggle = () => {
-    setDark(toggleTheme() === 'dark')
-  }
-
-  const handleFontSizeChange = (size: FontSizePref) => {
-    setFontSize(size)
-  }
-
-  const handleHighContrastToggle = () => {
-    setHighContrast((prev) => !prev)
-  }
-
   const currentLng = i18n.language?.startsWith('en') ? 'en' : 'es'
 
-  const handleLanguageToggle = () => {
-    const next = currentLng === 'es' ? 'en' : 'es'
-    i18n.changeLanguage(next)
-  }
-
-  // When language changes, dispatch a global event so components can
-  // re-fetch their data immediately without a full page reload.
   useEffect(() => {
     const onLang = () => {
       try {
@@ -288,7 +255,6 @@ function Shell() {
 
   return (
     <div className="min-h-screen-fix grid grid-cols-1 lg:grid-cols-[260px_1fr] app-root">
-      {/* Enlace para saltar al contenido principal (para teclado/lector) */}
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 bg-blue-600 text-white px-3 py-2 rounded shadow-lg z-50"
@@ -296,7 +262,6 @@ function Shell() {
         {t('layout.skipToContent')}
       </a>
 
-      {/* Sidebar */}
       <aside
         className="sidebar p-4 lg:min-h-screen-fix lg:min-w-[260px] shadow-xl"
         aria-label={t('layout.sidebarAria')}
@@ -306,7 +271,6 @@ function Shell() {
           borderRight: '1px solid #E2E8F0'
         } : undefined}
       >
-        {/* Marca */}
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
             <div className="size-8 rounded-md bg-white/15 grid place-items-center font-semibold">SN</div>
@@ -314,7 +278,6 @@ function Shell() {
           </div>
         </div>
 
-        {/* Panel de accesibilidad */}
         <section
           className="mb-6 rounded-xl p-3 text-xs space-y-3"
           aria-label={t('accessibility.panelAria')}
@@ -326,11 +289,9 @@ function Shell() {
             border: '1px solid var(--border)'
           }}
         >
-          {/* Menú de accesibilidad completo (inline en sidebar) */}
           <AccessibilityMenu inline />
         </section>
 
-        {/* Navegación principal */}
         <nav className="mt-2" aria-label={t('layout.mainNavAria')}>
           <ul className="grid gap-1 text-sm">
             {(role === 'admin' ? navItemsAdmin : navItemsTeacher).map((item) => (
@@ -356,7 +317,6 @@ function Shell() {
           </ul>
         </nav>
 
-        {/* Info de usuario + logout */}
         <div className="mt-6 grid gap-3">
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-full bg-white/12 grid place-items-center font-semibold overflow-hidden">
@@ -385,11 +345,8 @@ function Shell() {
         </div>
       </aside>
 
-      {/* Global confirm modal (listens to confirmService) */}
       <ConfirmModal />
-      {/* Global notification toasts */}
       <NotificationToast />
-      {/* Reading mask overlay */}
       <ReadingMask
         enabled={readingMaskEnabled}
         height={readingMaskHeight}
@@ -403,7 +360,6 @@ function Shell() {
         opacity={readingGuideOpacity}
       />
 
-      {/* Columna principal */}
       <div>
         <main
           id="main-content"
@@ -442,25 +398,28 @@ function RequireAuth() {
 function AdminOnly() {
   const { role, initialized } = useAuth()
   if (!initialized) return null
-  // Opcional: si quieres forzar solo admin en frontend:
-  // if (role !== 'admin') return <Navigate to="/dashboard" replace />
   return <Outlet />
 }
 
-export default function App() {
+function DefaultRedirect() {
+  return <Navigate to="/dashboard" replace />
+}
+
+function App() {
   return (
     <Routes>
+      {/* Login fuera del Shell */}
       <Route path="/login" element={<Login />} />
+
+      {/* Rutas protegidas, dentro del Shell */}
       <Route element={<RequireAuth />}>
         <Route element={<Shell />}>
           <Route path="/" element={<DefaultRedirect />} />
-          {/* Rutas accesibles a todos los autenticados */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/grupos/aula" element={<GruposAula />} />
           <Route path="/grupos/aula/:id_grupo" element={<GrupoAulaDetalle />} />
           <Route path="/estudiantes" element={<Estudiantes />} />
           <Route path="/cuenta" element={<Account />} />
-          {/* Rutas solo admin */}
           <Route element={<AdminOnly />}>
             <Route path="/inscripciones" element={<Inscripciones />} />
             <Route path="/grupos" element={<Grupos />} />
@@ -469,11 +428,10 @@ export default function App() {
           </Route>
         </Route>
       </Route>
+
       <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }
 
-function DefaultRedirect() {
-  return <Navigate to="/dashboard" replace />
-}
+export default App

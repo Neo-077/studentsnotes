@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 export type FontSize = "small" | "medium" | "large";
 export type ContrastMode = "default" | "dark" | "high";
@@ -7,26 +7,26 @@ export type ContrastMode = "default" | "dark" | "high";
 interface AccessibilityState {
   fontSize: FontSize;
   contrastMode: ContrastMode;
-  focusMode: boolean; // modo "enfoque" cognitivo
-  bigPointer: boolean; // puntero grande (clase CSS)
-  readingMaskEnabled: boolean; // máscara de lectura (franja horizontal)
-  readingGuideEnabled: boolean; // guía de lectura (línea delgada)
+  focusMode: boolean;
+  bigPointer: boolean;
+  readingMaskEnabled: boolean;
+  readingGuideEnabled: boolean;
   readingGuideColor: string;
   readingGuideOpacity: number;
-  readingGuideThickness: number; // px
-  readingMaskHeight: number; // px
-  readingMaskOpacity: number; // 0..1
-  readingMaskColor: string; // css color
-  interactiveHighlight: boolean; // highlight buttons/links for visibility
-  voiceEnabled: boolean; // enable click-to-speak
-  voiceRate: number; // speech rate (0.1 - 10)
-  // Colores personalizados globales (se aplican como CSS variables)
+  readingGuideThickness: number;
+  readingMaskHeight: number;
+  readingMaskOpacity: number;
+  readingMaskColor: string;
+  interactiveHighlight: boolean;
+  voiceEnabled: boolean;
+  voiceRate: number;
   customColorsEnabled: boolean;
-  customBgColor: string; // --bg
-  customTextColor: string; // --text
-  customPrimaryColor: string; // --primary
-  customSidebarBgColor: string; // --sidebar-bg
-  customSidebarFgColor: string; // --sidebar-fg
+  customBgColor: string;
+  customTextColor: string;
+  customPrimaryColor: string;
+  customSidebarBgColor: string;
+  customSidebarFgColor: string;
+
   setReadingMaskEnabled: (on: boolean) => void;
   setReadingGuideEnabled: (on: boolean) => void;
   setReadingGuideColor: (c: string) => void;
@@ -81,21 +81,33 @@ export const useAccessibility = create<AccessibilityState>()(
       setReadingMaskEnabled: (on) => set({ readingMaskEnabled: on }),
       setReadingGuideEnabled: (on) => set({ readingGuideEnabled: on }),
       setReadingGuideColor: (readingGuideColor) => set({ readingGuideColor }),
-      setReadingGuideOpacity: (readingGuideOpacity) => set({ readingGuideOpacity }),
-      setReadingGuideThickness: (readingGuideThickness) => set({ readingGuideThickness }),
+      setReadingGuideOpacity: (readingGuideOpacity) =>
+        set({ readingGuideOpacity }),
+      setReadingGuideThickness: (readingGuideThickness) =>
+        set({ readingGuideThickness }),
       setReadingMaskHeight: (readingMaskHeight) => set({ readingMaskHeight }),
-      setReadingMaskOpacity: (readingMaskOpacity) => set({ readingMaskOpacity }),
+      setReadingMaskOpacity: (readingMaskOpacity) =>
+        set({ readingMaskOpacity }),
       setReadingMaskColor: (readingMaskColor) => set({ readingMaskColor }),
-      setCustomColorsEnabled: (customColorsEnabled) => set({ customColorsEnabled }),
+      setCustomColorsEnabled: (customColorsEnabled) =>
+        set({ customColorsEnabled }),
       setCustomBgColor: (customBgColor) => set({ customBgColor }),
       setCustomTextColor: (customTextColor) => set({ customTextColor }),
-      setCustomPrimaryColor: (customPrimaryColor) => set({ customPrimaryColor }),
-      setCustomSidebarBgColor: (customSidebarBgColor) => set({ customSidebarBgColor }),
-      setCustomSidebarFgColor: (customSidebarFgColor) => set({ customSidebarFgColor }),
-      setInteractiveHighlight: (interactiveHighlight) => set({ interactiveHighlight }),
+      setCustomPrimaryColor: (customPrimaryColor) =>
+        set({ customPrimaryColor }),
+      setCustomSidebarBgColor: (customSidebarBgColor) =>
+        set({ customSidebarBgColor }),
+      setCustomSidebarFgColor: (customSidebarFgColor) =>
+        set({ customSidebarFgColor }),
+      setInteractiveHighlight: (interactiveHighlight) =>
+        set({ interactiveHighlight }),
       setVoiceEnabled: (voiceEnabled: boolean) => set({ voiceEnabled }),
       setVoiceRate: (voiceRate: number) => set({ voiceRate }),
     }),
-    { name: "studentsnotes-accessibility" }
+    {
+      name: "studentsnotes-accessibility",
+      // explicit localStorage para que sea “a nivel navegador”
+      storage: createJSONStorage(() => localStorage),
+    }
   )
 );

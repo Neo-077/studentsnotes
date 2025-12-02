@@ -707,11 +707,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             >
               {t("nav.accessibility.otherOptions")}
             </h2>
-            <Toggle
-              checked={focusMode}
-              onChange={() => toggleFocusMode()}
-              label={t("nav.accessibility.focusMode")}
-            />
+      
             <Toggle
               checked={bigPointer}
               onChange={() => toggleBigPointer()}

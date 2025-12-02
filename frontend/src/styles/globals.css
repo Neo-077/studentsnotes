@@ -584,3 +584,12 @@ html.interactive-highlight .select-wrapper select {
   border-radius: inherit !important;
   background-clip: padding-box !important;
 }
+
+html.big-pointer {
+  cursor: url("/cursors/cursor-arrow.svg") 0 0, default;
+}
+
+html.big-pointer a,
+html.big-pointer button {
+  cursor: url("/cursors/cursor-hand.svg") 0 0, pointer;
+}
