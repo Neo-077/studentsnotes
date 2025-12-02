@@ -8,7 +8,7 @@ type Props = {
 };
 
 export default function ReadingMask({ enabled, height, opacity, color }: Props) {
-    const [y, setY] = useState<number>(0);
+    const [y, setY] = useState<number>(() => (typeof window !== 'undefined' ? Math.round(window.innerHeight / 2) : 0));
 
     useEffect(() => {
         function onMove(e: MouseEvent) {

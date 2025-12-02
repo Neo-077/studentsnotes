@@ -80,12 +80,16 @@ function getContrastCounterpart(hex: string) {
     const b = parseInt(h.slice(4, 6), 16)
     return (r * 0.299 + g * 0.587 + b * 0.114) > 186 ? '#000000' : '#FFFFFF'
   }
+
+  // Fallback: always return a valid color string (prevents undefined)
   return '#000000'
 }
 
 function Shell() {
-  const { user, logout, role, avatarUrl, refresh } = useAuth()
+  const { t, i18n } = useTranslation()
   const {
+    fontSize,
+    contrastMode,
     readingMaskEnabled,
     readingMaskHeight,
     readingMaskOpacity,
@@ -94,7 +98,6 @@ function Shell() {
     readingGuideThickness,
     readingGuideColor,
     readingGuideOpacity,
-    contrastMode,
     customColorsEnabled,
     customBgColor,
     customTextColor,
@@ -102,30 +105,13 @@ function Shell() {
     customSidebarBgColor,
     customSidebarFgColor,
   } = useAccessibility()
-  const [dark, setDark] = useState(false)
-  const [fontSize, setFontSize] = useState<FontSizePref>('normal')
-  const [highContrast, setHighContrast] = useState(false)
-  const { t, i18n } = useTranslation()
+
+  const highContrast = contrastMode === 'high'
+  const [dark, setDark] = useState(isDark())
+  const { session, user, role, avatarUrl, logout } = useAuth()
 
   useEffect(() => {
-    setDark(isDark())
-    const storedSize = getStoredFontSize()
-    setFontSize(storedSize)
-    applyFontSize(storedSize)
-
-    const storedHighContrast = getStoredHighContrast()
-    setHighContrast(storedHighContrast)
-    applyHighContrast(storedHighContrast)
-  }, [])
-
-  useEffect(() => {
-    if (user && role == null) {
-      refresh().catch(() => { })
-    }
-  }, [!!user])
-
-  useEffect(() => {
-    applyFontSize(fontSize)
+    applyFontSize(fontSize as any)
   }, [fontSize])
 
   useEffect(() => {
@@ -138,6 +124,9 @@ function Shell() {
     root.classList.remove('high-contrast')
 
     if (contrastMode === 'high') {
+      // Ensure dark theme class is removed so high-contrast variables win
+      root.classList.remove('dark')
+      setDark(false)
       root.classList.add('high-contrast')
       root.style.removeProperty('--sidebar-bg')
       root.style.removeProperty('--sidebar-fg')
@@ -146,8 +135,10 @@ function Shell() {
         toggleTheme()
         setDark(isDark())
       }
-      root.style.removeProperty('--sidebar-bg')
-      root.style.removeProperty('--sidebar-fg')
+      if (!customColorsEnabled) {
+        root.style.removeProperty('--sidebar-bg')
+        root.style.removeProperty('--sidebar-fg')
+      }
     } else if (contrastMode === 'default') {
       if (root.classList.contains('dark')) {
         root.classList.remove('dark')
@@ -193,7 +184,7 @@ function Shell() {
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
+    .map((w: string) => w[0]?.toUpperCase())
     .join('')
 
   const currentLng = i18n.language?.startsWith('en') ? 'en' : 'es'
@@ -208,7 +199,7 @@ function Shell() {
     return () => {
       i18n.off && i18n.off('languageChanged', onLang)
     }
-  }, [])
+  }, [i18n])
 
   const navItemsAdmin = [
     { to: '/dashboard', label: t('nav.home') },
@@ -276,19 +267,12 @@ function Shell() {
           </div>
         </div>
 
-        <section
-          className="mb-6 rounded-xl p-3 text-xs space-y-3"
-          aria-label={t('accessibility.panelAria')}
-          style={contrastMode === 'default' && !customColorsEnabled ? {
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0'
-          } : {
-            background: 'var(--surface)',
-            border: '1px solid var(--border)'
-          }}
-        >
+        {/* Accessibility controls (inline, compact) */}
+        <div className="mb-3">
           <AccessibilityMenu inline />
-        </section>
+        </div>
+
+        {/* Reset button moved into AccessibilityMenu; keep sidebar compact */}
 
         <nav className="mt-2" aria-label={t('layout.mainNavAria')}>
           <ul className="grid gap-1 text-sm">
@@ -341,7 +325,7 @@ function Shell() {
             {t('layout.logout')}
           </button>
         </div>
-      </aside>
+      </aside >
 
       <ConfirmModal />
       <NotificationToast />
@@ -368,7 +352,7 @@ function Shell() {
           <Outlet />
         </main>
       </div>
-    </div>
+    </div >
   )
 }
 

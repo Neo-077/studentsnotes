@@ -48,36 +48,58 @@ body {
 }
 
 /* Contenedor raíz de la app */
-.app-root {
-  background-color: var(--bg);
-  color: var(--text);
+.accessibility-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 14px;
+  /* slightly smaller overall control */
 }
 
-/* ===== Dark mode (html.dark) ===== */
-html.dark {
-  /* Derivaciones de la misma paleta para oscuro (más "curado") */
-  --bg: #0E1624;
-  /* fondo profundo pero limpio */
-  --surface: #111B2B;
-  /* superficie */
-  --card: #0F1C2C;
-  /* tarjeta */
-  --text: #EAF2FB;
-  /* texto principal alto contraste */
-  --muted: #B7C7D9;
-  /* texto secundario */
-  --border: #24344A;
-  /* líneas discretas */
-  --ring: color-mix(in oklab, var(--c-teal), white 10%);
-  --shadow-soft: 0 1px 1px rgba(0, 0, 0, .5), 0 6px 16px rgba(0, 0, 0, .35);
-  --primary: color-mix(in oklab, var(--c-teal), #1E3452 15%);
-  --primary-ctr: #08111E;
-  --sidebar-bg: #13233A;
-  --sidebar-fg: #E7EEF6;
-  --danger-bg: #F87171;
-  /* rojo suave visible en oscuro */
-  --danger-fg: #0B1220;
-  --danger-bg-hover: #F05252;
+.accessibility-range:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary), transparent 88%);
+  border-radius: 999px;
+}
+
+.accessibility-range::-webkit-slider-runnable-track {
+  height: 4px;
+  /* thinner track */
+  background: linear-gradient(90deg, color-mix(in oklab, var(--primary), white 12%), color-mix(in oklab, var(--muted), transparent 48%));
+  border-radius: 999px;
+}
+
+.accessibility-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  /* smaller thumb */
+  height: 14px;
+  margin-top: -5px;
+  /* center thumb over 4px track */
+  border-radius: 999px;
+  background: var(--card);
+  border: 2px solid color-mix(in oklab, var(--primary), black 12%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+.accessibility-range::-moz-range-track {
+  height: 4px;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--primary), white 12%), color-mix(in oklab, var(--muted), transparent 48%));
+  border-radius: 999px;
+}
+
+.accessibility-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 2px solid color-mix(in oklab, var(--primary), black 12%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+/* Small responsive tweak so the value doesn't overlap on very small widths */
+.accessibility-range+.tabular-nums {
+  min-width: 44px;
 }
 
 /* ===== High contrast mode (aplica a TODO el sistema) ===== */
@@ -585,11 +607,103 @@ html.interactive-highlight .select-wrapper select {
   background-clip: padding-box !important;
 }
 
+/* Keep native cursor unless explicit custom cursor images are provided. Do not hide system cursor. */
 html.big-pointer {
-  cursor: url("/cursors/cursor-arrow.svg") 0 0, default;
+  /* When big-pointer overlay is enabled, hide native cursor so overlay becomes the pointer */
+  cursor: none !important;
+}
+
+/* Ensure native cursor never appears while big pointer is active (covers interactive elements) */
+html.big-pointer,
+html.big-pointer * {
+  cursor: none !important;
+}
+
+/* Make sure overlay is on top and doesn't block events */
+.big-pointer-overlay {
+  pointer-events: none !important;
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  will-change: transform !important;
 }
 
 html.big-pointer a,
 html.big-pointer button {
-  cursor: url("/cursors/cursor-hand.svg") 0 0, pointer;
+  /* cursor: url('/cursors/cursor-hand-large.png') 8 8, pointer; */
+}
+
+/* Styled range for accessibility controls */
+.accessibility-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 18px;
+}
+
+.accessibility-range:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary), transparent 85%);
+  border-radius: 999px;
+}
+
+.accessibility-range::-webkit-slider-runnable-track {
+  height: 6px;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--primary), white 10%), color-mix(in oklab, var(--muted), transparent 40%));
+  border-radius: 999px;
+}
+
+.accessibility-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  /* center thumb */
+  border-radius: 999px;
+  background: var(--card);
+  border: 2px solid color-mix(in oklab, var(--primary), black 10%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.accessibility-range::-moz-range-track {
+  height: 6px;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--primary), white 10%), color-mix(in oklab, var(--muted), transparent 40%));
+  border-radius: 999px;
+}
+
+.accessibility-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 2px solid color-mix(in oklab, var(--primary), black 10%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* Small responsive tweak so the value doesn't overlap on very small widths */
+.accessibility-range+.tabular-nums {
+  min-width: 48px;
+}
+
+/* ===== Dark theme variables (applied when `html.dark` is present) ===== */
+html.dark {
+  /* Use a deep neutral background and lighter text for dark mode */
+  --bg: #071428;
+  --surface: #071428;
+  --card: #0b1722;
+  --text: #E9EEF5;
+  --muted: #9AA6B2;
+  --border: #233240;
+  --ring: color-mix(in oklab, var(--primary), white 14%);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.6), 0 1px 1px rgba(0, 0, 0, 0.45);
+
+  /* Primary/contrast mapping (kept similar to light but tuned for dark) */
+  --primary: var(--c-teal);
+  --primary-ctr: #0B1220;
+
+  /* Sidebar defaults for dark UI */
+  --sidebar-bg: #0F2431;
+  --sidebar-fg: #E9EEF5;
+
+  --danger-bg: #ef4444;
+  --danger-fg: #FFFFFF;
 }

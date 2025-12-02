@@ -3,6 +3,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
+import BigPointer from "./components/BigPointer";
 import "./styles/globals.css";
 import useAuth from "./store/useAuth";
 import { applyTheme } from "./lib/theme";
@@ -17,7 +18,7 @@ applyTheme();
 
 function Root() {
   // ⚠️ Esto debe estar dentro de un componente React, NO en el archivo global.
-  const { fontSize, contrastMode, focusMode, bigPointer, interactiveHighlight, voiceEnabled, voiceRate } = useAccessibility();
+  const { fontSize, contrastMode, focusMode, bigPointer, interactiveHighlight, voiceEnabled, voiceRate, pointerSize } = useAccessibility();
 
   // 🔧 Aplicar los cambios de accesibilidad directamente al <html>
   React.useEffect(() => {
@@ -27,6 +28,7 @@ function Root() {
     root.dataset.contrastMode = contrastMode;
 
     root.classList.toggle("focus-mode", focusMode);
+    // big-pointer class is kept for backwards compatibility but does NOT hide the native cursor.
     root.classList.toggle("big-pointer", bigPointer);
     root.classList.toggle("interactive-highlight", interactiveHighlight);
   }, [fontSize, contrastMode, focusMode, bigPointer, interactiveHighlight]);
@@ -184,9 +186,74 @@ function Root() {
     }
   }, [voiceEnabled, voiceRate])
 
+  React.useEffect(() => {
+    let styleEl: HTMLStyleElement | null = null
+    let mounted = true
+
+    const applyCursors = async () => {
+      try {
+        const arrowResp = await fetch('/cursors/cursor-arrow.svg')
+        let handResp: Response | null = null
+        try {
+          handResp = await fetch('/cursors/cursor-hand.svg')
+        } catch {
+          handResp = null
+        }
+        if (!mounted) return
+        const arrowSvg = await arrowResp.text()
+        // if hand not available, fallback to arrow SVG so we always have a cursor image
+        const handSvg = handResp && handResp.ok ? await handResp.text() : arrowSvg
+
+        const makeDataUrl = (svgText: string, size: number) => {
+          // inject width/height into the svg tag so browsers scale it to desired px size
+          const replaced = svgText.replace(/<svg([^>]*)>/, `<svg$1 width="${size}" height="${size}">`)
+          // Use base64 encoding for broader compatibility across browsers
+          try {
+            const utf8 = encodeURIComponent(replaced)
+            const b64 = typeof window !== 'undefined'
+              ? window.btoa(unescape(utf8))
+              : Buffer.from(replaced, 'utf8').toString('base64')
+            return `data:image/svg+xml;base64,${b64}`
+          } catch (err) {
+            // fallback to URI-encoded svg
+            return `data:image/svg+xml;utf8,${encodeURIComponent(replaced)}`
+          }
+        }
+
+        const arrowUrl = makeDataUrl(arrowSvg, pointerSize)
+        const handUrl = makeDataUrl(handSvg, Math.round(pointerSize * 0.9))
+
+        const css = `html.big-pointer { cursor: url("${arrowUrl}") 0 0, auto; }\nhtml.big-pointer a, html.big-pointer button { cursor: url("${handUrl}") 0 0, pointer; }`
+
+        styleEl = document.getElementById('custom-cursors') as HTMLStyleElement | null
+        if (!styleEl) {
+          styleEl = document.createElement('style')
+          styleEl.id = 'custom-cursors'
+          document.head.appendChild(styleEl)
+        }
+        styleEl.textContent = css
+      } catch (e) {
+        // ignore fetch failures
+      }
+    }
+
+    if (bigPointer) {
+      try { applyCursors() } catch { }
+    }
+    else {
+      const existing = document.getElementById('custom-cursors')
+      if (existing) existing.remove()
+    }
+
+    return () => {
+      mounted = false
+    }
+  }, [bigPointer, pointerSize])
+
   return (
     <BrowserRouter>
       <App />
+      <BigPointer />
     </BrowserRouter>
   );
 }

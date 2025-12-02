@@ -90,6 +90,7 @@ export default function Login() {
         root.style.setProperty('--sidebar-fg', '#1E3452')
       }
     }
+    // No inline overrides here: let the contrastMode behave like the Shell
   }, [contrastMode, customColorsEnabled])
 
   // aplicar colores personalizados igual que en Shell
@@ -135,10 +136,10 @@ export default function Login() {
             email: values.email,
             password: values.password
           })
-          ; (await import('../lib/notifyService')).default.notify({
-            type: 'success',
-            message: 'Cuenta creada. Iniciando sesión…'
-          })
+            ; (await import('../lib/notifyService')).default.notify({
+              type: 'success',
+              message: 'Cuenta creada. Iniciando sesión…'
+            })
         } catch (err: any) {
           const status = err?.response?.status
           const errorMessage = err?.response?.data?.error?.message || err?.message
@@ -208,7 +209,23 @@ export default function Login() {
             <div className="text-lg font-semibold tracking-wide">StudentsNotes</div>
           </div>
           {/* Botón de accesibilidad en lugar del botón de tema */}
-          <AccessibilityMenu />
+          <div className="flex items-center gap-3">
+            <AccessibilityMenu />
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem('studentsnotes-accessibility')
+                  localStorage.removeItem('sn_high_contrast')
+                } catch { }
+                location.reload()
+              }}
+              className="text-xs underline opacity-80 hover:opacity-100"
+              title="Restablecer accesibilidad"
+            >
+              Restablecer accesibilidad
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 px-6">

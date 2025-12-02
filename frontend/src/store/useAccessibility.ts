@@ -17,6 +17,8 @@ interface AccessibilityState {
   readingMaskHeight: number;
   readingMaskOpacity: number;
   readingMaskColor: string;
+  pointerSize: number;
+  pointerColor: string;
   interactiveHighlight: boolean;
   voiceEnabled: boolean;
   voiceRate: number;
@@ -35,6 +37,8 @@ interface AccessibilityState {
   setReadingMaskHeight: (h: number) => void;
   setReadingMaskOpacity: (o: number) => void;
   setReadingMaskColor: (c: string) => void;
+  setPointerSize: (size: number) => void;
+  setPointerColor: (c: string) => void;
   setFontSize: (size: FontSize) => void;
   setContrastMode: (mode: ContrastMode) => void;
   toggleFocusMode: () => void;
@@ -65,6 +69,8 @@ export const useAccessibility = create<AccessibilityState>()(
       readingMaskHeight: 160,
       readingMaskOpacity: 0.35,
       readingMaskColor: "#000000",
+      pointerSize: 28,
+      pointerColor: 'white',
       customColorsEnabled: false,
       customBgColor: "#EFF1EB",
       customTextColor: "#1E3452",
@@ -89,6 +95,8 @@ export const useAccessibility = create<AccessibilityState>()(
       setReadingMaskOpacity: (readingMaskOpacity) =>
         set({ readingMaskOpacity }),
       setReadingMaskColor: (readingMaskColor) => set({ readingMaskColor }),
+      setPointerSize: (pointerSize: number) => set({ pointerSize }),
+      setPointerColor: (pointerColor: string) => set({ pointerColor }),
       setCustomColorsEnabled: (customColorsEnabled) =>
         set({ customColorsEnabled }),
       setCustomBgColor: (customBgColor) => set({ customBgColor }),
