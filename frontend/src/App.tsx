@@ -122,7 +122,6 @@ function Shell() {
     if (user && role == null) {
       refresh().catch(() => { })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!user])
 
   useEffect(() => {
@@ -209,7 +208,6 @@ function Shell() {
     return () => {
       i18n.off && i18n.off('languageChanged', onLang)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const navItemsAdmin = [

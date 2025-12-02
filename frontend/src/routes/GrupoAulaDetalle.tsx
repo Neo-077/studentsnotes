@@ -187,7 +187,6 @@ export default function GrupoAulaDetalle() {
       return
     }
     loadAlumnos(id_grupo)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id_grupo])
 
   useEffect(() => {
