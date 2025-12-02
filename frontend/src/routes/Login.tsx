@@ -221,9 +221,9 @@ export default function Login() {
                 location.reload()
               }}
               className="text-xs underline opacity-80 hover:opacity-100"
-              title="Restablecer accesibilidad"
+              title="Reestablecer accesibilidad"
             >
-              Restablecer accesibilidad
+              Reestablecer accesibilidad
             </button>
           </div>
         </header>
