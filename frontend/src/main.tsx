@@ -18,7 +18,7 @@ applyTheme();
 
 function Root() {
   // ⚠️ Esto debe estar dentro de un componente React, NO en el archivo global.
-  const { fontSize, contrastMode, focusMode, bigPointer, interactiveHighlight, voiceEnabled, voiceRate, pointerSize } = useAccessibility();
+  const { fontSize, contrastMode, focusMode, bigPointer, interactiveHighlight, voiceEnabled, voiceRate, pointerSize, customColorsEnabled, customBgColor, customTextColor, customPrimaryColor, customSidebarBgColor, customSidebarFgColor, dyslexicFont } = useAccessibility();
 
   // 🔧 Aplicar los cambios de accesibilidad directamente al <html>
   React.useEffect(() => {
@@ -31,7 +31,34 @@ function Root() {
     // big-pointer class is kept for backwards compatibility but does NOT hide the native cursor.
     root.classList.toggle("big-pointer", bigPointer);
     root.classList.toggle("interactive-highlight", interactiveHighlight);
-  }, [fontSize, contrastMode, focusMode, bigPointer, interactiveHighlight]);
+    root.classList.toggle("dyslexic-font", dyslexicFont);
+
+    // 🎨 Aplicar colores personalizados del daltonismo
+    if (customColorsEnabled) {
+      root.style.setProperty('--bg', customBgColor);
+      root.style.setProperty('--surface', customBgColor);
+      root.style.setProperty('--card', customBgColor);
+      root.style.setProperty('--text', customTextColor);
+      root.style.setProperty('--primary', customPrimaryColor);
+      root.style.setProperty('--sidebar-bg', customSidebarBgColor);
+      root.style.setProperty('--sidebar-fg', customSidebarFgColor);
+      // Aplicar también a muted para que gráficos y elementos secundarios se vean bien
+      root.style.setProperty('--muted', customTextColor);
+      // Aplicar a border para que los bordes se vean con el color del texto
+      root.style.setProperty('--border', customTextColor);
+    } else {
+      // Reset a valores por defecto
+      root.style.removeProperty('--bg');
+      root.style.removeProperty('--surface');
+      root.style.removeProperty('--card');
+      root.style.removeProperty('--text');
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--muted');
+      root.style.removeProperty('--border');
+      root.style.removeProperty('--sidebar-bg');
+      root.style.removeProperty('--sidebar-fg');
+    }
+  }, [fontSize, contrastMode, focusMode, bigPointer, interactiveHighlight, customColorsEnabled, customBgColor, customTextColor, customPrimaryColor, customSidebarBgColor, customSidebarFgColor, dyslexicFont]);
 
   // 🌓 Reacción al cambio del sistema (modo oscuro/claro)
   React.useEffect(() => {

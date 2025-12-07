@@ -7,19 +7,31 @@ import MateriaPicker from "../components/inscripciones/MateriaPicker"
 import CarreraPicker from "../components/inscripciones/CarreraPicker"
 import api from "../lib/api"
 import * as XLSX from "xlsx"
-import { FiDownload, FiUpload, FiPlus, FiSearch } from 'react-icons/fi'
+import { FiDownload, FiUpload, FiPlus } from "react-icons/fi"
+import {
+  getSubjectLabel,
+  getCareerLabel,
+  formatHorario,
+  getGenericLabel,
+  getTermLabel,
+} from "../lib/labels"
+import { useAccessibility } from "../store/useAccessibility"
+import { TTS } from "../lib/tts"
 
 type Grupo = {
   id_grupo: number
   grupo_codigo: string
   horario: string
   cupo: number
-  materia?: { id_materia?: number; nombre: string }
+  materia?: {
+    id_materia?: number
+    nombre: string
+    carrera?: any
+    carrera_nombre?: string
+  }
   docente?: { nombre: string; ap_paterno: string | null; ap_materno: string | null }
   modalidad?: { nombre: string }
 }
-
-import { getSubjectLabel, getCareerLabel, formatHorario, getGenericLabel, getTermLabel } from "../lib/labels"
 
 const HORARIOS = Array.from({ length: 15 }, (_, i) => {
   const start = 7 + i
@@ -30,6 +42,89 @@ const HORARIOS = Array.from({ length: 15 }, (_, i) => {
 
 export default function Grupos() {
   const { t, i18n } = useTranslation()
+
+  // 🔊 accesibilidad / voz
+  const { voiceEnabled, voiceRate } = useAccessibility((s) => ({
+    voiceEnabled: s.voiceEnabled,
+    voiceRate: s.voiceRate,
+  }))
+
+  const speak = (text?: string) => {
+    if (!voiceEnabled) return
+    if (!text) return
+    if (!TTS.isSupported()) return
+    const lang = i18n.language?.startsWith("en") ? "en-US" : undefined
+    TTS.speak(text, { rate: voiceRate, lang })
+  }
+
+  const isEn = i18n.language?.startsWith("en")
+
+  // —————————————————————————————
+  // EXPLICACIONES DE SECCIONES / CAMPOS
+  // —————————————————————————————
+  const filtersSectionInstructions = t(
+    "groups.tts.filtersSection",
+    "En esta parte puedes filtrar los grupos por término, carrera y materia, así como buscar por código, nombre de materia o docente. Los resultados de la tabla de abajo se actualizan según estos filtros."
+  )
+  const formSectionInstructions = t(
+    "groups.tts.formSection",
+    "En esta sección puedes crear un nuevo grupo en tres pasos: primero define la carrera y la materia; después el docente y la modalidad; por último el horario y el cupo. Al terminar presiona el botón Crear grupo."
+  )
+  const tableSectionInstructions = t(
+    "groups.tts.tableSection",
+    "Esta tabla muestra la lista de grupos existentes. Cada fila corresponde a un grupo con su materia, carrera, código de grupo, docente, modalidad, horario y cupo. Cada celda puede leerse con la voz indicando la columna, el valor y la materia de esa fila."
+  )
+
+  const termFilterInstructions = t(
+    "groups.tts.filters.term",
+    "En este campo seleccionas el término o periodo académico para el cual quieres ver los grupos. Puedes elegir un periodo específico o dejar la opción de todos los términos."
+  )
+  const careerFilterInstructions = t(
+    "groups.tts.filters.career",
+    "En este selector eliges la carrera para filtrar los grupos mostrados. Solo se mostrarán los grupos de la carrera seleccionada."
+  )
+  const subjectFilterInstructions = t(
+    "groups.tts.filters.subject",
+    "En este selector eliges una materia específica para filtrar los grupos mostrados en la tabla."
+  )
+  const searchFilterInstructions = t(
+    "groups.tts.filters.search",
+    "En este cuadro puedes buscar grupos escribiendo parte del nombre de la materia, el código del grupo o el nombre del docente."
+  )
+
+  const downloadTemplateInstructions = t(
+    "groups.tts.downloadTemplate",
+    "El botón descargar plantilla genera un archivo de Excel con el formato correcto para capturar grupos de forma masiva. Descarga el archivo, rellena la hoja de GRUPOS siguiendo las listas de referencia y después usa el botón de importar archivo para subirlos al sistema."
+  )
+  const importFileInstructions = t(
+    "groups.tts.importFile",
+    "El botón importar archivo te permite subir un archivo de Excel o CSV con grupos cargados en la plantilla. El sistema validará la información e insertará los grupos correctos, mostrando un resumen de inserciones y errores."
+  )
+
+  const formCareerInstructions = t(
+    "groups.tts.form.career",
+    "Aquí seleccionas la carrera a la que pertenecerá el grupo. Esta selección acotará las materias disponibles más adelante."
+  )
+  const formSubjectInstructions = t(
+    "groups.tts.form.subject",
+    "En este campo seleccionas la materia para el nuevo grupo. Solo se deben usar materias válidas para la carrera y el término seleccionados."
+  )
+  const formTeacherInstructions = t(
+    "groups.tts.form.teacher",
+    "En este campo eliges el docente responsable del grupo. El sistema revisará que el docente no tenga conflicto de horario en el mismo término."
+  )
+  const formModalityInstructions = t(
+    "groups.tts.form.modality",
+    "En este campo seleccionas la modalidad del grupo, por ejemplo presencial, en línea o mixta."
+  )
+  const formScheduleInstructions = t(
+    "groups.tts.form.schedule",
+    "En este campo eliges el horario del grupo. El formato típico es lunes a viernes con una hora de inicio y una hora de fin."
+  )
+  const formCapacityInstructions = t(
+    "groups.tts.form.capacity",
+    "En este campo puedes indicar el cupo máximo de estudiantes para el grupo. Si lo dejas vacío se usará un valor por defecto de treinta estudiantes."
+  )
 
   // ===== filtros superiores =====
   const [terminos, setTerminos] = useState<any[]>([])
@@ -54,7 +149,11 @@ export default function Grupos() {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
-  const [confirmDel, setConfirmDel] = useState<{ open: boolean; id?: number; label?: string }>({
+  const [confirmDel, setConfirmDel] = useState<{
+    open: boolean
+    id?: number
+    label?: string
+  }>({
     open: false,
   })
   const [importErrors, setImportErrors] = useState<Array<{ row: number; error: string }>>([])
@@ -73,6 +172,13 @@ export default function Grupos() {
   })
   const [saving, setSaving] = useState(false)
 
+  // refs para hover de selects (para no repetir voz a cada pixel)
+  const lastTermHover = useRef<string | null>(null)
+  const lastSubjectHover = useRef<string | null>(null)
+  const lastTeacherHover = useRef<string | null>(null)
+  const lastModalityHover = useRef<string | null>(null)
+  const lastScheduleHover = useRef<string | null>(null)
+
   // boot
   useEffect(() => {
     async function boot() {
@@ -89,13 +195,11 @@ export default function Grupos() {
         setTerminoId(saved)
         setForm((f) => ({ ...f, id_termino: saved }))
       } else {
-        // Por defecto: Todos (null)
         setTerminoId(null)
         setForm((f) => ({ ...f, id_termino: null }))
       }
     }
     void boot()
-    // Re-run boot when language changes so translated catalog labels are fetched
   }, [i18n?.language])
 
   // materias por carrera
@@ -105,7 +209,6 @@ export default function Grupos() {
       setMaterias(mats ?? [])
     }
     void loadMaterias()
-    // reload materias when carrera or language changes
   }, [carreraId, i18n?.language])
 
   // actualizar id_materia del formulario cuando se elige materia en el filtro
@@ -132,34 +235,33 @@ export default function Grupos() {
       const data = await api.get(path)
       if (reqRef.current === my) setGrupos(data || [])
     } catch (e: any) {
-      if (reqRef.current === my)
-        setErr(e.message || t("groups.errors.loadFailed"))
+      if (reqRef.current === my) setErr(e.message || t("groups.errors.loadFailed"))
     } finally {
-      if (reqRef.current === my) {
-        if (!silent) setLoading(false)
+      if (reqRef.current === my && !silent) {
+        setLoading(false)
       }
     }
   }
   useEffect(() => {
     setPage(1)
     void load()
-    // Re-run when filters or language change so server can return translated fields
   }, [terminoId, carreraId, materiaId, i18n?.language])
 
-  // refrescar en segundo plano al volver de background/enfocar/reconectar
+  // refrescar en segundo plano
   useEffect(() => {
     const handler = () => void load(true)
-    window.addEventListener("focus", handler)
-    document.addEventListener("visibilitychange", () => {
+    const visHandler = () => {
       if (document.visibilityState === "visible") handler()
-    })
+    }
+    window.addEventListener("focus", handler)
+    document.addEventListener("visibilitychange", visHandler)
     window.addEventListener("pageshow", handler)
     window.addEventListener("online", handler)
     return () => {
       window.removeEventListener("focus", handler)
       window.removeEventListener("online", handler)
       window.removeEventListener("pageshow", handler)
-      document.removeEventListener("visibilitychange", () => { })
+      document.removeEventListener("visibilitychange", visHandler)
     }
   }, [])
 
@@ -188,7 +290,7 @@ export default function Grupos() {
   const end = start + pageSize
   const paged = useMemo(() => lista.slice(start, end), [lista, start, end])
 
-  // Persistir query en localStorage para que no se pierda al recargar
+  // Persistir query en localStorage
   useEffect(() => {
     try {
       localStorage.setItem("grupos.query", query)
@@ -232,7 +334,10 @@ export default function Grupos() {
       setSaving(true)
       await api.post("/grupos", payload, { skipConfirm: true } as any)
       const createdMsg = t("groups.messages.created")
-        ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${createdMsg}: ${payload.id_materia ? payload.id_materia : ''}` })
+        ; (await import("../lib/notifyService")).default.notify({
+          type: "success",
+          message: `${createdMsg}: ${payload.id_materia ? payload.id_materia : ""}`,
+        })
       setForm((f) => ({ ...f, horario: "", cupo: "" }))
       await load()
       setPage(1)
@@ -304,13 +409,17 @@ export default function Grupos() {
           count: res.summary.duplicatesSkipped,
         })
         : ""
-        ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${baseMsg}${dupMsg}` })
+        ; (await import("../lib/notifyService")).default.notify({
+          type: "success",
+          message: `${baseMsg}${dupMsg}`,
+        })
 
       if (Array.isArray(res.errors)) setImportErrors(res.errors)
 
       if (detectedTerminoId) {
         setTerminoId(detectedTerminoId)
         localStorage.setItem("grupos.terminoId", String(detectedTerminoId))
+        setForm((f) => ({ ...f, id_termino: detectedTerminoId }))
       }
       setCarreraId(null)
       setMateriaId(null)
@@ -325,15 +434,52 @@ export default function Grupos() {
     }
   }
 
-  // Descargar plantilla en Excel con listas de referencia
+  // ===== descargar listado de grupos =====
+  function downloadGruposXLSX() {
+    const headers = [
+      t("groups.table.subject", "Materia"),
+      t("groups.table.career", "Carrera"),
+      t("groups.table.code", "Código"),
+      t("groups.table.teacher", "Docente"),
+      t("groups.table.modality", "Modalidad"),
+      t("groups.table.schedule", "Horario"),
+      t("groups.table.capacity", "Cupo"),
+    ]
+
+    const rows = lista.map((g) => [
+      getSubjectLabel(g.materia) || g.materia?.nombre || "—",
+      (g as any)?.materia
+        ? getCareerLabel((g as any).materia.carrera || (g as any).materia) ||
+        (g as any)?.materia?.carrera_nombre || "—"
+        : (g as any)?.materia?.carrera_nombre || "—",
+      g.grupo_codigo || "—",
+      g.docente
+        ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""} ${g.docente.ap_materno ?? ""}`.trim()
+        : t("groups.table.noTeacher", "Sin docente"),
+      getGenericLabel(g.modalidad) || g.modalidad?.nombre || "—",
+      formatHorario(g.horario),
+      g.cupo,
+    ])
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Grupos")
+
+    const filename = `grupos_${terminoId ? `termino_${terminoId}_` : ""}${new Date().toISOString().split("T")[0]}.xlsx`
+    XLSX.writeFile(wb, filename)
+  }
+
+  // ===== descargar plantilla Excel =====
   async function downloadTemplateXLSX() {
     const headers = ["carrera", "materia", "docente", "termino", "modalidad", "horario", "cupo"]
-
     const wsMain = XLSX.utils.aoa_to_sheet([headers])
-
     const carreras = await Catalogos.carreras().catch(() => [])
 
-    const listaMaterias = (materias ?? []).map((m: any) => [getSubjectLabel(m) || m.nombre, m.clave ?? "", m.id_materia])
+    const listaMaterias = (materias ?? []).map((m: any) => [
+      getSubjectLabel(m) || m.nombre,
+      m.clave ?? "",
+      m.id_materia,
+    ])
     const listaCarreras = (Array.isArray(carreras) ? carreras : (carreras as any)?.data ?? []).map(
       (c: any) => [getCareerLabel(c) || c.nombre, c.clave ?? "", c.id_carrera]
     )
@@ -341,11 +487,11 @@ export default function Grupos() {
       `${d.nombre} ${d.ap_paterno ?? ""} ${d.ap_materno ?? ""}`.trim(),
       d.id_docente,
     ])
-    const listaModalidades = (modalidades ?? []).map((m: any) => [getGenericLabel(m) || m.nombre, m.id_modalidad])
-    const listaTerminos = (terminos ?? []).map((t: any) => [
-      getTermLabel(t),
-      t.id_termino,
+    const listaModalidades = (modalidades ?? []).map((m: any) => [
+      getGenericLabel(m) || m.nombre,
+      m.id_modalidad,
     ])
+    const listaTerminos = (terminos ?? []).map((tTerm: any) => [getTermLabel(tTerm), tTerm.id_termino])
     const listaHorarios = HORARIOS.map((h) => [formatHorario(h)])
 
     const ayudaAOA = [
@@ -371,7 +517,7 @@ export default function Grupos() {
       [],
       ["Instrucciones"],
       [
-        "Rellena la hoja GRUPOS usando exactamente los textos de nombre/clave mostrados aquí. Campos: carrera (nombre o clave), materia (nombre o clave), docente (nombre completo), modalidad (nombre), termino (AAAA PERIODO), horario (LUN-VIE HH:00-HH:00), cupo. Si indicas carrera, la materia debe pertenecer a esa carrera.",
+        "Rellena la hoja GRUPOS usando exactamente los textos de nombre o clave mostrados aquí. Campos: carrera (nombre o clave), materia (nombre o clave), docente (nombre completo), modalidad (nombre), termino (AAAA PERIODO), horario (LUN-VIE HH:00-HH:00), cupo. Si indicas carrera, la materia debe pertenecer a esa carrera.",
       ],
     ]
     const wsHelp = XLSX.utils.aoa_to_sheet(ayudaAOA)
@@ -389,14 +535,13 @@ export default function Grupos() {
       ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`.trim()
       : t("groups.table.noTeacher")
     const label = `${getSubjectLabel(g.materia) || "—"} — ${g.grupo_codigo} — ${docente}`
-    // close any local confirm state
     setConfirmDel({ open: false })
       ; (async () => {
         const ok = await confirmService.requestConfirm({
-          titleText: t('groups.deleteModal.title'),
-          descriptionText: `${t('groups.deleteModal.question')}\n${label}`,
-          confirmLabelText: t('groups.deleteModal.confirm'),
-          cancelLabelText: t('confirm.no'),
+          titleText: t("groups.deleteModal.title"),
+          descriptionText: `${t("groups.deleteModal.question")}\n${label}`,
+          confirmLabelText: t("groups.deleteModal.confirm"),
+          cancelLabelText: t("confirm.no"),
           danger: true,
         })
         if (!ok) return
@@ -404,12 +549,18 @@ export default function Grupos() {
         try {
           await api.delete(`/grupos/${g.id_grupo}`, { skipConfirm: true } as any)
           await load()
-          const msg = t('groups.messages.deleted')
-            ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${msg}: ${label}` })
+          const msgDel = t("groups.messages.deleted")
+            ; (await import("../lib/notifyService")).default.notify({
+              type: "success",
+              message: `${msgDel}: ${label}`,
+            })
         } catch (e: any) {
-          const format = (await import('../lib/errorFormatter')).default
-          const msg = format(e, { entity: 'el grupo', action: 'delete' })
-            ; (await import('../lib/notifyService')).default.notify({ type: 'error', message: msg })
+          const format = (await import("../lib/errorFormatter")).default
+          const msgErr = format(e, { entity: "el grupo", action: "delete" })
+            ; (await import("../lib/notifyService")).default.notify({
+              type: "error",
+              message: msgErr,
+            })
         }
       })()
   }
@@ -426,27 +577,113 @@ export default function Grupos() {
     totalPages,
   })
 
+  // LABELS de columnas (para la voz)
+  const subjectColLabel = t("groups.table.subject")
+  const careerColLabel = t("groups.table.career")
+  const codeColLabel = t("groups.table.code")
+  const teacherColLabel = t("groups.table.teacher")
+  const modalityColLabel = t("groups.table.modality")
+  const scheduleColLabel = t("groups.table.schedule")
+  const capacityColLabel = t("groups.table.capacity")
+
+  // Helper: columna → valor → materia
+  const describeCell = (col: string, colLabel: string, g: Grupo) => {
+    const subject =
+      getSubjectLabel(g.materia) ||
+      g.materia?.nombre ||
+      (isEn ? "no subject" : "sin materia")
+
+    const value =
+      col === "subject"
+        ? subject
+        : col === "career"
+          ? ((g as any)?.materia
+            ? getCareerLabel((g as any).materia.carrera || (g as any).materia) ||
+            (g as any)?.materia?.carrera_nombre
+            : (g as any)?.materia?.carrera_nombre ||
+            (isEn ? "no career" : "sin carrera"))
+          : col === "code"
+            ? g.grupo_codigo || (isEn ? "no code" : "sin código")
+            : col === "teacher"
+              ? (g.docente
+                ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`.trim()
+                : t("groups.table.noTeacher"))
+              : col === "modality"
+                ? getGenericLabel(g.modalidad) || g.modalidad?.nombre || "—"
+                : col === "schedule"
+                  ? formatHorario(g.horario)
+                  : col === "capacity"
+                    ? isEn
+                      ? `${g.cupo} students`
+                      : `${g.cupo} estudiantes`
+                    : ""
+
+    if (isEn) {
+      return `${colLabel}, ${value}. Subject: ${subject}.`
+    } else {
+      return `${colLabel}, ${value}. Materia: ${subject}.`
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* ===== Filtros ===== */}
       <div className="rounded-2xl border bg-white p-4 shadow-sm flex flex-wrap items-end gap-4">
+        <div className="flex w-full items-center justify-between mb-2">
+          <h2 className="text-base font-semibold">
+            {t("groups.pageTitle", "Gestión de grupos")}
+          </h2>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            onClick={() => speak(filtersSectionInstructions)}
+            aria-label={t(
+              "groups.tts.filtersSection.aria",
+              "Escuchar explicación de la sección de filtros"
+            )}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>{t("groups.tts.helpButton", "¿Cómo usar los filtros?")}</span>
+          </button>
+        </div>
+
+        {/* Término */}
         <div className="grid gap-1 w-40 min-w-0">
-          <label className="text-xs text-slate-500">
-            {t("groups.filters.termLabel")}
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500">
+              {t("groups.filters.termLabel")}
+            </label>
+            <button
+              type="button"
+              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs"
+              onClick={() => speak(termFilterInstructions)}
+              aria-label={t(
+                "groups.tts.filters.term.aria",
+                "Escuchar explicación del filtro de término"
+              )}
+            >
+              🔊
+            </button>
+          </div>
           <select
             className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             value={terminoId ?? ""}
+            aria-label={t("groups.filters.termLabel")}
+            onFocus={() => speak(t("groups.filters.termLabel"))}
             onChange={(e) => {
               const v = e.target.value
               if (!v) {
                 setTerminoId(null)
+                setForm((f) => ({ ...f, id_termino: null }))
                 localStorage.removeItem("grupos.terminoId")
               } else {
                 const n = Number(v)
                 setTerminoId(n)
+                setForm((f) => ({ ...f, id_termino: n }))
                 localStorage.setItem("grupos.terminoId", String(n))
               }
+              const opt = e.target.selectedOptions[0]
+              if (opt) speak(`${t("groups.filters.termLabel")}: ${opt.text}`)
             }}
           >
             <option value="">{t("groups.filters.termAll")}</option>
@@ -458,12 +695,24 @@ export default function Grupos() {
           </select>
         </div>
 
-        {/* global confirmService used instead of local ConfirmModal */}
-
+        {/* Carrera filtro */}
         <div className="grid gap-1 min-w-0">
-          <label className="text-xs text-slate-500">
-            {t("groups.filters.careerLabel")}
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500">
+              {t("groups.filters.careerLabel")}
+            </label>
+            <button
+              type="button"
+              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs"
+              onClick={() => speak(careerFilterInstructions)}
+              aria-label={t(
+                "groups.tts.filters.career.aria",
+                "Escuchar explicación del filtro de carrera"
+              )}
+            >
+              🔊
+            </button>
+          </div>
           <CarreraPicker
             value={carreraId ?? undefined}
             onChange={(id) => {
@@ -475,10 +724,24 @@ export default function Grupos() {
           />
         </div>
 
+        {/* Materia filtro */}
         <div className="grid gap-1 w-56 min-w-0">
-          <label className="text-xs text-slate-500">
-            {t("groups.filters.subjectLabel")}
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500">
+              {t("groups.filters.subjectLabel")}
+            </label>
+            <button
+              type="button"
+              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs"
+              onClick={() => speak(subjectFilterInstructions)}
+              aria-label={t(
+                "groups.tts.filters.subject.aria",
+                "Escuchar explicación del filtro de materia"
+              )}
+            >
+              🔊
+            </button>
+          </div>
           <MateriaPicker
             value={materiaId}
             onChange={setMateriaId}
@@ -488,198 +751,449 @@ export default function Grupos() {
           />
         </div>
 
+        {/* Buscador */}
         <div className="grid gap-1 flex-1 min-w-0">
-          <label className="text-xs text-slate-500">
-            {t("groups.filters.searchLabel")}
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500">
+              {t("groups.filters.searchLabel")}
+            </label>
+            <button
+              type="button"
+              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs"
+              onClick={() => speak(searchFilterInstructions)}
+              aria-label={t(
+                "groups.tts.filters.search.aria",
+                "Escuchar explicación del cuadro de búsqueda"
+              )}
+            >
+              🔊
+            </button>
+          </div>
           <input
             className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full max-w-full box-border min-w-0 truncate"
             placeholder={t("groups.filters.searchPlaceholder")}
             value={query}
+            aria-label={t("groups.filters.searchLabel")}
+            onFocus={() => speak(t("groups.filters.searchLabel"))}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
 
-        <button
-          onClick={downloadTemplateXLSX}
-          className="rounded-lg border px-3 py-2 text-sm shadow-sm hover:bg-slate-50 inline-flex items-center"
-        >
-          <FiDownload className="mr-2" size={16} />
-          {t("groups.buttons.downloadTemplate")}
-        </button>
+        {/* Descargar plantilla */}
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={downloadTemplateXLSX}
+            type="button"
+            className="rounded-lg border px-3 py-2 text-sm shadow-sm hover:bg-slate-50 inline-flex items-center"
+            aria-label={t(
+              "groups.buttons.downloadTemplateAria",
+              "Descargar plantilla de Excel para grupos"
+            )}
+            onFocus={() => speak(t("groups.buttons.downloadTemplate"))}
+          >
+            <FiDownload className="mr-2" size={16} />
+            {t("groups.buttons.downloadTemplate")}
+          </button>
+          <button
+            type="button"
+            className="self-start rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100"
+            onClick={() => speak(downloadTemplateInstructions)}
+          >
+            🔊 {t("groups.tts.helpButton", "¿Qué es la plantilla?")}
+          </button>
+        </div>
 
-        <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer inline-flex items-center min-w-0">
-          <FiUpload className="mr-2" size={16} />
-          {t("groups.buttons.importFile")}
-          <input
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
-          />
-        </label>
+        {/* Importar archivo */}
+        <div className="flex flex-col gap-1">
+          <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer inline-flex items-center min-w-0 shadow-sm hover:bg-slate-50">
+            <FiUpload className="mr-2" size={16} />
+            {t("groups.buttons.importFile")}
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
+            />
+          </label>
+          <button
+            type="button"
+            className="self-start rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100"
+            onClick={() => speak(importFileInstructions)}
+          >
+            🔊 {t("groups.tts.helpButton", "¿Cómo importar archivo?")}
+          </button>
+        </div>
       </div>
 
       {/* ===== Formulario ===== */}
       <form
         onSubmit={onCreate}
-        className="rounded-2xl border bg-white p-4 shadow-sm space-y-3"
+        className="rounded-2xl border bg-white p-4 shadow-sm space-y-4"
       >
-        <h3 className="font-medium text-lg">{t("groups.form.title")}</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* Carrera que acota las materias */}
-          <div className="col-span-1">
-            <CarreraPicker
-              value={carreraId ?? undefined}
-              onChange={(id) => {
-                setCarreraId(id)
-                setForm((f) => ({ ...f, id_materia: null }))
-              }}
-              label={false}
-              className="h-10 w-full max-w-[14rem] rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            />
-          </div>
-
-          {/* Materia */}
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <label className="text-xs text-slate-500">{t("groups.form.subjectPlaceholder")} <span className="text-red-500" aria-hidden="true">*</span></label>
-            <select
-              className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              value={form.id_materia ?? ""}
-              onChange={(e) =>
-                setForm({ ...form, id_materia: Number(e.target.value) || null })
-              }
-              aria-required="true"
-            >
-              <option value="">{t("groups.form.subjectPlaceholder")}</option>
-              {materias.map((m) => (
-                <option key={m.id_materia} value={m.id_materia}>
-                  {getSubjectLabel(m)}
-                </option>
-              ))}
-            </select>
+            <h3 className="font-medium text-lg">{t("groups.form.title")}</h3>
+            <p className="mt-1 text-xs text-slate-500 max-w-xl">
+              {t(
+                "groups.form.subtitle",
+                "Lleva el orden de izquierda a derecha: primero la carrera y materia, luego docente y modalidad, y al final horario y cupo."
+              )}
+            </p>
           </div>
-
-          {/* Docente */}
-          <div>
-            <label className="text-xs text-slate-500">{t("groups.form.teacherPlaceholder")} <span className="text-red-500" aria-hidden="true">*</span></label>
-            <select
-              className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              value={form.id_docente ?? ""}
-              onChange={(e) =>
-                setForm({ ...form, id_docente: Number(e.target.value) || null })
-              }
-              aria-required="true"
-            >
-              <option value="">{t("groups.form.teacherPlaceholder")}</option>
-              {docentes.map((d) => (
-                <option key={d.id_docente} value={d.id_docente}>
-                  {d.nombre} {d.ap_paterno ?? ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Modalidad */}
-          <div>
-            <label className="text-xs text-slate-500">{t("groups.form.modalityPlaceholder")} <span className="text-red-500" aria-hidden="true">*</span></label>
-            <select
-              className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              value={form.id_modalidad ?? ""}
-              onChange={(e) =>
-                setForm({ ...form, id_modalidad: Number(e.target.value) || null })
-              }
-              aria-required="true"
-            >
-              <option value="">{t("groups.form.modalityPlaceholder")}</option>
-              {modalidades.map((m) => (
-                <option key={m.id_modalidad} value={m.id_modalidad}>
-                  {getGenericLabel(m)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Horario obligatorio */}
-          <div>
-            <label className="text-xs text-slate-500">{t("groups.form.schedulePlaceholder")} <span className="text-red-500" aria-hidden="true">*</span></label>
-            <select
-              className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              value={form.horario}
-              onChange={(e) => setForm({ ...form, horario: e.target.value })}
-              required
-              aria-required="true"
-            >
-              <option value="">{t("groups.form.schedulePlaceholder")}</option>
-              {HORARIOS.map((h) => (
-                <option key={h} value={h}>
-                  {formatHorario(h)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Cupo */}
-          <input
-            className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            placeholder={t("groups.form.capacityPlaceholder")}
-            type="number"
-            value={form.cupo}
-            onChange={(e) => setForm({ ...form, cupo: e.target.value })}
-          />
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            onClick={() => speak(formSectionInstructions)}
+            aria-label={t(
+              "groups.tts.formSection.aria",
+              "Escuchar explicación del formulario para crear grupo"
+            )}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>{t("groups.tts.helpButton", "¿Cómo llenar este formulario?")}</span>
+          </button>
         </div>
 
-        <button
-          type="submit"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm shadow-sm hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500 inline-flex items-center"
-          disabled={saving || !carreraId || !form.id_materia}
-        >
-          <FiPlus className="mr-2" size={16} />
-          {saving
-            ? t("groups.form.submitSaving")
-            : !carreraId
-              ? t("groups.form.submitSelectCareer")
-              : !form.id_materia
-                ? t("groups.form.submitSelectSubject")
-                : t("groups.form.submitDefault")}
-        </button>
-
-        {(msg || err) && <div className="text-sm mt-2">{msg || err}</div>}
-
-        {importErrors.length > 0 && (
-          <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-800">
-            <div className="font-medium mb-1">
-              {t("groups.importErrors.title", {
-                count: Math.min(5, importErrors.length),
-              })}
-            </div>
-            <ul className="list-disc pl-5 space-y-0.5">
-              {importErrors.slice(0, 5).map((e, i) => (
-                <li key={i}>
-                  {t("groups.importErrors.rowPrefix", {
-                    row: e.row,
-                    error: e.error,
-                  })}
-                </li>
-              ))}
-            </ul>
+        {/* Mensaje de error / info */}
+        {msg && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {msg}
           </div>
         )}
+
+        {/* SECCIÓN 1: Carrera y materia */}
+        <section className="rounded-xl bg-slate-50 px-3 py-3 space-y-3">
+          <p className="text-xs font-medium text-slate-600">
+            {t("groups.form.section1", "1. Información general del grupo")}
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {/* Carrera */}
+            <div className="grid gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs text-slate-500">
+                  {t("groups.form.careerLabel", "Carrera del grupo")}
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                  onClick={() => speak(formCareerInstructions)}
+                  aria-label={t(
+                    "groups.tts.form.career.aria",
+                    "Escuchar instrucciones del campo carrera del grupo"
+                  )}
+                >
+                  <span aria-hidden="true">🔊</span>
+                  <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
+                </button>
+              </div>
+              <CarreraPicker
+                value={carreraId ?? undefined}
+                onChange={(id) => {
+                  setCarreraId(id as number | null)
+                  setMateriaId(null)
+                  setForm((f) => ({ ...f, id_materia: null }))
+                }}
+                label={false}
+                className="h-10 w-full rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              />
+              <p className="text-[11px] text-slate-500">
+                {t(
+                  "groups.form.careerHint",
+                  "Esta carrera también se usa para filtrar la tabla de grupos de arriba."
+                )}
+              </p>
+            </div>
+
+            {/* Materia */}
+            <div className="grid gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs text-slate-500">
+                  {t("groups.form.subjectLabel", "Materia")}
+                  <span className="text-red-500" aria-hidden="true">
+                    {" "}
+                    *
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                  onClick={() => speak(formSubjectInstructions)}
+                  aria-label={t(
+                    "groups.tts.form.subject.aria",
+                    "Escuchar instrucciones del campo materia"
+                  )}
+                >
+                  <span aria-hidden="true">🔊</span>
+                  <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
+                </button>
+              </div>
+              <MateriaPicker
+                value={form.id_materia}
+                onChange={(id) => setForm((f) => ({ ...f, id_materia: id }))}
+                terminoId={terminoId ?? undefined}
+                carreraId={carreraId ?? undefined}
+                disabled={!carreraId}
+                className="rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* SECCIÓN 2: Docente y modalidad */}
+        <section className="rounded-xl bg-slate-50 px-3 py-3 space-y-3">
+          <p className="text-xs font-medium text-slate-600">
+            {t("groups.form.section2", "2. Docente y modalidad")}
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {/* Docente */}
+            <div className="grid gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs text-slate-500">
+                  {t("groups.form.teacherLabel", "Docente")}
+                  <span className="text-red-500" aria-hidden="true">
+                    {" "}
+                    *
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                  onClick={() => speak(formTeacherInstructions)}
+                  aria-label={t(
+                    "groups.tts.form.teacher.aria",
+                    "Escuchar instrucciones del campo docente"
+                  )}
+                >
+                  <span aria-hidden="true">🔊</span>
+                  <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
+                </button>
+              </div>
+              <select
+                className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                value={form.id_docente ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    id_docente: e.target.value ? Number(e.target.value) : null,
+                  }))
+                }
+                onFocus={() => speak(t("groups.form.teacherLabel", "Docente"))}
+              >
+                <option value="">
+                  {t("groups.form.teacherPlaceholder", "Selecciona un docente")}
+                </option>
+                {docentes.map((d) => (
+                  <option key={d.id_docente} value={d.id_docente}>
+                    {`${d.nombre} ${d.ap_paterno ?? ""} ${d.ap_materno ?? ""}`.trim()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Modalidad */}
+            <div className="grid gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs text-slate-500">
+                  {t("groups.form.modalityLabel", "Modalidad")}
+                  <span className="text-red-500" aria-hidden="true">
+                    {" "}
+                    *
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                  onClick={() => speak(formModalityInstructions)}
+                  aria-label={t(
+                    "groups.tts.form.modality.aria",
+                    "Escuchar instrucciones del campo modalidad"
+                  )}
+                >
+                  <span aria-hidden="true">🔊</span>
+                  <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
+                </button>
+              </div>
+              <select
+                className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                value={form.id_modalidad ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    id_modalidad: e.target.value ? Number(e.target.value) : null,
+                  }))
+                }
+                onFocus={() => speak(t("groups.form.modalityLabel", "Modalidad"))}
+              >
+                <option value="">
+                  {t("groups.form.modalityPlaceholder", "Selecciona una modalidad")}
+                </option>
+                {modalidades.map((m) => (
+                  <option key={m.id_modalidad} value={m.id_modalidad}>
+                    {getGenericLabel(m) || m.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* SECCIÓN 3: Horario y cupo */}
+        <section className="rounded-xl bg-slate-50 px-3 py-3 space-y-3">
+          <p className="text-xs font-medium text-slate-600">
+            {t("groups.form.section3", "3. Horario y cupo")}
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {/* Horario */}
+            <div className="grid gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs text-slate-500">
+                  {t("groups.form.scheduleLabel", "Horario")}
+                  <span className="text-red-500" aria-hidden="true">
+                    {" "}
+                    *
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                  onClick={() => speak(formScheduleInstructions)}
+                  aria-label={t(
+                    "groups.tts.form.schedule.aria",
+                    "Escuchar instrucciones del campo horario"
+                  )}
+                >
+                  <span aria-hidden="true">🔊</span>
+                  <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
+                </button>
+              </div>
+              <select
+                className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                value={form.horario}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    horario: e.target.value,
+                  }))
+                }
+                onFocus={() => speak(t("groups.form.scheduleLabel", "Horario"))}
+              >
+                <option value="">
+                  {t("groups.form.schedulePlaceholder", "Selecciona un horario")}
+                </option>
+                {HORARIOS.map((h) => (
+                  <option key={h} value={h}>
+                    {formatHorario(h)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Cupo */}
+            <div className="grid gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs text-slate-500">
+                  {t("groups.form.capacityLabel", "Cupo máximo")}
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                  onClick={() => speak(formCapacityInstructions)}
+                  aria-label={t(
+                    "groups.tts.form.capacity.aria",
+                    "Escuchar instrucciones del campo cupo"
+                  )}
+                >
+                  <span aria-hidden="true">🔊</span>
+                  <span>{t("groups.tts.helpButton", "¿Qué debo escribir?")}</span>
+                </button>
+              </div>
+              <input
+                type="number"
+                min={1}
+                className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                value={form.cupo}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    cupo: e.target.value,
+                  }))
+                }
+                placeholder={t("groups.form.capacityPlaceholder", "Ej. 30")}
+                onFocus={() => speak(t("groups.form.capacityLabel", "Cupo máximo"))}
+              />
+              <p className="text-[11px] text-slate-500">
+                {t(
+                  "groups.form.capacityHint",
+                  "Si dejas este campo vacío, el sistema usará un cupo de 30 estudiantes."
+                )}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div className="flex items-center justify-between pt-2">
+          {err && (
+            <div className="text-xs text-red-600">
+              {err}
+            </div>
+          )}
+          <div className="flex-1" />
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            onFocus={() => speak(t("groups.form.submit", "Crear grupo"))}
+          >
+            <FiPlus size={16} />
+            {saving
+              ? t("groups.form.saving", "Guardando…")
+              : t("groups.form.submit", "Crear grupo")}
+          </button>
+        </div>
       </form>
 
       {/* ===== Lista ===== */}
       <div className="rounded-xl border bg-white">
-        <div className="overflow-x-auto">
+        <div className="flex items-center justify-between px-4 pt-3">
+          <h3 className="font-medium text-sm">
+            {t("groups.table.title", "Listado de grupos")}
+          </h3>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              onClick={downloadGruposXLSX}
+              aria-label={t("groups.table.downloadAria", "Descargar listado de grupos en Excel")}
+            >
+              <FiDownload size={14} />
+              <span>{t("groups.table.download", "Descargar")}</span>
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              onClick={() => speak(tableSectionInstructions)}
+              aria-label={t(
+                "groups.tts.tableSection.aria",
+                "Escuchar explicación de la tabla de grupos"
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("groups.tts.helpButton", "¿Cómo leer la tabla?")}</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto mt-2">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left text-slate-600">
-                <th>{t("groups.table.subject")}</th>
-                <th>{t("groups.table.career")}</th>
-                <th>{t("groups.table.code")}</th>
-                <th>{t("groups.table.teacher")}</th>
-                <th>{t("groups.table.modality")}</th>
-                <th>{t("groups.table.schedule")}</th>
-                <th>{t("groups.table.capacity")}</th>
+                <th>{subjectColLabel}</th>
+                <th>{careerColLabel}</th>
+                <th>{codeColLabel}</th>
+                <th>{teacherColLabel}</th>
+                <th>{modalityColLabel}</th>
+                <th>{scheduleColLabel}</th>
+                <th>{capacityColLabel}</th>
                 <th></th>
               </tr>
             </thead>
@@ -708,19 +1222,96 @@ export default function Grupos() {
                     key={g.id_grupo}
                     className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60"
                   >
-                    <td>{getSubjectLabel(g.materia) || "—"}</td>
+                    {/* Materia */}
                     <td>
-                      {(g as any)?.materia ? getCareerLabel((g as any).materia.carrera || (g as any).materia) : ((g as any)?.materia?.carrera_nombre || '—')}
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("subject", subjectColLabel, g))}
+                        aria-label={describeCell("subject", subjectColLabel, g)}
+                      >
+                        {getSubjectLabel(g.materia) || "—"}
+                      </button>
                     </td>
-                    <td>{g.grupo_codigo}</td>
+
+                    {/* Carrera */}
                     <td>
-                      {g.docente
-                        ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`
-                        : t("groups.table.noTeacher")}
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("career", careerColLabel, g))}
+                        aria-label={describeCell("career", careerColLabel, g)}
+                      >
+                        {(g as any)?.materia
+                          ? getCareerLabel((g as any).materia.carrera || (g as any).materia) ||
+                          (g as any)?.materia?.carrera_nombre
+                          : (g as any)?.materia?.carrera_nombre || "—"}
+                      </button>
                     </td>
-                    <td>{getGenericLabel(g.modalidad) || "—"}</td>
-                    <td>{formatHorario(g.horario)}</td>
-                    <td>{g.cupo}</td>
+
+                    {/* Código de grupo */}
+                    <td>
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("code", codeColLabel, g))}
+                        aria-label={describeCell("code", codeColLabel, g)}
+                      >
+                        {g.grupo_codigo}
+                      </button>
+                    </td>
+
+                    {/* Docente */}
+                    <td>
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("teacher", teacherColLabel, g))}
+                        aria-label={describeCell("teacher", teacherColLabel, g)}
+                      >
+                        {g.docente
+                          ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`
+                          : t("groups.table.noTeacher")}
+                      </button>
+                    </td>
+
+                    {/* Modalidad */}
+                    <td>
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("modality", modalityColLabel, g))}
+                        aria-label={describeCell("modality", modalityColLabel, g)}
+                      >
+                        {getGenericLabel(g.modalidad) || "—"}
+                      </button>
+                    </td>
+
+                    {/* Horario */}
+                    <td>
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("schedule", scheduleColLabel, g))}
+                        aria-label={describeCell("schedule", scheduleColLabel, g)}
+                      >
+                        {formatHorario(g.horario)}
+                      </button>
+                    </td>
+
+                    {/* Cupo */}
+                    <td>
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("capacity", capacityColLabel, g))}
+                        aria-label={describeCell("capacity", capacityColLabel, g)}
+                      >
+                        {g.cupo}
+                      </button>
+                    </td>
+
+                    {/* Botón eliminar */}
                     <td>
                       <button
                         type="button"
@@ -747,6 +1338,7 @@ export default function Grupos() {
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={pageSafe <= 1}
               type="button"
+              onFocus={() => speak(t("groups.pagination.prev"))}
             >
               {t("groups.pagination.prev")}
             </button>
@@ -756,11 +1348,31 @@ export default function Grupos() {
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={pageSafe >= totalPages}
               type="button"
+              onFocus={() => speak(t("groups.pagination.next"))}
             >
               {t("groups.pagination.next")}
             </button>
           </div>
         </div>
+
+        {/* Errores de importación */}
+        {importErrors.length > 0 && (
+          <div className="border-t border-slate-100 px-4 py-3 text-xs text-red-700 bg-red-50/60">
+            <p className="font-semibold mb-1">
+              {t("groups.messages.importErrorsTitle", "Errores al importar grupos")}
+            </p>
+            <ul className="list-disc pl-5 space-y-0.5">
+              {importErrors.map((e, idx) => (
+                <li key={`${e.row}-${idx}`}>
+                  {t("groups.messages.importErrorRow", "Fila {{row}}: {{error}}", {
+                    row: e.row,
+                    error: e.error,
+                  })}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   )

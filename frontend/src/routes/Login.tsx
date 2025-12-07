@@ -11,6 +11,7 @@ import { useAccessibility } from '../store/useAccessibility'
 import ReadingMask from '../components/ReadingMask'
 import ReadingGuide from '../components/ReadingGuide'
 import { AccessibilityMenu } from '../components/AccessibilityMenu'
+import { TTS } from '../lib/tts'
 
 const schema = z.object({
   email: z.string().email(),
@@ -41,6 +42,7 @@ export default function Login() {
   const { login, refresh } = useAuth()
   const nav = useNavigate()
 
+  const accessibility = useAccessibility()
   const {
     readingMaskEnabled,
     readingMaskHeight,
@@ -57,12 +59,34 @@ export default function Login() {
     customPrimaryColor,
     customSidebarBgColor,
     customSidebarFgColor,
-  } = useAccessibility()
+  } = accessibility
+  const { voiceEnabled, voiceRate } = accessibility
 
   const [mode, setMode] = useState<'admin' | 'maestro'>('maestro')
   const [isRegister, setIsRegister] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // helper de voz
+  const speak = (text?: string) => {
+    if (!voiceEnabled) return
+    if (!text) return
+    if (!TTS.isSupported()) return
+    TTS.speak(text, { rate: voiceRate })
+  }
+
+  // Textos de ayuda por voz
+  const screenIntro = "Bienvenido a StudentsNotes. En esta pantalla puedes iniciar sesión como administrador o como docente. Primero elige el tipo de acceso, después escribe tu correo electrónico y tu contraseña, y por último pulsa el botón Entrar."
+
+  const rolesExplanation = "El modo Administrador está pensado para gestionar catálogos, inscripciones y reportes de toda la escuela. El modo Docente está pensado solo para ver y administrar los grupos de aula asignados a ese maestro. Asegúrate de elegir el modo correcto antes de entrar."
+
+  const emailHelp = "Campo de correo electrónico. Escribe tu correo institucional o el correo con el que fue registrada tu cuenta. El formato debe ser por ejemplo usuario arroba dominio punto com."
+
+  const passwordHelp = "Campo de contraseña. Escribe la contraseña asociada a tu cuenta. Debe tener al menos seis caracteres. Por seguridad, los caracteres no se muestran en pantalla."
+
+  const resetAccessibilityHelp = "El enlace restablecer accesibilidad borra tus ajustes de accesibilidad, como colores personalizados, contraste y lectura de máscara. Después de usarlo, la página se recarga y vuelve a los valores por defecto."
+
+  const submitHelp = "Botón para enviar el formulario. Si estás en modo docente y elegiste crear cuenta, se intentará registrar un nuevo usuario y luego iniciar sesión. En los demás casos, solo se intenta iniciar sesión con el correo y la contraseña que escribiste."
 
   // aplicar contraste igual que en Shell, pero para login
   useEffect(() => {
@@ -78,15 +102,21 @@ export default function Login() {
       root.style.removeProperty('--sidebar-bg')
       root.style.removeProperty('--sidebar-fg')
     } else if (contrastMode === 'dark') {
+      // Dark mode: ensure .dark class is present
       if (!root.classList.contains('dark')) {
-        toggleTheme()
+        root.classList.add('dark')
       }
-      root.style.removeProperty('--sidebar-bg')
-      root.style.removeProperty('--sidebar-fg')
+      // Remove inline sidebar overrides so dark theme CSS variables apply
+      if (!customColorsEnabled) {
+        root.style.removeProperty('--sidebar-bg')
+        root.style.removeProperty('--sidebar-fg')
+      }
     } else if (contrastMode === 'default') {
+      // Default (light) mode: ensure .dark class is removed
       if (root.classList.contains('dark')) {
         root.classList.remove('dark')
       }
+      // Set sidebar to light colors in default mode
       if (!customColorsEnabled) {
         root.style.setProperty('--sidebar-bg', '#FFFFFF')
         root.style.setProperty('--sidebar-fg', '#1E3452')
@@ -113,10 +143,7 @@ export default function Login() {
       root.style.removeProperty('--text')
       root.style.removeProperty('--primary')
       root.style.removeProperty('--primary-ctr')
-      if (contrastMode !== 'default') {
-        root.style.removeProperty('--sidebar-bg')
-        root.style.removeProperty('--sidebar-fg')
-      }
+      // Don't remove sidebar properties here - let contrastMode effect handle them
     }
   }, [
     customColorsEnabled,
@@ -224,8 +251,19 @@ export default function Login() {
               }}
               className="text-xs underline opacity-80 hover:opacity-100"
               title="Reestablecer accesibilidad"
+              aria-label="Restablecer accesibilidad a valores predeterminados"
             >
               Reestablecer accesibilidad
+            </button>
+
+            {/* Botón de voz para explicar qué hace restablecer accesibilidad */}
+            <button
+              type="button"
+              onClick={() => speak(resetAccessibilityHelp)}
+              className="text-xs rounded-md border border-slate-200 px-2 py-1 opacity-80 hover:opacity-100 inline-flex items-center gap-1"
+              aria-label="Escuchar explicación del botón Restablecer accesibilidad"
+            >
+              <span aria-hidden="true">🔊</span>
             </button>
           </div>
         </header>
@@ -242,31 +280,54 @@ export default function Login() {
                 <li>• Administrador: catálogos, inscripciones, reportes.</li>
                 <li>• Docente: solo sus Grupos (Aula).</li>
               </ul>
+
+              {/* Botón de voz para explicar la pantalla completa */}
+              <button
+                type="button"
+                onClick={() => speak(screenIntro)}
+                className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                aria-label="Escuchar explicación general de la pantalla de inicio de sesión"
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>Explicar esta pantalla</span>
+              </button>
             </div>
 
             {/* Formulario */}
             <div className="mx-auto w-full max-w-sm">
               <div className="rounded-2xl border bg-white shadow p-6">
-                <div className="flex gap-2 mb-4">
+                <div className="flex gap-2 mb-2 items-center justify-between">
+                  <div className="flex gap-2 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => setMode('admin')}
+                      className={`flex-1 rounded-md px-3 py-2 text-sm border transition ${mode === 'admin'
+                        ? 'bg-[color:var(--primary)] text-[color:var(--primary-ctr)]'
+                        : 'bg-[color:var(--card)]'
+                        }`}
+                    >
+                      Administrador
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode('maestro')}
+                      className={`flex-1 rounded-md px-3 py-2 text-sm border transition ${mode === 'maestro'
+                        ? 'bg-[color:var(--primary)] text-[color:var(--primary-ctr)]'
+                        : 'bg-[color:var(--card)]'
+                        }`}
+                    >
+                      Docente
+                    </button>
+                  </div>
+
+                  {/* Botón de voz para explicar los roles */}
                   <button
                     type="button"
-                    onClick={() => setMode('admin')}
-                    className={`flex-1 rounded-md px-3 py-2 text-sm border transition ${mode === 'admin'
-                      ? 'bg-[color:var(--primary)] text-[color:var(--primary-ctr)]'
-                      : 'bg-[color:var(--card)]'
-                      }`}
+                    onClick={() => speak(rolesExplanation)}
+                    className="ml-2 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                    aria-label="Escuchar explicación de las opciones Administrador y Docente"
                   >
-                    Administrador
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode('maestro')}
-                    className={`flex-1 rounded-md px-3 py-2 text-sm border transition ${mode === 'maestro'
-                      ? 'bg-[color:var(--primary)] text-[color:var(--primary-ctr)]'
-                      : 'bg-[color:var(--card)]'
-                      }`}
-                  >
-                    Docente
+                    <span aria-hidden="true">🔊</span>
                   </button>
                 </div>
 
@@ -289,9 +350,20 @@ export default function Login() {
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
                   <div className="grid gap-1">
-                    <label className="text-xs text-slate-500">
-                      Email <span className="text-red-500" aria-hidden="true">*</span>
-                    </label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs text-slate-500">
+                        Email <span className="text-red-500" aria-hidden="true">*</span>
+                      </label>
+                      {/* Botón de voz para explicar el campo Email */}
+                      <button
+                        type="button"
+                        onClick={() => speak(emailHelp)}
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-slate-100"
+                        aria-label="Escuchar explicación de cómo llenar el campo de correo electrónico"
+                      >
+                        <span aria-hidden="true">🔊</span>
+                      </button>
+                    </div>
                     <input
                       placeholder="Email"
                       aria-required="true"
@@ -302,9 +374,20 @@ export default function Login() {
                   </div>
 
                   <div className="grid gap-1">
-                    <label className="text-xs text-slate-500">
-                      Password <span className="text-red-500" aria-hidden="true">*</span>
-                    </label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs text-slate-500">
+                        Password <span className="text-red-500" aria-hidden="true">*</span>
+                      </label>
+                      {/* Botón de voz para explicar el campo Password */}
+                      <button
+                        type="button"
+                        onClick={() => speak(passwordHelp)}
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-slate-100"
+                        aria-label="Escuchar explicación de cómo llenar el campo de contraseña"
+                      >
+                        <span aria-hidden="true">🔊</span>
+                      </button>
+                    </div>
                     <input
                       type="password"
                       placeholder="Password"
@@ -319,17 +402,30 @@ export default function Login() {
 
                   {msg && <div className="text-sm">{msg}</div>}
 
-                  <button
-                    disabled={loading}
-                    className="w-full rounded-xl py-2 bg-blue-600 hover:bg-blue-600/90 text-[color:var(--primary-ctr)] disabled:opacity-60 inline-flex items-center justify-center"
-                  >
-                    <FiSave className="mr-2" size={18} />
-                    {loading
-                      ? 'Procesando…'
-                      : isRegister && mode === 'maestro'
-                        ? 'Crear y entrar'
-                        : 'Entrar'}
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      disabled={loading}
+                      className="w-full rounded-xl py-2 bg-blue-600 hover:bg-blue-600/90 text-[color:var(--primary-ctr)] disabled:opacity-60 inline-flex items-center justify-center"
+                    >
+                      <FiSave className="mr-2" size={18} />
+                      {loading
+                        ? 'Procesando…'
+                        : isRegister && mode === 'maestro'
+                          ? 'Crear y entrar'
+                          : 'Entrar'}
+                    </button>
+
+                    {/* Botón de voz para explicar el botón principal */}
+                    <button
+                      type="button"
+                      onClick={() => speak(submitHelp)}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                      aria-label="Escuchar explicación de lo que hace el botón de Entrar"
+                    >
+                      <span aria-hidden="true">🔊</span>
+                      <span>¿Qué hace este botón?</span>
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>

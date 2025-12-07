@@ -13,6 +13,7 @@ import GruposAula from './routes/GruposAula'
 import GrupoAulaDetalle from './routes/GrupoAulaDetalle'
 import Dashboard from './routes/Dashboard'
 import { toggleTheme, isDark } from './lib/theme'
+import { TTS } from './lib/tts'
 import Account from './routes/Account'
 import { useTranslation } from 'react-i18next'
 import { FiHome, FiUserPlus, FiLayers, FiUsers, FiUser, FiBook, FiSettings } from 'react-icons/fi'
@@ -104,12 +105,15 @@ function Shell() {
     customPrimaryColor,
     customSidebarBgColor,
     customSidebarFgColor,
+    voiceEnabled,
+    voiceRate,
   } = useAccessibility()
 
   const highContrast = contrastMode === 'high'
   const [dark, setDark] = useState(isDark())
   const { session, user, role, avatarUrl, logout } = useAuth()
 
+  // Se eliminó la delegación global de pointerdown para evitar que la voz se dispare al hacer click en cualquier parte.
   useEffect(() => {
     applyFontSize(fontSize as any)
   }, [fontSize])
@@ -121,6 +125,8 @@ function Shell() {
   useEffect(() => {
     if (typeof document === 'undefined') return
     const root = document.documentElement
+
+    // First, remove high-contrast if it was applied
     root.classList.remove('high-contrast')
 
     if (contrastMode === 'high') {
@@ -128,22 +134,27 @@ function Shell() {
       root.classList.remove('dark')
       setDark(false)
       root.classList.add('high-contrast')
+      // Remove any inline sidebar overrides for high contrast mode
       root.style.removeProperty('--sidebar-bg')
       root.style.removeProperty('--sidebar-fg')
     } else if (contrastMode === 'dark') {
+      // Dark mode: ensure .dark class is present
       if (!root.classList.contains('dark')) {
-        toggleTheme()
-        setDark(isDark())
+        root.classList.add('dark')
+        setDark(true)
       }
+      // Remove inline sidebar overrides so dark theme CSS variables apply
       if (!customColorsEnabled) {
         root.style.removeProperty('--sidebar-bg')
         root.style.removeProperty('--sidebar-fg')
       }
     } else if (contrastMode === 'default') {
+      // Default (light) mode: ensure .dark class is removed
       if (root.classList.contains('dark')) {
         root.classList.remove('dark')
         setDark(false)
       }
+      // Set sidebar to light colors in default mode
       if (!customColorsEnabled) {
         root.style.setProperty('--sidebar-bg', '#FFFFFF')
         root.style.setProperty('--sidebar-fg', '#1E3452')
@@ -167,10 +178,7 @@ function Shell() {
       root.style.removeProperty('--text')
       root.style.removeProperty('--primary')
       root.style.removeProperty('--primary-ctr')
-      if (contrastMode !== 'default') {
-        root.style.removeProperty('--sidebar-bg')
-        root.style.removeProperty('--sidebar-fg')
-      }
+      // Don't remove sidebar properties here - let contrastMode effect handle them
     }
   }, [customColorsEnabled, customBgColor, customTextColor, customPrimaryColor, customSidebarBgColor, customSidebarFgColor, contrastMode])
 

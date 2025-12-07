@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react"
+// src/components/inscripciones/EnrollPanel.tsx
+import { useEffect, useRef, useState } from "react"
 import api from "../../lib/api"
-import i18n from 'i18next'
-import { FiPlus } from 'react-icons/fi'
+import i18n from "i18next"
+import { FiPlus } from "react-icons/fi"
+import { useAccessibility } from "../../store/useAccessibility"
+import { TTS } from "../../lib/tts"
 
 type Props = {
   groupId?: number | null
@@ -16,12 +19,24 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const { voiceEnabled, voiceRate } = useAccessibility((s) => ({
+    voiceEnabled: s.voiceEnabled,
+    voiceRate: s.voiceRate,
+  }))
+  const speakLock = useRef(false)
+
+  const speak = (text?: string) => {
+    if (!voiceEnabled) return
+    if (!text) return
+    if (!TTS.isSupported()) return
+    TTS.speak(text, { rate: voiceRate })
+  }
+
   // Sincroniza prop → estado local
   useEffect(() => {
     if (groupId !== undefined) setLocalGroup(groupId ?? null)
   }, [groupId])
 
-  // Búsqueda de estudiantes
   // Búsqueda de estudiantes
   useEffect(() => {
     if (q.length < 2) {
@@ -31,9 +46,10 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
     const id = setTimeout(async () => {
       try {
         let path = `/estudiantes?q=${encodeURIComponent(q)}&page=1&pageSize=10`
-        if (i18n?.language && String(i18n.language).startsWith('en')) path += '&lang=en'
+        if (i18n?.language && String(i18n.language).startsWith("en"))
+          path += "&lang=en"
         const data = await api.get(path)
-        setResults(data?.rows ?? []) // 👈 la API devuelve { rows, total }
+        setResults(data?.rows ?? [])
       } catch {
         setResults([])
       }
@@ -43,11 +59,15 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
 
   async function inscribir() {
     if (!selectedStudent) {
-      setMessage("❌ Selecciona un estudiante")
+      const msg = "❌ Selecciona un estudiante"
+      setMessage(msg)
+      speak(msg)
       return
     }
     if (!localGroup) {
-      setMessage("❌ Selecciona un grupo")
+      const msg = "❌ Selecciona un grupo"
+      setMessage(msg)
+      speak(msg)
       return
     }
     try {
@@ -57,9 +77,13 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
         id_estudiante: selectedStudent.id_estudiante,
         id_grupo: localGroup,
       })
-      setMessage("✅ Inscripción creada #" + res.id_inscripcion)
+      const okMsg = "✅ Inscripción creada #" + res.id_inscripcion
+      setMessage(okMsg)
+      speak(okMsg)
     } catch (e: any) {
-      setMessage("❌ " + e.message)
+      const errMsg = "❌ " + e.message
+      setMessage(errMsg)
+      speak(errMsg)
     } finally {
       setLoading(false)
     }
@@ -68,6 +92,21 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
   function handleGroupInput(val: number | null) {
     setLocalGroup(val)
     onChangeGroupId?.(val)
+  }
+
+  const handleSearchFocus: React.FocusEventHandler<HTMLInputElement> = () => {
+    if (speakLock.current) return
+    speakLock.current = true
+    speak(
+      "Campo de búsqueda de estudiantes. Escribe número de control o nombre."
+    )
+    setTimeout(() => {
+      speakLock.current = false
+    }, 1500)
+  }
+
+  const handleGroupFocus: React.FocusEventHandler<HTMLInputElement> = () => {
+    speak("Campo para escribir el ID de grupo donde se inscribirá.")
   }
 
   return (
@@ -79,6 +118,8 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
         placeholder="Buscar (no_control o nombre)"
         value={q}
         onChange={(e) => setQ(e.target.value)}
+        onFocus={handleSearchFocus}
+        aria-label="Buscar estudiante por número de control o nombre"
       />
 
       {results.length > 0 && (
@@ -86,11 +127,17 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
           {results.map((s) => (
             <button
               key={s.id_estudiante}
-              onClick={() => setSelectedStudent(s)}
-              className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${selectedStudent?.id_estudiante === s.id_estudiante
-                ? "bg-gray-100"
-                : ""
-                }`}
+              onClick={() => {
+                setSelectedStudent(s)
+                speak(
+                  `Estudiante seleccionado: ${s.no_control}, ${s.nombre} ${s.ap_paterno}`
+                )
+              }}
+              className={`w-full text-left px-3 py-2 hover:bg-gray-50 ${
+                selectedStudent?.id_estudiante === s.id_estudiante
+                  ? "bg-gray-100"
+                  : ""
+              }`}
             >
               {s.no_control} — {s.nombre} {s.ap_paterno}
             </button>
@@ -105,12 +152,15 @@ export default function EnrollPanel({ groupId, onChangeGroupId }: Props) {
         onChange={(e) =>
           handleGroupInput(e.target.value ? Number(e.target.value) : null)
         }
+        onFocus={handleGroupFocus}
+        aria-label="ID del grupo donde se inscribirá el estudiante"
       />
 
       <button
         onClick={inscribir}
         disabled={loading}
         className="w-full bg-blue-600 text-white rounded-xl py-2 inline-flex items-center justify-center"
+        aria-label="Botón para crear la inscripción"
       >
         <FiPlus className="mr-2" size={16} />
         {loading ? "Inscribiendo..." : "Inscribir"}

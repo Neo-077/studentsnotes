@@ -71,7 +71,13 @@ const useVoice = () =>
   }))
 
 const usePointer = () =>
-  useAccessibility(s => ({ pointerSize: s.pointerSize, setPointerSize: s.setPointerSize, bigPointer: s.bigPointer }))
+  useAccessibility(s => ({
+    pointerSize: s.pointerSize,
+    setPointerSize: s.setPointerSize,
+    bigPointer: s.bigPointer,
+    pointerColor: s.pointerColor,
+    setPointerColor: s.setPointerColor
+  }))
 
 type Props = {
   inline?: boolean // render as inline panel (no popover)
@@ -80,6 +86,7 @@ type Props = {
 function AccessibilityMenuBase({ inline = false }: Props) {
   const [expanded, setExpanded] = useState<boolean>(false)
   const [showAdvancedColors, setShowAdvancedColors] = useState<boolean>(false)
+  const [showColorBlindOptions, setShowColorBlindOptions] = useState<boolean>(false)
 
   const { fontSize, setFontSize } = useFontSize()
   const { contrastMode, setContrastMode } = useContrast()
@@ -119,12 +126,49 @@ function AccessibilityMenuBase({ inline = false }: Props) {
     setCustomSidebarBgColor,
     setCustomSidebarFgColor
   } = useCustomColors()
+
+  // ✅ Hook para fuente disléxica en el tope (no dentro del condicional)
+  const { dyslexicFont, setDyslexicFont } = useAccessibility(s => ({
+    dyslexicFont: s.dyslexicFont,
+    setDyslexicFont: s.setDyslexicFont
+  }))
+
+  const { pointerSize, setPointerSize, pointerColor, setPointerColor } = usePointer()
   const { t, i18n } = useTranslation()
 
-  const { pointerSize, setPointerSize } = useAccessibility(s => ({ pointerSize: s.pointerSize, setPointerSize: s.setPointerSize }))
-  const { pointerColor, setPointerColor } = useAccessibility(s => ({ pointerColor: (s as any).pointerColor, setPointerColor: (s as any).setPointerColor }))
+  // === Paletas para daltonismo (usa los setters ya existentes de colores) ===
+  const applyDaltonismPalette = (
+    preset: "protanopia" | "deuteranopia" | "tritanopia" = "protanopia"
+  ) => {
+    setCustomColorsEnabled(true)
 
-  // Componente Toggle reutilizable para casillas más claras
+    if (preset === "protanopia" || preset === "deuteranopia") {
+      setCustomBgColor("#FFFFFF")
+      setCustomTextColor("#000000")
+      setCustomPrimaryColor("#0072E3")
+      setCustomSidebarBgColor("#003D7A")
+      setCustomSidebarFgColor("#FFFFFF")
+    } else if (preset === "tritanopia") {
+      setCustomBgColor("#FFFFFF")
+      setCustomTextColor("#000000")
+      setCustomPrimaryColor("#E60000")
+      setCustomSidebarBgColor("#1A1A1A")
+      setCustomSidebarFgColor("#FFFFFF")
+    }
+  }
+
+  // Helper para estilo de h2 en el panel
+  const getH2Style = (): React.CSSProperties => {
+    if (customColorsEnabled) {
+      return { color: customSidebarFgColor }
+    }
+    if (contrastMode === "default") {
+      return { color: "#1E3452" }
+    }
+    return { color: "var(--text)" }
+  }
+
+  // Componente Toggle reutilizable
   const Toggle = ({
     checked,
     onChange,
@@ -134,15 +178,24 @@ function AccessibilityMenuBase({ inline = false }: Props) {
     onChange: (v: boolean) => void
     label: string
   }) => {
-    const rowStyle: React.CSSProperties = checked
+    const rowStyle: React.CSSProperties = customColorsEnabled
       ? {
-        background: "color-mix(in oklab, var(--surface), var(--bg) 6%)",
-        borderColor: "var(--border)"
+        background: customSidebarBgColor,
+        borderColor: customSidebarFgColor,
+        color: customSidebarFgColor
       }
-      : {
-        background: "color-mix(in oklab, var(--surface), black 3%)",
-        borderColor: "var(--border)"
-      }
+      : checked
+        ? {
+          background: "color-mix(in oklab, var(--surface), var(--bg) 6%)",
+          borderColor: "var(--border)",
+          color: "var(--text)"
+        }
+        : {
+          background: "color-mix(in oklab, var(--surface), black 3%)",
+          borderColor: "var(--border)",
+          color: "var(--text)"
+        }
+
     return (
       <button
         type="button"
@@ -154,7 +207,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
       >
         <span
           className="text-left font-medium select-none flex-1 min-w-0 truncate"
-          style={{ color: "var(--text)" }}
+          style={{ color: customColorsEnabled ? customSidebarFgColor : "var(--text)" }}
         >
           {label}
         </span>
@@ -162,9 +215,12 @@ function AccessibilityMenuBase({ inline = false }: Props) {
           className={[
             "relative inline-flex items-center justify-center h-4 w-9 rounded-full flex-none",
             checked
-              ? "bg-[color-mix(in_oklab,var(--primary),transparent_55%)]"
+              ? customColorsEnabled
+                ? `bg-[${customPrimaryColor}]`
+                : "bg-[color-mix(in_oklab,var(--primary),transparent_55%)]"
               : "bg-[color-mix(in_oklab,var(--muted),transparent_70%)]"
           ].join(" ")}
+          style={checked && customColorsEnabled ? { backgroundColor: "#63C1CA" } : undefined}
           aria-hidden="true"
         >
           <span
@@ -185,7 +241,6 @@ function AccessibilityMenuBase({ inline = false }: Props) {
     )
   }
 
-  // Pequeño wrapper para el toggle de resaltar elementos interactivos
   const InteractiveHighlightToggle = () => {
     const { interactiveHighlight, setInteractiveHighlight } = useInteractiveHighlight()
     return (
@@ -201,7 +256,6 @@ function AccessibilityMenuBase({ inline = false }: Props) {
     const { voiceEnabled, setVoiceEnabled } = useVoice()
 
     const onToggle = (on: boolean) => {
-      // when turning off, immediately stop any playing speech
       if (!on) TTS.stop()
       setVoiceEnabled(on)
     }
@@ -224,13 +278,23 @@ function AccessibilityMenuBase({ inline = false }: Props) {
       aria-label="Configuración de accesibilidad"
       className={`${expanded ? "space-y-3" : ""} accessibility-panel`}
       style={
-        contrastMode === "default"
+        customColorsEnabled
           ? {
-            background: "#FFFFFF",
-            color: "#1E3452",
+            background: customSidebarBgColor,
+            color: customSidebarFgColor,
             overflow: "hidden"
           }
-          : undefined
+          : contrastMode === "default"
+            ? {
+              background: "#FFFFFF",
+              color: "#1E3452",
+              overflow: "hidden"
+            }
+            : {
+              background: "var(--card)",
+              color: "var(--text)",
+              overflow: "hidden"
+            }
       }
     >
       {/* Encabezado compacto con toggle */}
@@ -238,7 +302,9 @@ function AccessibilityMenuBase({ inline = false }: Props) {
         <h2
           className="text-sm font-semibold"
           style={
-            contrastMode === "default" ? { color: "#1E3452" } : undefined
+            customColorsEnabled
+              ? { color: customSidebarFgColor }
+              : contrastMode === "default" ? { color: "#1E3452" } : { color: "var(--text)" }
           }
         >
           {t("nav.accessibility.title")}
@@ -248,13 +314,24 @@ function AccessibilityMenuBase({ inline = false }: Props) {
           onClick={() => setExpanded(!expanded)}
           className="px-2 py-1 text-xs border rounded"
           style={
-            contrastMode === "default"
+            customColorsEnabled
               ? {
-                borderColor: "#94A3B8",
-                color: "#1E3452",
-                background: "#E2E8F0"
+                borderColor: customSidebarFgColor,
+                color: customSidebarFgColor,
+                background: customSidebarBgColor,
+                opacity: 0.8
               }
-              : undefined
+              : contrastMode === "default"
+                ? {
+                  borderColor: "#94A3B8",
+                  color: "#1E3452",
+                  background: "#E2E8F0"
+                }
+                : {
+                  borderColor: "var(--border)",
+                  color: "var(--text)",
+                  background: "var(--surface)"
+                }
           }
           aria-expanded={expanded}
           aria-label={expanded ? "Contraer opciones" : "Expandir opciones"}
@@ -276,9 +353,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             <h2
               id="acc-lectura"
               className="text-sm font-semibold"
-              style={
-                contrastMode === "default" ? { color: "#1E3452" } : undefined
-              }
+              style={getH2Style()}
             >
               {t("nav.accessibility.readingTools")}
             </h2>
@@ -430,9 +505,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             <h2
               id="acc-fuente"
               className="text-sm font-semibold"
-              style={
-                contrastMode === "default" ? { color: "#1E3452" } : undefined
-              }
+              style={getH2Style()}
             >
               {t("nav.accessibility.textSize")}
             </h2>
@@ -469,9 +542,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             <h2
               id="acc-contraste"
               className="text-sm font-semibold"
-              style={
-                contrastMode === "default" ? { color: "#1E3452" } : undefined
-              }
+              style={getH2Style()}
             >
               {t("nav.accessibility.contrast")}
             </h2>
@@ -516,23 +587,19 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             </div>
           </section>
 
-          {/* Colores personalizados globales */}
-          <section aria-labelledby="acc-colores" className="mb-3">
+          {/* Modo Daltonismo */}
+          <section aria-labelledby="acc-daltonismo" className="mb-3">
             <h2
-              id="acc-colores"
+              id="acc-daltonismo"
               className="text-sm font-semibold"
-              style={
-                contrastMode === "default" ? { color: "#1E3452" } : undefined
-              }
+              style={getH2Style()}
             >
-              {t("nav.accessibility.customColors")}
+              {t("nav.accessibility.colorBlindMode", "Modo Daltonismo")}
             </h2>
-
-            {/* Fila con botón Editar y toggle, debajo del título */}
-            <div className="mt-1 flex items-center gap-2">
+            <div className="mt-1 space-y-2">
               <button
                 type="button"
-                className="px-2 py-1 border rounded text-[0.65rem] shrink-0"
+                className="px-2 py-1 border rounded text-[0.65rem] w-full text-left shrink-0"
                 style={
                   contrastMode === "default"
                     ? {
@@ -542,152 +609,115 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                     }
                     : undefined
                 }
-                onClick={() => setShowAdvancedColors(s => !s)}
-                aria-expanded={showAdvancedColors}
+                onClick={() => setShowColorBlindOptions(s => !s)}
+                aria-expanded={showColorBlindOptions}
               >
-                {showAdvancedColors
-                  ? t("nav.accessibility.hide")
-                  : t("nav.accessibility.edit")}
+                {showColorBlindOptions ? "▼ Opciones" : "► Seleccionar paleta"}
               </button>
 
-              <div className="flex-1 min-w-0">
-                <Toggle
-                  checked={customColorsEnabled}
-                  onChange={setCustomColorsEnabled}
-                  label={t("nav.accessibility.colorsActive")}
-                />
-              </div>
+              {showColorBlindOptions && (
+                <div className="space-y-1.5 mt-2 pt-2 border-t border-slate-300 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => applyDaltonismPalette("protanopia")}
+                    className="w-full px-2.5 py-2 border rounded text-xs text-left transition hover:shadow-sm"
+                    style={
+                      contrastMode === "default"
+                        ? {
+                          borderColor: "#0072E3",
+                          color: "#003D7A",
+                          background: "#E3F0FF",
+                          fontWeight: customColorsEnabled && customPrimaryColor === "#0072E3" ? "600" : "400"
+                        }
+                        : {
+                          background: "var(--surface)",
+                          color: "var(--text)",
+                          borderColor: "#0072E3",
+                          fontWeight: customColorsEnabled && customPrimaryColor === "#0072E3" ? "600" : "400"
+                        }
+                    }
+                  >
+                    <span className="font-semibold block mb-0.5">🔵 Protanopía</span>
+                    <span className="text-[0.6rem] opacity-75">
+                      {t("nav.accessibility.colorBlindRG", "Daltonismo rojo-verde - Visión azul/amarillo")}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyDaltonismPalette("deuteranopia")}
+                    className="w-full px-2.5 py-2 border rounded text-xs text-left transition hover:shadow-sm"
+                    style={
+                      contrastMode === "default"
+                        ? {
+                          borderColor: "#0072E3",
+                          color: "#003D7A",
+                          background: "#E3F0FF",
+                          fontWeight: customColorsEnabled && customPrimaryColor === "#0072E3" ? "600" : "400"
+                        }
+                        : {
+                          background: "var(--surface)",
+                          color: "var(--text)",
+                          borderColor: "#0072E3",
+                          fontWeight: customColorsEnabled && customPrimaryColor === "#0072E3" ? "600" : "400"
+                        }
+                    }
+                  >
+                    <span className="font-semibold block mb-0.5">🔵 Deuteranopía</span>
+                    <span className="text-[0.6rem] opacity-75">
+                      {t("nav.accessibility.colorBlindGreen", "Daltonismo rojo-verde - Insensibilidad al verde")}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyDaltonismPalette("tritanopia")}
+                    className="w-full px-2.5 py-2 border rounded text-xs text-left transition hover:shadow-sm"
+                    style={
+                      contrastMode === "default"
+                        ? {
+                          borderColor: "#E60000",
+                          color: "#8B0000",
+                          background: "#FFE3E3",
+                          fontWeight: customColorsEnabled && customPrimaryColor === "#E60000" ? "600" : "400"
+                        }
+                        : {
+                          background: "var(--surface)",
+                          color: "var(--text)",
+                          borderColor: "#E60000",
+                          fontWeight: customColorsEnabled && customPrimaryColor === "#E60000" ? "600" : "400"
+                        }
+                    }
+                  >
+                    <span className="font-semibold block mb-0.5">🔴 Tritanopía</span>
+                    <span className="text-[0.6rem] opacity-75">
+                      {t("nav.accessibility.colorBlindBY", "Daltonismo azul-amarillo")}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomColorsEnabled(false)}
+                    className="w-full px-2.5 py-2 border rounded text-xs text-left transition hover:shadow-sm"
+                    style={
+                      contrastMode === "default"
+                        ? {
+                          borderColor: "#94A3B8",
+                          color: "#4B5563",
+                          background: "#F1F5F9",
+                          fontWeight: !customColorsEnabled ? "600" : "400"
+                        }
+                        : {
+                          background: "var(--surface)",
+                          color: "var(--text)",
+                          borderColor: "var(--border)",
+                          fontWeight: !customColorsEnabled ? "600" : "400"
+                        }
+                    }
+                  >
+                    <span className="font-semibold block mb-0.5">✕ Deshabilitado</span>
+                    <span className="text-[0.6rem] opacity-75">Usar colores normales</span>
+                  </button>
+                </div>
+              )}
             </div>
-
-            {customColorsEnabled && showAdvancedColors && (
-              <div className="mt-2 space-y-2">
-                {/* Fondo */}
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="w-16 shrink-0">
-                    {t("nav.accessibility.bg")}
-                  </span>
-                  <input
-                    type="color"
-                    value={customBgColor}
-                    onChange={e => setCustomBgColor(e.target.value)}
-                    aria-label={t("nav.accessibility.bgColorAria")}
-                    className="h-6 w-8 rounded border border-slate-500 bg-transparent shrink-0"
-                  />
-                  <div className="flex gap-1 flex-wrap">
-                    {["#FFFFFF", "#0E1624", "#000000"].map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCustomBgColor(c)}
-                        className="h-5 w-5 rounded border border-slate-500 shrink-0"
-                        style={{ backgroundColor: c }}
-                        aria-label={`Fondo ${c}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-                {/* Texto */}
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="w-16 shrink-0">
-                    {t("nav.accessibility.text")}
-                  </span>
-                  <input
-                    type="color"
-                    value={customTextColor}
-                    onChange={e => setCustomTextColor(e.target.value)}
-                    aria-label={t("nav.accessibility.textColorAria")}
-                    className="h-6 w-8 rounded border border-slate-500 bg-transparent shrink-0"
-                  />
-                  <div className="flex gap-1 flex-wrap">
-                    {["#1E3452", "#FFFFFF", "#FFBF00"].map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCustomTextColor(c)}
-                        className="h-5 w-5 rounded border border-slate-500 shrink-0"
-                        style={{ backgroundColor: c }}
-                        aria-label={`Texto ${c}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-                {/* Primario */}
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="w-16 shrink-0">
-                    {t("nav.accessibility.primary")}
-                  </span>
-                  <input
-                    type="color"
-                    value={customPrimaryColor}
-                    onChange={e => setCustomPrimaryColor(e.target.value)}
-                    aria-label={t("nav.accessibility.primaryColorAria")}
-                    className="h-6 w-8 rounded border border-slate-500 bg-transparent shrink-0"
-                  />
-                  <div className="flex gap-1 flex-wrap">
-                    {["#63C1CA", "#FFBF00", "#6366F1"].map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCustomPrimaryColor(c)}
-                        className="h-5 w-5 rounded border border-slate-500 shrink-0"
-                        style={{ backgroundColor: c }}
-                        aria-label={`Primario ${c}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-                {/* Sidebar fondo */}
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="w-16 shrink-0">
-                    {t("nav.accessibility.sidebarBg")}
-                  </span>
-                  <input
-                    type="color"
-                    value={customSidebarBgColor}
-                    onChange={e => setCustomSidebarBgColor(e.target.value)}
-                    aria-label={t("nav.accessibility.sidebarBgColorAria")}
-                    className="h-6 w-8 rounded border border-slate-500 bg-transparent shrink-0"
-                  />
-                  <div className="flex gap-1 flex-wrap">
-                    {["#FFFFFF", "#1E3452"].map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCustomSidebarBgColor(c)}
-                        className="h-5 w-5 rounded border border-slate-500 shrink-0"
-                        style={{ backgroundColor: c }}
-                        aria-label={`Sidebar ${c}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-                {/* Sidebar texto */}
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="w-16 shrink-0">
-                    {t("nav.accessibility.sidebarFg")}
-                  </span>
-                  <input
-                    type="color"
-                    value={customSidebarFgColor}
-                    onChange={e => setCustomSidebarFgColor(e.target.value)}
-                    aria-label={t("nav.accessibility.sidebarFgColorAria")}
-                    className="h-6 w-8 rounded border border-slate-500 bg-transparent shrink-0"
-                  />
-                  <div className="flex gap-1 flex-wrap">
-                    {["#1E3452", "#FFFFFF"].map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCustomSidebarFgColor(c)}
-                        className="h-5 w-5 rounded border border-slate-500 shrink-0"
-                        style={{ backgroundColor: c }}
-                        aria-label={`Sidebar texto ${c}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </section>
 
           {/* Otras opciones */}
@@ -695,9 +725,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             <h2
               id="acc-otros"
               className="text-sm font-semibold"
-              style={
-                contrastMode === "default" ? { color: "#1E3452" } : undefined
-              }
+              style={getH2Style()}
             >
               {t("nav.accessibility.otherOptions")}
             </h2>
@@ -710,7 +738,6 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             {bigPointer && (
               <div className="pl-2">
                 <label className="flex items-center gap-3 text-xs">
-                  {/* Eliminada la etiqueta de i18n visual; se usa un aria-label más legible */}
                   <input
                     type="range"
                     min={12}
@@ -760,14 +787,28 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             <InteractiveHighlightToggle />
           </section>
 
+          {/* Fuente para dislexia */}
+          <section aria-labelledby="acc-dyslexic" className="mt-3">
+            <h2
+              id="acc-dyslexic"
+              className="text-sm font-semibold mb-1"
+              style={getH2Style()}
+            >
+              {t("nav.accessibility.dyslexicFont")}
+            </h2>
+            <Toggle
+              checked={dyslexicFont}
+              onChange={setDyslexicFont}
+              label={t("nav.accessibility.dyslexicFontEnable")}
+            />
+          </section>
+
           {/* Idioma */}
           <section aria-labelledby="acc-idioma" className="mt-3">
             <h2
               id="acc-idioma"
               className="text-sm font-semibold mb-1"
-              style={
-                contrastMode === "default" ? { color: "#1E3452" } : undefined
-              }
+              style={getH2Style()}
             >
               {t("nav.accessibility.language")}
             </h2>
@@ -814,12 +855,27 @@ function AccessibilityMenuBase({ inline = false }: Props) {
               })}
             </div>
           </section>
-          {/* Reset (solo visible cuando el panel está expandido) */}
+
+          {/* Reset */}
           <div className="mt-3">
             <button
               type="button"
               onClick={() => {
                 try {
+                  const store = useAccessibility.getState()
+
+                  store.setCustomColorsEnabled(false)
+                  store.setContrastMode("default")
+                  store.setVoiceEnabled(false)
+                  store.setReadingMaskEnabled(false)
+                  store.setReadingGuideEnabled(false)
+                  store.setFontSize("medium")
+                  store.setInteractiveHighlight(false)
+                  store.setDyslexicFont(false)
+
+                  if (store.bigPointer) store.toggleBigPointer()
+                  if (store.focusMode) store.toggleFocusMode()
+
                   localStorage.removeItem('studentsnotes-accessibility')
                   localStorage.removeItem('sn_high_contrast')
                 } catch { }
@@ -879,13 +935,50 @@ function AccessibilityMenuBase({ inline = false }: Props) {
       >
         <summary
           className="cursor-pointer px-2 py-1 text-sm border rounded"
+          style={
+            customColorsEnabled
+              ? {
+                borderColor: customTextColor,
+                color: customTextColor,
+                background: customBgColor,
+              }
+              : contrastMode === "default"
+                ? {
+                  borderColor: "#94A3B8",
+                  color: "#1E3452",
+                  background: "#E2E8F0"
+                }
+                : undefined
+          }
           aria-label="Abrir ajustes de accesibilidad"
           aria-expanded={open}
         >
           Accesibilidad
         </summary>
         <div
-          className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border rounded shadow-lg p-3 z-50"
+          className="absolute right-0 mt-2 w-72 rounded shadow-lg p-3 z-50"
+          style={
+            customColorsEnabled
+              ? {
+                background: customBgColor,
+                borderColor: customTextColor,
+                border: `1px solid ${customTextColor}`,
+                color: customTextColor
+              }
+              : contrastMode === "default"
+                ? {
+                  background: "#FFFFFF",
+                  borderColor: "#D9E0E6",
+                  border: "1px solid #D9E0E6",
+                  color: "#1E3452"
+                }
+                : {
+                  background: "var(--card)",
+                  borderColor: "var(--border)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text)"
+                }
+          }
           role="dialog"
           aria-label="Configuración de accesibilidad"
         >

@@ -5,12 +5,28 @@ import { Catalogos } from "../lib/catalogos"
 import MateriaPicker from "../components/inscripciones/MateriaPicker"
 import CarreraPicker from "../components/inscripciones/CarreraPicker"
 import api from "../lib/api"
-import confirmService from '../lib/confirmService'
+import confirmService from "../lib/confirmService"
 import * as XLSX from "xlsx"
 import { useTranslation } from "react-i18next"
-import { FiArrowRight, FiArrowLeft, FiPlus, FiDownload, FiUpload, FiFilter, FiTrash2 } from 'react-icons/fi'
-import { getCareerLabel, getSubjectLabel, formatHorario, getGenericLabel, getTermLabel, shortLabel } from '../lib/labels'
-import SpeakOnClick from '../components/SpeakOnClick'
+import {
+  FiArrowRight,
+  FiArrowLeft,
+  FiPlus,
+  FiDownload,
+  FiUpload,
+  FiFilter,
+  FiTrash2,
+} from "react-icons/fi"
+import {
+  getCareerLabel,
+  getSubjectLabel,
+  formatHorario,
+  getGenericLabel,
+  getTermLabel,
+  shortLabel,
+} from "../lib/labels"
+import { useAccessibility } from "../store/useAccessibility"
+import { TTS } from "../lib/tts"
 
 type Grupo = {
   id_grupo: number
@@ -26,6 +42,35 @@ export default function GruposAula() {
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
 
+  // 🔊 Configuración de voz global (solo botones)
+  const { voiceEnabled, voiceRate } = useAccessibility((s) => ({
+    voiceEnabled: s.voiceEnabled,
+    voiceRate: s.voiceRate,
+  }))
+
+  const speak = (textToSpeak?: string) => {
+    if (!voiceEnabled) return
+    if (!textToSpeak) return
+    if (!TTS.isSupported()) return
+    TTS.speak(textToSpeak, { rate: voiceRate })
+  }
+
+  // Textos de ayuda por apartado
+  const searchSectionHelp = t(
+    "classGroups.tts.searchSectionHelp",
+    "En este apartado puedes filtrar los grupos por periodo, carrera, materia y un cuadro de búsqueda de texto. " +
+    "Primero elige el periodo en la lista de términos. Después, si lo necesitas, selecciona una carrera y luego una materia. " +
+    "En el cuadro de búsqueda puedes escribir el nombre de la materia, el código del grupo o el nombre del docente para acotar los resultados."
+  )
+
+  const groupsSectionHelp = t(
+    "classGroups.tts.groupsSectionHelp",
+    "En este apartado se muestran las tarjetas de los grupos encontrados. " +
+    "Cada tarjeta indica la materia, la carrera, el código del grupo, la modalidad, el docente, el horario y el cupo. " +
+    "Usa el botón de escuchar para oír un resumen del grupo, o el botón de detalles para abrir la vista completa del aula."
+  )
+
+  // ===== filtros / estado =====
   const [terminos, setTerminos] = useState<any[]>([])
   const [terminoId, setTerminoId] = useState<number | null>(null)
   const [carreraId, setCarreraId] = useState<number | null>(null)
@@ -168,8 +213,7 @@ export default function GruposAula() {
       setAlumnos(data || { cupo: 0, unidades: 0, rows: [] })
     } catch (e: any) {
       setMsgAlu(
-        e?.message ||
-        t("classGroups.studentsModal.messages.errorGeneric")
+        e?.message || t("classGroups.studentsModal.messages.errorGeneric")
       )
     } finally {
       setLoadingAlu(false)
@@ -199,15 +243,18 @@ export default function GruposAula() {
         )
         return
       }
-      await api.post("/inscripciones", {
-        id_estudiante: est.id_estudiante,
-        id_grupo: openAlumnos.id_grupo,
-      }, { skipConfirm: true } as any)
+      await api.post(
+        "/inscripciones",
+        {
+          id_estudiante: est.id_estudiante,
+          id_grupo: openAlumnos.id_grupo,
+        },
+        { skipConfirm: true } as any
+      )
       await loadAlumnos(openAlumnos.id_grupo)
     } catch (e: any) {
       setMsgAlu(
-        e?.message ||
-        t("classGroups.studentsModal.messages.errorGeneric")
+        e?.message || t("classGroups.studentsModal.messages.errorGeneric")
       )
     }
   }
@@ -223,7 +270,9 @@ export default function GruposAula() {
     if (!isFinite(num)) return
     try {
       const payload = { unidades: [{ unidad, [campo]: num }] }
-      await api.put(`/inscripciones/${id_inscripcion}/unidades`, payload, { skipConfirm: true } as any)
+      await api.put(`/inscripciones/${id_inscripcion}/unidades`, payload, {
+        skipConfirm: true,
+      } as any)
     } catch {
       // silencioso
     }
@@ -233,20 +282,32 @@ export default function GruposAula() {
     if (!openAlumnos) return
     try {
       const ok = await confirmService.requestConfirm({
-        titleKey: 'confirm.delete.title',
-        descriptionText: t('classGroups.studentsModal.confirmUnsubscribe') || t('confirm.delete.description'),
-        confirmLabelKey: 'confirm.yes',
-        cancelLabelKey: 'confirm.no',
+        titleKey: "confirm.delete.title",
+        descriptionText:
+          t("classGroups.studentsModal.confirmUnsubscribe") ||
+          t("confirm.delete.description"),
+        confirmLabelKey: "confirm.yes",
+        cancelLabelKey: "confirm.no",
         danger: true,
       })
       if (!ok) return
-      await api.delete(`/inscripciones/${id_inscripcion}`, { skipConfirm: true } as any)
+      await api.delete(`/inscripciones/${id_inscripcion}`, {
+        skipConfirm: true,
+      } as any)
       await loadAlumnos(openAlumnos.id_grupo)
-        ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: t('classGroups.studentsModal.messages.unsubscribed') || 'Inscripción eliminada' })
+        ; (await import("../lib/notifyService")).default.notify({
+          type: "success",
+          message:
+            t("classGroups.studentsModal.messages.unsubscribed") ||
+            "Inscripción eliminada",
+        })
     } catch (e: any) {
-      const format = (await import('../lib/errorFormatter')).default
-      const msg = format(e, { entity: 'la inscripción', action: 'delete' })
-        ; (await import('../lib/notifyService')).default.notify({ type: 'error', message: msg })
+      const format = (await import("../lib/errorFormatter")).default
+      const msg = format(e, { entity: "la inscripción", action: "delete" })
+        ; (await import("../lib/notifyService")).default.notify({
+          type: "error",
+          message: msg,
+        })
     }
   }
 
@@ -283,8 +344,7 @@ export default function GruposAula() {
       await loadAlumnos(openAlumnos.id_grupo)
     } catch (e: any) {
       setMsgAlu(
-        e?.message ||
-        t("classGroups.studentsModal.messages.importError")
+        e?.message || t("classGroups.studentsModal.messages.importError")
       )
     } finally {
       setImporting(false)
@@ -301,10 +361,100 @@ export default function GruposAula() {
 
   const alumnosCount = (alumnos.rows || []).length
 
+  // Convierte abreviaturas de días a nombres completos SOLO para TTS
+  function expandDaysForTts(text: string | undefined | null): string {
+    if (!text) return ""
+
+    // Reemplaza palabras como Lun, Mar, Mie, Juev, Vie, Sab, Dom...
+    return text.replace(
+      /\b(Lun(?:es)?|Mar(?:t|tes)?|Mi[eé]r(?:coles)?|Juev?|Vie(?:rnes)?|S[áa]b(?:ado)?|Dom(?:ingo)?)\b/gi,
+      (match) => {
+        const m = match.toLowerCase()
+        if (m.startsWith("lun")) return "lunes"
+        if (m.startsWith("mar")) return "martes"
+        if (m.startsWith("mi")) return "miércoles"
+        if (m.startsWith("jue")) return "jueves"
+        if (m.startsWith("vie")) return "viernes"
+        if (m.startsWith("sa")) return "sábado"
+        if (m.startsWith("do")) return "domingo"
+        return match
+      }
+    )
+  }
+
+  // 🔊 helper: resumen de un grupo
+  function buildGroupSummary(g: Grupo): string {
+    const subject =
+      getSubjectLabel(g.materia) ||
+      t("classGroups.cards.noSubjectTts", "Materia sin nombre")
+    const careerObj =
+      (g as any)?.materia?.carrera ||
+      ((g as any)?.materia?.carrera_nombre
+        ? { nombre: (g as any)?.materia?.carrera_nombre }
+        : undefined)
+    const careerLabel =
+      getCareerLabel(careerObj) ||
+      t("classGroups.cards.noCareerTts", "Carrera no especificada")
+    const code = g.grupo_codigo || t("classGroups.cards.noCodeTts", "Sin código de grupo")
+    const docente = g.docente
+      ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""} ${g.docente.ap_materno ?? ""}`.trim()
+      : t("classGroups.cards.noTeacherTts", "Sin docente asignado")
+
+    // ⬇️ aquí usamos el horario visual y luego lo adaptamos para TTS
+    const horarioVisual = formatHorario(g.horario)
+    const horarioTts = expandDaysForTts(horarioVisual)
+
+    const modalidad =
+      getGenericLabel(g.modalidad) ||
+      t("classGroups.cards.noModalityTts", "Sin modalidad definida")
+    const capacity = t(
+      "classGroups.cards.capacityTts",
+      "Cupo para {{capacity}} estudiantes.",
+      { capacity: g.cupo }
+    )
+
+    return t(
+      "classGroups.cards.ttsSummary",
+      "Grupo {{code}} de la materia {{subject}}, de la carrera {{career}}. Modalidad: {{modality}}. Docente: {{teacher}}. Horario: {{schedule}}. {{capacity}}",
+      {
+        code,
+        subject,
+        career: careerLabel,
+        modality: modalidad,
+        teacher: docente,
+        // ⬇️ usamos el horarioTts para la voz
+        schedule: horarioTts,
+        capacity,
+      }
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Filtros superiores */}
       <div className="rounded-2xl border bg-white p-4 shadow-sm flex flex-wrap items-end gap-4">
+        {/* Encabezado del apartado de búsqueda con botón de ayuda de voz */}
+        <div className="flex items-center justify-between w-full mb-1">
+          <div className="flex items-center gap-2">
+            <FiFilter className="text-slate-400" size={14} />
+            <p className="text-xs font-semibold text-slate-700">
+              {t("classGroups.filters.sectionTitle", "Búsqueda y filtros de grupos")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => speak(searchSectionHelp)}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            aria-label={t(
+              "classGroups.filters.sectionHelpAria",
+              "Escuchar explicación del apartado de búsqueda y filtros"
+            )}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>{t("classGroups.filters.sectionHelpLabel", "¿Cómo usar estos filtros?")}</span>
+          </button>
+        </div>
+
         <div className="grid gap-1 w-40 min-w-0">
           <label className="text-xs text-slate-500">
             {t("classGroups.filters.termLabel")}
@@ -324,9 +474,7 @@ export default function GruposAula() {
               }
             }}
           >
-            <option value="">
-              {t("classGroups.filters.termAll")}
-            </option>
+            <option value="">{t("classGroups.filters.termAll")}</option>
             {terminos.map((tmo) => (
               <option key={tmo.id_termino} value={tmo.id_termino}>
                 {getTermLabel(tmo)}
@@ -336,7 +484,9 @@ export default function GruposAula() {
         </div>
 
         <div className="grid gap-1 w-56 min-w-0">
-          <label className="text-xs text-slate-500">{t("classGroups.filters.careerLabel")}</label>
+          <label className="text-xs text-slate-500">
+            {t("classGroups.filters.careerLabel")}
+          </label>
           <CarreraPicker
             value={carreraId ?? undefined}
             onChange={(id) => {
@@ -373,10 +523,25 @@ export default function GruposAula() {
         </div>
       </div>
 
+      {/* Encabezado del apartado de grupos + botón de ayuda de voz */}
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">
-          {t("classGroups.header.title")}
-        </h3>
+        <div className="flex items-center gap-3">
+          <h3 className="font-semibold">
+            {t("classGroups.header.title")}
+          </h3>
+          <button
+            type="button"
+            onClick={() => speak(groupsSectionHelp)}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            aria-label={t(
+              "classGroups.header.sectionHelpAria",
+              "Escuchar explicación del listado de grupos"
+            )}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>{t("classGroups.header.sectionHelpLabel", "¿Qué muestra esta lista?")}</span>
+          </button>
+        </div>
         <div className="text-sm text-slate-500">
           {loading
             ? t("classGroups.header.loading")
@@ -401,20 +566,24 @@ export default function GruposAula() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-xs text-slate-500 truncate">
-                      <SpeakOnClick className="block">{getSubjectLabel(g.materia) || "—"}</SpeakOnClick>
+                      {getSubjectLabel(g.materia) || "—"}
                     </div>
                     {/* Carrera si está disponible */}
                     {(() => {
-                      const carreraObj = (g as any)?.materia?.carrera || ((g as any)?.materia?.carrera_nombre ? { nombre: (g as any)?.materia?.carrera_nombre } : undefined)
+                      const carreraObj =
+                        (g as any)?.materia?.carrera ||
+                        ((g as any)?.materia?.carrera_nombre
+                          ? { nombre: (g as any)?.materia?.carrera_nombre }
+                          : undefined)
                       const carreraLabel = getCareerLabel(carreraObj)
                       return carreraLabel ? (
                         <div className="text-[11px] text-slate-400 truncate">
-                          <SpeakOnClick className="block">{shortLabel(carreraLabel, 2)}</SpeakOnClick>
+                          {shortLabel(carreraLabel, 2)}
                         </div>
                       ) : null
                     })()}
                     <div className="text-lg font-semibold leading-tight truncate">
-                      <SpeakOnClick className="block">{g.grupo_codigo}</SpeakOnClick>
+                      {g.grupo_codigo}
                     </div>
                   </div>
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 ring-1 ring-sky-100 whitespace-nowrap">
@@ -423,20 +592,42 @@ export default function GruposAula() {
                 </div>
                 <div className="mt-3 grid gap-1 text-sm">
                   <div className="truncate">
-                    <SpeakOnClick className="block">{g.docente ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}` : "N/D"}</SpeakOnClick>
+                    {g.docente
+                      ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`
+                      : "N/D"}
                   </div>
-                  <div className="text-slate-600">{formatHorario(g.horario)}</div>
+                  <div className="text-slate-600">
+                    {formatHorario(g.horario)}
+                  </div>
                   <div className="text-slate-500 text-xs">
                     {t("classGroups.cards.capacity", {
                       capacity: g.cupo,
                     })}
                   </div>
                 </div>
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {/* Botón para escuchar resumen del grupo */}
+                  <button
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-xs inline-flex items-center hover:bg-slate-50"
+                    onClick={() => speak(buildGroupSummary(g))}
+                    aria-label={t(
+                      "classGroups.cards.readSummaryAria",
+                      "Escuchar resumen del grupo {{code}}",
+                      { code: g.grupo_codigo }
+                    )}
+                  >
+                    <span aria-hidden="true">🔊</span>
+                    <span className="ml-1">
+                      {t("classGroups.cards.readSummary", "Escuchar grupo")}
+                    </span>
+                  </button>
+
                   <button
                     className="rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50 inline-flex items-center"
                     onClick={() => {
-                      const titulo = `${getSubjectLabel(g.materia) ?? ""} • ${g.grupo_codigo}`
+                      const titulo = `${getSubjectLabel(g.materia) ?? ""} • ${g.grupo_codigo
+                        }`
                       navigate(`/grupos/aula/${g.id_grupo}`, {
                         state: { id_grupo: g.id_grupo, titulo },
                       })
@@ -724,7 +915,10 @@ export default function GruposAula() {
                                 bajaInscripcion(r.id_inscripcion)
                               }
                             >
-                              <FiTrash2 className="mr-2" size={12} />
+                              <FiTrash2
+                                className="mr-2"
+                                size={12}
+                              />
                               {t(
                                 "classGroups.studentsModal.dropButton"
                               )}

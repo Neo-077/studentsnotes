@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
 import { isDark } from '../lib/theme'
+import { useAccessibility } from '../store/useAccessibility'
 
 // Definición de tipos
 type PuntoDatos = {
@@ -30,8 +31,15 @@ type SerieDatos = {
 
 export default function ControlChart({ promedio }: { promedio: PuntoDatos[] }) {
   const { t, i18n } = useTranslation()
+  const { customColorsEnabled, customTextColor, customPrimaryColor, customBgColor } = useAccessibility()
   const [series, setSeries] = useState<SerieDatos[]>([])
   const darkMode = isDark()
+
+  // Colores dinámicos del tema
+  const chartTextColor = customColorsEnabled ? customTextColor : (darkMode ? '#E9EEF5' : '#1E3452')
+  const chartPrimaryColor = customColorsEnabled ? customPrimaryColor : '#63C1CA'
+  const chartBgColor = customColorsEnabled ? customBgColor : (darkMode ? '#0b1722' : '#FFFFFF')
+  const chartGridColor = customColorsEnabled ? customTextColor : (darkMode ? '#233240' : '#D9E0E6')
 
   useEffect(() => {
     if (!promedio || !promedio.length) {
@@ -117,45 +125,45 @@ export default function ControlChart({ promedio }: { promedio: PuntoDatos[] }) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-xl font-bold text-slate-900 dark:text-[var(--text)] mb-1">
+        <h3 className="text-xl font-bold mb-1" style={{ color: chartTextColor }}>
           {t('classGroupDetail.charts.controlTitle')}
         </h3>
-        <p className="text-sm text-slate-600 dark:text-[var(--muted)]">
+        <p className="text-sm" style={{ color: chartTextColor, opacity: 0.7 }}>
           {t('classGroupDetail.charts.controlSubtitleWithLimits')}
         </p>
       </div>
-      <div className="h-96 bg-white dark:bg-[var(--card)] p-4 rounded-xl border border-slate-200 dark:border-[var(--border)] shadow-sm">
+      <div className="p-4 rounded-xl border shadow-sm" style={{ backgroundColor: chartBgColor, borderColor: chartTextColor }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={series} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
             <defs>
               <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
-                <stop offset="100%" stopColor="#059669" stopOpacity={0.8} />
+                <stop offset="0%" stopColor={chartPrimaryColor} stopOpacity={1} />
+                <stop offset="100%" stopColor={chartPrimaryColor} stopOpacity={0.8} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+            <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
             <XAxis
               dataKey="sem"
-              tick={{ fill: textColor, fontSize: 12 }}
-              axisLine={{ stroke: axisLineColor }}
-              tickLine={{ stroke: axisLineColor }}
+              tick={{ fill: chartTextColor, fontSize: 12 }}
+              axisLine={{ stroke: chartTextColor }}
+              tickLine={{ stroke: chartTextColor }}
               label={{
                 value: t('classGroupDetail.charts.controlXAxisLabel'),
                 position: 'insideBottom',
                 offset: -5,
-                style: { fill: textColor, fontSize: 12 },
+                style: { fill: chartTextColor, fontSize: 12 },
               }}
             />
             <YAxis
-              tick={{ fill: textColor, fontSize: 12 }}
-              axisLine={{ stroke: axisLineColor }}
-              tickLine={{ stroke: axisLineColor }}
+              tick={{ fill: chartTextColor, fontSize: 12 }}
+              axisLine={{ stroke: chartTextColor }}
+              tickLine={{ stroke: chartTextColor }}
               domain={[0, 100]}
               label={{
                 value: t('classGroupDetail.charts.controlYAxisLabel'),
                 angle: -90,
                 position: 'insideLeft',
-                style: { fill: textColor, fontSize: 12 },
+                style: { fill: chartTextColor, fontSize: 12 },
               }}
             />
             <Tooltip content={<CustomTooltip />} />
@@ -164,9 +172,9 @@ export default function ControlChart({ promedio }: { promedio: PuntoDatos[] }) {
               label={{
                 value: t('classGroupDetail.charts.controlRefCenterLabel'),
                 position: 'top',
-                style: { fill: textColor, fontSize: 11 },
+                style: { fill: chartTextColor, fontSize: 11 },
               }}
-              stroke="#3b82f6"
+              stroke={chartPrimaryColor}
               strokeDasharray="3 3"
               strokeWidth={2}
             />
@@ -175,9 +183,9 @@ export default function ControlChart({ promedio }: { promedio: PuntoDatos[] }) {
               label={{
                 value: t('classGroupDetail.charts.controlRefUCLLabel'),
                 position: 'top',
-                style: { fill: textColor, fontSize: 11 },
+                style: { fill: chartTextColor, fontSize: 11 },
               }}
-              stroke="#ef4444"
+              stroke={chartPrimaryColor}
               strokeDasharray="3 3"
               strokeWidth={1.5}
             />
@@ -186,9 +194,9 @@ export default function ControlChart({ promedio }: { promedio: PuntoDatos[] }) {
               label={{
                 value: t('classGroupDetail.charts.controlRefLCLLabel'),
                 position: 'bottom',
-                style: { fill: textColor, fontSize: 11 },
+                style: { fill: chartTextColor, fontSize: 11 },
               }}
-              stroke="#ef4444"
+              stroke={chartPrimaryColor}
               strokeDasharray="3 3"
               strokeWidth={1.5}
             />
@@ -198,8 +206,8 @@ export default function ControlChart({ promedio }: { promedio: PuntoDatos[] }) {
               name={t('classGroupDetail.charts.controlLegendAvg')}
               stroke="url(#lineGradient)"
               strokeWidth={3}
-              dot={{ r: 5, fill: '#10b981', strokeWidth: 2, stroke: '#ffffff' }}
-              activeDot={{ r: 7, fill: '#059669', strokeWidth: 2, stroke: '#ffffff' }}
+              dot={{ r: 5, fill: chartPrimaryColor, strokeWidth: 2, stroke: chartBgColor }}
+              activeDot={{ r: 7, fill: chartPrimaryColor, strokeWidth: 2, stroke: chartBgColor }}
             />
             <Legend wrapperStyle={{ paddingTop: '10px' }} iconType="line" />
           </LineChart>

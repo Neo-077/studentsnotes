@@ -13,6 +13,7 @@ import {
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
 import api from '../lib/api'
+import { useAccessibility } from '../store/useAccessibility'
 
 type Props = { id_grupo: number }
 
@@ -25,9 +26,16 @@ type Baja = {
 
 export default function ParetoChart({ id_grupo }: Props) {
   const { t, i18n } = useTranslation()
+  const { customColorsEnabled, customTextColor, customPrimaryColor, customBgColor } = useAccessibility()
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Colores dinámicos del tema
+  const chartTextColor = customColorsEnabled ? customTextColor : '#000000'
+  const chartPrimaryColor = customColorsEnabled ? customPrimaryColor : '#63C1CA'
+  const chartBgColor = customColorsEnabled ? customBgColor : '#FFFFFF'
+  const chartGridColor = customColorsEnabled ? customTextColor : '#CCCCCC'
 
   useEffect(() => {
     let alive = true
@@ -159,34 +167,39 @@ export default function ParetoChart({ id_grupo }: Props) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">
+      <h2 className="text-lg font-semibold" style={{ color: chartTextColor }}>
         {t('classGroupDetail.charts.paretoMainTitle')}
       </h2>
-      <div className="bg-white p-4 rounded-lg shadow">
+      <div className="p-4 rounded-lg shadow" style={{ backgroundColor: chartBgColor }}>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
+            <ComposedChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
+              <XAxis dataKey="name" stroke={chartTextColor} />
               <YAxis
                 yAxisId="left"
+                stroke={chartTextColor}
                 label={{
                   value: t('classGroupDetail.charts.paretoYAxisLeft'),
                   angle: -90,
                   position: 'insideLeft',
+                  fill: chartTextColor,
                 }}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
                 domain={[0, 100]}
+                stroke={chartTextColor}
                 label={{
                   value: t('classGroupDetail.charts.paretoYAxisRight'),
                   angle: 90,
                   position: 'insideRight',
+                  fill: chartTextColor,
                 }}
               />
               <Tooltip
+                contentStyle={{ backgroundColor: chartBgColor, borderColor: chartTextColor, color: chartTextColor }}
                 formatter={(value: any, _name: any, payload: any) => {
                   const key = payload?.dataKey
                   if (key === 'cumPct') {
@@ -198,11 +211,12 @@ export default function ParetoChart({ id_grupo }: Props) {
                   return [value, t('classGroupDetail.charts.paretoTooltipValueLabel')]
                 }}
               />
-              <Legend />
+              <Legend wrapperStyle={{ color: chartTextColor }} />
               <Bar
                 yAxisId="left"
                 dataKey="value"
                 name={t('classGroupDetail.charts.paretoBarName')}
+                fill={chartPrimaryColor}
               />
               <Line
                 yAxisId="right"
@@ -210,6 +224,7 @@ export default function ParetoChart({ id_grupo }: Props) {
                 dataKey="cumPct"
                 strokeWidth={2}
                 dot={false}
+                stroke={chartPrimaryColor}
                 name={t('classGroupDetail.charts.paretoLineName')}
               />
             </ComposedChart>

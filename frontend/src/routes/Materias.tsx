@@ -6,25 +6,107 @@ import * as XLSX from 'xlsx'
 import confirmService from '../lib/confirmService'
 import { useTranslation } from 'react-i18next'
 import { getCareerLabel, getSubjectLabel } from '../lib/labels'
-import { FiPlus, FiSave, FiEdit, FiTrash2, FiDownload, FiUpload, FiSearch, FiFilter, FiArrowLeft } from 'react-icons/fi'
+import { FiPlus, FiEdit, FiTrash2, FiDownload, FiUpload, FiSearch, FiArrowLeft } from 'react-icons/fi'
+import { useAccessibility } from '../store/useAccessibility'
+import { TTS } from '../lib/tts'
 
 export default function Materias() {
-  type Materia = { id_materia: number; clave?: string; nombre: string; unidades: number; creditos: number }
-  type RelMC = { id_materia: number; id_carrera: number; semestre: number | null; carrera?: { nombre: string; clave?: string } }
+  const { t } = useTranslation()
 
-  const { t, i18n } = useTranslation()
+  type Materia = { id_materia: number; clave?: string; nombre: string; unidades: number; creditos: number }
+  type Relacion = { id_materia: number; id_carrera?: number | null; semestre?: number | null; carrera?: { nombre?: string; clave?: string } }
 
   const [rows, setRows] = useState<Materia[]>([])
   const [carreras, setCarreras] = useState<any[]>([])
-  const [relaciones, setRelaciones] = useState<RelMC[]>([])
+  const [relaciones, setRelaciones] = useState<Relacion[]>([])
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [q, setQ] = useState('')
-  const [confirmDel, setConfirmDel] = useState<{ open: boolean; id?: number; nombre?: string; clave?: string }>({ open: false })
+  const [f, setF] = useState({ nombre: '', unidades: '5', creditos: '5', id_carrera: '', semestre: '' })
   const [edit, setEdit] = useState<{ open: boolean; id?: number; nombre?: string; unidades?: string; creditos?: string }>({ open: false })
 
-  // crear
-  const [f, setF] = useState({ nombre: '', unidades: '5', creditos: '5', id_carrera: '', semestre: '' })
+  const { voiceEnabled, voiceRate } = useAccessibility((s) => ({
+    voiceEnabled: s.voiceEnabled,
+    voiceRate: s.voiceRate,
+  }))
+
+  const speak = (text?: string) => {
+    if (!voiceEnabled) return
+    if (!text) return
+    if (!TTS.isSupported()) return
+    TTS.speak(text, { rate: voiceRate })
+  }
+
+  const speakCell = (label: string, value?: string | number | null | undefined) => {
+    if (!voiceEnabled) return
+    if (!TTS.isSupported()) return
+    const raw = value == null ? 'Sin valor' : String(value)
+    const clean = raw.trim() === '' || raw.trim() === '—' ? 'Sin valor' : raw.trim()
+    speak(`${label}: ${clean}`)
+  }
+
+  // Textos explicativos de los apartados
+  const pageHelpText = t(
+    'subjects.tts.pageHelp',
+    'En esta pantalla puedes administrar materias: darlas de alta con sus unidades y créditos, vincularlas a carreras, buscarlas, importarlas desde un archivo y editarlas o eliminarlas.'
+  )
+
+  const createSectionHelp = t(
+    'subjects.tts.createSectionHelp',
+    'Completa el formulario con el nombre de la materia, sus unidades, créditos y la carrera a la que pertenece. Después presiona el botón Guardar materia.'
+  )
+
+  const listSectionHelp = t(
+    'subjects.tts.listSectionHelp',
+    'En este apartado puedes buscar materias, descargar la plantilla de ejemplo, importar un archivo y gestionar cada fila con los botones de resumen, editar y eliminar.'
+  )
+
+  const searchHelpText = t(
+    'subjects.tts.searchHelp',
+    'Escribe parte de la clave, el nombre o la carrera para filtrar la tabla de materias.'
+  )
+
+  const nameLabel = t('subjects.form.nameLabel')
+  const nameInstructions = t(
+    'subjects.tts.nameInstructions',
+    'Escribe el nombre completo de la materia. Este campo es obligatorio.'
+  )
+
+  const unitsLabel = t('subjects.form.unitsLabel')
+  const unitsInstructions = t(
+    'subjects.tts.unitsInstructions',
+    'Escribe el número de unidades de la materia. Normalmente es un valor entre uno y diez.'
+  )
+
+  const creditsLabel = t('subjects.form.creditsLabel')
+  const creditsInstructions = t(
+    'subjects.tts.creditsInstructions',
+    'En este campo escribe el número de créditos de la materia. Normalmente es un valor entre uno y treinta.'
+  )
+
+  const careerLabel = t('subjects.form.careerLabel')
+  const careerInstructions = t(
+    'subjects.tts.careerInstructions',
+    'En esta lista desplegable selecciona la carrera a la que pertenece la materia. Es obligatorio elegir una carrera.'
+  )
+
+  const semesterLabel = t('subjects.form.semesterLabel')
+  const semesterInstructions = t(
+    'subjects.tts.semesterInstructions',
+    'En este campo puedes escribir el semestre sugerido para cursar la materia, en un rango de uno a doce. Si lo dejas vacío, no se asigna semestre.'
+  )
+
+  const fieldHelpButtonLabel = t(
+    'subjects.tts.fieldHelpButton',
+    '¿Qué debo escribir?'
+  )
+
+  const fieldHelpAria = (label: string) =>
+    t(
+      'subjects.tts.fieldHelpAria',
+      'Escuchar instrucciones del campo {{label}}',
+      { label }
+    )
 
   /** ===== Helpers ===== **/
   const norm = (s: any) =>
@@ -48,7 +130,7 @@ export default function Materias() {
     return found ? Number(found.id_carrera) : null
   }
 
-  // Pairs existentes (materia,carrera) actuales en UI:
+  // Pairs existentes (materia,carrera) actuales en UI
   const existingPairs = useMemo(() => {
     const set = new Set<string>()
     for (const r of relaciones) {
@@ -59,6 +141,7 @@ export default function Materias() {
     return set
   }, [relaciones, rows])
 
+  /** ===== Data load ===== **/
   const reqRef = useRef(0)
   async function load(silent = false) {
     const my = ++reqRef.current
@@ -152,15 +235,22 @@ export default function Materias() {
         for (const c of rels) {
           const careerObj = carreras.find(cx => Number(cx.id_carrera) === Number(c.id_carrera)) || (c.nombreCarrera ? { nombre: c.nombreCarrera } : undefined)
           const careerLabel = getCareerLabel(careerObj) || c.nombreCarrera || ''
-          const label = `${c.clave ? `${c.clave} — ` : ''}${careerLabel}${c.semestre ? ` · S${c.semestre}` : ''}`
-          rowsOut.push({ id_materia: m.id_materia, clave: m.clave, nombre: m.nombre, unidades: m.unidades, creditos: m.creditos, carreraTexto: label })
+          const label = `${careerLabel}${c.semestre ? ` · S${c.semestre}` : ''}`
+
+          rowsOut.push({
+            id_materia: m.id_materia,
+            clave: m.clave,
+            nombre: m.nombre,
+            unidades: m.unidades,
+            creditos: m.creditos,
+            carreraTexto: label,
+          })
         }
       }
     }
-    // ordenar por nombre y luego por carrera
     rowsOut.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }) || a.carreraTexto.localeCompare(b.carreraTexto, 'es', { sensitivity: 'base' }))
     return rowsOut
-  }, [rows, relaciones])
+  }, [rows, relaciones, carreras])
 
   const list = useMemo(() => {
     const arr = [...filasMateriaCarrera]
@@ -192,10 +282,8 @@ export default function Materias() {
       return
     }
 
-    // Si existe materia con ese nombre, reutilizamos
     const existing = (rows || []).find(m => norm(m.nombre) === payload.nombre)
 
-    // Validar duplicado (materia,carrera) siempre que haya carrera (ahora obligatoria)
     if (existing) {
       const dupKey = materiaKey(existing.nombre, idCarr)
       if (existingPairs.has(dupKey)) {
@@ -210,14 +298,12 @@ export default function Materias() {
         const created = await api.post('/materias', payload, { skipConfirm: true } as any)
         id_materia = created?.id_materia
         if (!id_materia) {
-          // fallback: recargar y buscar por nombre
           const latest = (await Catalogos.materias()) ?? []
           const found = latest.find((m: any) => norm(m.nombre) === payload.nombre)
           id_materia = found?.id_materia
         }
       }
 
-      // Crear vínculo materia-carrera (ahora la carrera es obligatoria)
       if (id_materia && idCarr) {
         const dupKey = materiaKey(payload.nombre, idCarr)
         if (existingPairs.has(dupKey)) {
@@ -248,8 +334,6 @@ export default function Materias() {
   }
 
   async function askDelete(m: Materia) {
-    // close any local confirm state (defensive)
-    setConfirmDel({ open: false })
     const title = t('subjects.deleteModal.title')
     const question = t('subjects.deleteModal.question')
     const codeLabel = t('subjects.deleteModal.codeLabel')
@@ -264,21 +348,19 @@ export default function Materias() {
     if (!ok) return
     try {
       await api.delete(`/materias/${m.id_materia}`, { skipConfirm: true } as any)
-      // user-friendly toast
       const msg = t('subjects.messages.deleted')
         ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${msg}: ${m.nombre}` })
       await load()
     } catch (e: any) {
       const format = (await import('../lib/errorFormatter')).default
-      const msg = format(e, { entity: 'la materia', action: 'delete' })
-        ; (await import('../lib/notifyService')).default.notify({ type: 'error', message: msg })
+      const friendly = format(e, { entity: 'la materia', action: 'delete' })
+        ; (await import('../lib/notifyService')).default.notify({ type: 'error', message: friendly })
     }
   }
 
   /** ===== Importación con anti-duplicados (materia,carrera) ===== **/
   function sheetToRows(sheet: XLSX.WorkSheet) {
     const json = XLSX.utils.sheet_to_json<any>(sheet, { defval: null })
-    // Normalizamos y resolvemos 'carrera' a id
     return json.map((r) => {
       const nombre = norm(r.nombre ?? '')
       const unidades = Number(r.unidades ?? 5)
@@ -298,10 +380,8 @@ export default function Materias() {
       const sheet = wb.Sheets[wb.SheetNames[0]]
       if (!sheet) throw new Error(t('subjects.errors.importNoSheets'))
 
-      // 1) Normalizar y descartar vacíos
       let incoming = sheetToRows(sheet).filter(r => !!r.nombre)
 
-      // 2) Quitar duplicados DENTRO DEL ARCHIVO por (materia,carrera)
       const seen = new Set<string>()
       const uniqueInFile: any[] = []
       const dupInFile: any[] = []
@@ -311,19 +391,17 @@ export default function Materias() {
         else { seen.add(k); uniqueInFile.push(r) }
       }
 
-      // 3) Quitar los que YA EXISTEN en UI por (materia,carrera)
       const notInUI = uniqueInFile.filter(r => {
         const k = materiaKey(r.nombre, r.id_carrera ?? 0)
         return !existingPairs.has(k)
       })
       const dupVsUI = uniqueInFile.length - notInUI.length
 
-      // 4) (Opcional) Pre-chequeo en servidor para pares existentes
       let dupVsDb = 0
       let filtered = notInUI
       try {
         const pairs = notInUI
-          .filter(r => r.id_carrera) // solo chequear si tiene carrera
+          .filter(r => r.id_carrera)
           .map(r => ({ nombre: r.nombre, id_carrera: Number(r.id_carrera) }))
         if (pairs.length) {
           const res = await api.post('/materias/dedup-check', { pairs })
@@ -336,10 +414,8 @@ export default function Materias() {
           dupVsDb = notInUI.length - filtered.length
         }
       } catch {
-        // si no existe endpoint, continuamos
       }
 
-      // 5) Generar XLSX limpio SOLO con filas finales
       const headers = ['nombre', 'unidades', 'creditos', 'id_carrera', 'semestre']
       const dataAoA = [
         headers,
@@ -353,7 +429,6 @@ export default function Materias() {
       const fd = new FormData()
       fd.append('file', cleanBlob, `materias_limpias_${Date.now()}.xlsx`)
 
-      // 6) Subir a tu endpoint bulk
       const rep = await api.post('/materias/bulk', fd as any)
 
       const inserted = rep?.summary?.inserted ?? 0
@@ -382,6 +457,16 @@ export default function Materias() {
     }
   }
 
+  /** ===== Resumen por materia para voz ===== **/
+  function materiaSummary(m: { clave?: string; nombre: string; carreraTexto: string; unidades: number; creditos: number }) {
+    const codePart = m.clave ? `Clave ${m.clave}. ` : ''
+    const careerPart = m.carreraTexto && m.carreraTexto !== '—'
+      ? `Pertenece a ${m.carreraTexto}. `
+      : 'Sin carrera vinculada. '
+    const unitsPart = `Tiene ${m.unidades} unidades y ${m.creditos} créditos.`
+    return `Materia ${m.nombre}. ${codePart}${careerPart}${unitsPart}`
+  }
+
   /** ===== Render ===== **/
   return (
     <div className="space-y-6">
@@ -392,22 +477,82 @@ export default function Materias() {
             {t('subjects.subtitle')}
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => speak(pageHelpText)}
+          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          aria-label={t('subjects.tts.pageHelpAria', 'Escuchar explicación de la pantalla de materias')}
+        >
+          <span aria-hidden="true">🔊</span>
+          <span>{t('subjects.tts.pageHelpButton', 'Explicar pantalla')}</span>
+        </button>
       </div>
 
+      {/* Formulario crear materia */}
       <form onSubmit={onCreate} className="rounded-2xl border bg-white p-3 shadow-sm grid md:grid-cols-4 gap-3">
+        {/* Encabezado del apartado con ayuda de voz */}
+        <div className="md:col-span-4 flex items-center justify-between gap-2 mb-1">
+          <span className="text-xs font-semibold text-slate-700">
+            {t('subjects.form.sectionTitle', 'Agregar nueva materia')}
+          </span>
+          <button
+            type="button"
+            onClick={() => speak(createSectionHelp)}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            aria-label={t('subjects.tts.createSectionHelpAria', 'Escuchar explicación del apartado para crear materias')}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>{t('subjects.tts.sectionHelpButton', 'Explicar apartado')}</span>
+          </button>
+        </div>
+
+        {/* Nombre */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t('subjects.form.nameLabel')} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="materia-nombre">
+              {nameLabel} <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(nameInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={fieldHelpAria(nameLabel)}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{fieldHelpButtonLabel}</span>
+            </button>
+          </div>
           <input
+            id="materia-nombre"
             className="h-10 rounded-xl border px-3 text-sm"
             placeholder={t('subjects.form.namePlaceholder')}
             value={f.nombre}
             aria-required="true"
+            aria-label={nameLabel}
+            onFocus={() => speak(nameLabel)}
             onChange={e => setF({ ...f, nombre: e.target.value })}
           />
         </div>
+
+        {/* Unidades */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t('subjects.form.unitsLabel')} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="materia-unidades">
+              {unitsLabel} <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(unitsInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={fieldHelpAria(unitsLabel)}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{fieldHelpButtonLabel}</span>
+            </button>
+          </div>
           <input
+            id="materia-unidades"
             className="h-10 rounded-xl border px-3 text-sm"
             type="number"
             min={1}
@@ -415,12 +560,30 @@ export default function Materias() {
             placeholder={t('subjects.form.unitsPlaceholder')}
             value={f.unidades}
             aria-required="true"
+            aria-label={unitsLabel}
+            onFocus={() => speak(unitsLabel)}
             onChange={e => setF({ ...f, unidades: e.target.value })}
           />
         </div>
+
+        {/* Créditos */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t('subjects.form.creditsLabel')} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="materia-creditos">
+              {creditsLabel} <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(creditsInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={fieldHelpAria(creditsLabel)}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{fieldHelpButtonLabel}</span>
+            </button>
+          </div>
           <input
+            id="materia-creditos"
             className="h-10 rounded-xl border px-3 text-sm"
             type="number"
             min={1}
@@ -428,15 +591,35 @@ export default function Materias() {
             placeholder={t('subjects.form.creditsPlaceholder')}
             value={f.creditos}
             aria-required="true"
+            aria-label={creditsLabel}
+            onFocus={() => speak(creditsLabel)}
             onChange={e => setF({ ...f, creditos: e.target.value })}
           />
         </div>
+
+        {/* Carrera */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t('subjects.form.careerLabel')} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="materia-carrera">
+              {careerLabel} <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(careerInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={fieldHelpAria(careerLabel)}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{fieldHelpButtonLabel}</span>
+            </button>
+          </div>
           <select
+            id="materia-carrera"
             className="h-10 rounded-xl border px-3 text-sm"
             value={f.id_carrera}
             aria-required="true"
+            aria-label={careerLabel}
+            onFocus={() => speak(careerLabel)}
             onChange={e => setF({ ...f, id_carrera: e.target.value })}
           >
             <option value="">{t('subjects.form.careerPlaceholder')}</option>
@@ -447,18 +630,37 @@ export default function Materias() {
             ))}
           </select>
         </div>
+
+        {/* Semestre */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t('subjects.form.semesterLabel')}</label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="materia-semestre">
+              {semesterLabel}
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(semesterInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={fieldHelpAria(semesterLabel)}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{fieldHelpButtonLabel}</span>
+            </button>
+          </div>
           <input
+            id="materia-semestre"
             className="h-10 rounded-xl border px-3 text-sm"
             placeholder={t('subjects.form.semesterPlaceholder')}
             type="number"
             min={1}
             max={12}
             value={f.semestre}
+            aria-label={semesterLabel}
+            onFocus={() => speak(semesterLabel)}
             onChange={e => setF({ ...f, semestre: e.target.value })}
           />
         </div>
+
         <div className="md:col-span-4 flex items-center gap-2">
           <button className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm inline-flex items-center">
             <FiPlus className="mr-2" size={16} />
@@ -468,14 +670,51 @@ export default function Materias() {
         </div>
       </form>
 
+      {/* Listado + Import */}
       <div className="rounded-2xl border bg-white p-3 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <input
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            placeholder={t('subjects.search.placeholder')}
-            className="h-10 flex-1 min-w-0 rounded-xl border px-3 text-sm w-full max-w-full box-border"
-          />
+        {/* Encabezado del apartado con ayuda de voz */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold">
+              {t('subjects.list.sectionTitle', 'Listado de materias')}
+            </h3>
+            <button
+              type="button"
+              onClick={() => speak(listSectionHelp)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t('subjects.tts.listSectionHelpAria', 'Escuchar explicación del apartado de lista de materias')}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t('subjects.tts.sectionHelpButton', 'Explicar apartado')}</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {/* Búsqueda con ícono y ayuda de voz */}
+          <div className="flex-1 min-w-0 flex items-center gap-1">
+            <div className="relative flex-1 min-w-0">
+              <FiSearch className="absolute left-2 top-2.5 text-slate-400" size={14} />
+              <input
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                placeholder={t('subjects.search.placeholder')}
+                className="h-10 w-full rounded-xl border pl-7 pr-3 text-sm box-border"
+                aria-label={t('subjects.search.placeholder')}
+                onFocus={() => speak(t('subjects.search.placeholder'))}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => speak(searchHelpText)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t('subjects.tts.searchHelpAria', 'Escuchar instrucciones del cuadro de búsqueda de materias')}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t('subjects.tts.fieldHelpButton', '¿Cómo buscar?')}</span>
+            </button>
+          </div>
+
           <button
             onClick={downloadTemplateXLSX}
             className="rounded-lg border px-3 py-2 text-sm inline-flex items-center"
@@ -520,34 +759,103 @@ export default function Materias() {
                     {t('subjects.table.empty')}
                   </td>
                 </tr>
-              ) : list.map(m => (
-                <tr key={`${m.id_materia}-${m.carreraTexto}`} className="[&>td]:px-3 [&>td]:py-2">
-                  <td className="font-mono text-xs">{m.clave ?? '—'}</td>
-                  <td>{(() => {
-                    const subj = rows.find(r => r.id_materia === m.id_materia)
-                    return getSubjectLabel(subj) || m.nombre
-                  })()}</td>
-                  <td className="text-slate-600">{m.carreraTexto}</td>
-                  <td>{m.unidades}</td>
-                  <td>{m.creditos}</td>
-                  <td className="text-right flex items-center gap-2 justify-end">
-                    <button
-                      onClick={() => askEdit({ id_materia: m.id_materia, nombre: m.nombre, unidades: m.unidades, creditos: m.creditos } as any)}
-                      className="px-3 py-1.5 text-xs inline-flex items-center"
-                    >
-                      <FiEdit className="mr-2" size={16} />
-                      {t('subjects.buttons.edit')}
-                    </button>
-                    <button
-                      onClick={() => askDelete({ id_materia: m.id_materia, nombre: m.nombre, clave: m.clave } as any)}
-                      className="px-3 py-1.5 text-xs inline-flex items-center"
-                    >
-                      <FiTrash2 className="mr-2" size={16} />
-                      {t('subjects.buttons.delete')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              ) : list.map(m => {
+                const subj = rows.find(r => r.id_materia === m.id_materia)
+                const displayName = getSubjectLabel(subj) || m.nombre
+                const displayCareer = m.carreraTexto
+
+                return (
+                  <tr
+                    key={`${m.id_materia}-${m.carreraTexto}`}
+                    className="[&>td]:px-3 [&>td]:py-2"
+                  >
+                    {/* Código */}
+                    <td className="font-mono text-xs">
+                      <button
+                        type="button"
+                        className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-sm"
+                        onClick={() => speakCell(t('subjects.table.code'), m.clave ?? 'Sin clave')}
+                      >
+                        {m.clave ?? '—'}
+                      </button>
+                    </td>
+
+                    {/* Nombre */}
+                    <td>
+                      <button
+                        type="button"
+                        className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-sm"
+                        onClick={() => speakCell(t('subjects.table.name'), displayName)}
+                      >
+                        {displayName}
+                      </button>
+                    </td>
+
+                    {/* Carrera */}
+                    <td className="text-slate-600">
+                      <button
+                        type="button"
+                        className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-sm"
+                        onClick={() => speakCell(t('subjects.table.career'), displayCareer)}
+                      >
+                        {displayCareer}
+                      </button>
+                    </td>
+
+                    {/* Unidades */}
+                    <td>
+                      <button
+                        type="button"
+                        className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-sm"
+                        onClick={() => speakCell(t('subjects.table.units'), m.unidades)}
+                      >
+                        {m.unidades}
+                      </button>
+                    </td>
+
+                    {/* Créditos */}
+                    <td>
+                      <button
+                        type="button"
+                        className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-sm"
+                        onClick={() => speakCell(t('subjects.table.credits'), m.creditos)}
+                      >
+                        {m.creditos}
+                      </button>
+                    </td>
+
+                    {/* Acciones */}
+                    <td className="text-right flex items-center gap-2 justify-end">
+                      {/* Botón de resumen de voz por materia */}
+                      <button
+                        type="button"
+                        onClick={() => speak(materiaSummary(m))}
+                        className="px-2 py-1.5 text-[11px] inline-flex items-center rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100"
+                        aria-label={t('subjects.tts.rowSummaryAria', 'Escuchar resumen de la materia {{name}}', {
+                          name: m.nombre,
+                        })}
+                      >
+                        <span aria-hidden="true">🔊</span>
+                      </button>
+
+                      <button
+                        onClick={() => askEdit({ id_materia: m.id_materia, nombre: m.nombre, unidades: m.unidades, creditos: m.creditos } as any)}
+                        className="px-3 py-1.5 text-xs inline-flex items-center"
+                      >
+                        <FiEdit className="mr-2" size={16} />
+                        {t('subjects.buttons.edit')}
+                      </button>
+                      <button
+                        onClick={() => askDelete({ id_materia: m.id_materia, nombre: m.nombre, clave: m.clave } as any)}
+                        className="px-3 py-1.5 text-xs inline-flex items-center"
+                      >
+                        <FiTrash2 className="mr-2" size={16} />
+                        {t('subjects.buttons.delete')}
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -571,39 +879,45 @@ export default function Materias() {
             </div>
             <div className="px-4 py-4 grid gap-3">
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">
+                <label className="text-xs text-slate-600" htmlFor="edit-materia-nombre">
                   {t('subjects.editModal.nameLabel')}
                 </label>
                 <input
+                  id="edit-materia-nombre"
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.nombre ?? ''}
                   onChange={e => setEdit(s => ({ ...s, nombre: e.target.value }))}
+                  onFocus={() => speak(t('subjects.editModal.nameLabel'))}
                 />
               </div>
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">
+                <label className="text-xs text-slate-600" htmlFor="edit-materia-unidades">
                   {t('subjects.editModal.unitsLabel')}
                 </label>
                 <input
+                  id="edit-materia-unidades"
                   type="number"
                   min={1}
                   max={10}
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.unidades ?? ''}
                   onChange={e => setEdit(s => ({ ...s, unidades: e.target.value }))}
+                  onFocus={() => speak(t('subjects.editModal.unitsLabel'))}
                 />
               </div>
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">
+                <label className="text-xs text-slate-600" htmlFor="edit-materia-creditos">
                   {t('subjects.editModal.creditsLabel')}
                 </label>
                 <input
+                  id="edit-materia-creditos"
                   type="number"
                   min={1}
                   max={30}
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.creditos ?? ''}
                   onChange={e => setEdit(s => ({ ...s, creditos: e.target.value }))}
+                  onFocus={() => speak(t('subjects.editModal.creditsLabel'))}
                 />
               </div>
             </div>

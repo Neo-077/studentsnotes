@@ -1,26 +1,18 @@
 // src/components/inscripciones/MateriaPicker.tsx
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { getSubjectLabel, getCareerLabel } from '../../lib/labels'
-import { Catalogos } from '../../lib/catalogos'
-
-type Materia = {
-  id_materia: number
-  clave?: string
-  nombre: string
-  // opcionales, dependen del backend
-  carrera?: { nombre?: string; clave?: string }
-  carrera_nombre?: string
-  carrera_clave?: string
-}
+import { useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { Catalogos } from "../../lib/catalogos"
+import { getSubjectLabel } from "../../lib/labels"
+import { useAccessibility } from "../../store/useAccessibility"
+import { TTS } from "../../lib/tts"
 
 type Props = {
   value?: number | null
-  onChange: (v: number | null) => void
-  terminoId?: number            // ← nuevo (opcional)
-  carreraId?: number            // ← nuevo (opcional)
-  className?: string
+  onChange?: (id: number | null) => void
+  terminoId?: number
+  carreraId?: number
   disabled?: boolean
+  className?: string
 }
 
 export default function MateriaPicker({
@@ -28,90 +20,94 @@ export default function MateriaPicker({
   onChange,
   terminoId,
   carreraId,
-  className,
   disabled,
+  className,
 }: Props) {
-  const [items, setItems] = useState<Materia[]>([])
-  const [loading, setLoading] = useState(false)
-
   const { t, i18n } = useTranslation()
+  const [list, setList] = useState<any[]>([])
+
+  const { voiceEnabled, voiceRate } = useAccessibility((s) => ({
+    voiceEnabled: s.voiceEnabled,
+    voiceRate: s.voiceRate,
+  }))
+  const lastSpoken = useRef<string | null>(null)
+
+  const speak = (text?: string) => {
+    if (!voiceEnabled) return
+    if (!text) return
+    if (!TTS.isSupported()) return
+    if (lastSpoken.current === text) return
+    lastSpoken.current = text
+    TTS.speak(text, { rate: voiceRate })
+  }
 
   useEffect(() => {
-    let cancel = false
     async function load() {
-      setLoading(true)
-      try {
-        // si hay carrera/termino los pasamos como query
-        const listRaw = await Catalogos.materias({
-          carrera_id: carreraId ?? undefined,
-          termino_id: terminoId ?? undefined,
-        })
-        const list = Array.isArray(listRaw) ? listRaw : (listRaw?.rows ?? listRaw?.data ?? [])
-        if (!cancel) setItems(list ?? [])
-      } finally {
-        if (!cancel) setLoading(false)
+      if (!carreraId && !terminoId) {
+        setList([])
+        return
       }
+      const params: any = {}
+      if (carreraId) params.carrera_id = carreraId
+      if (terminoId) params.termino_id = terminoId
+      const res = await Catalogos.materias(params)
+      const arr = Array.isArray(res) ? res : res?.rows ?? res?.data ?? []
+      setList(arr)
     }
     void load()
-    return () => { cancel = true }
-    // reload materias when carrera, termino or language change
   }, [carreraId, terminoId, i18n?.language])
 
-  const selectEl = (
-    <select
-      className={`h-10 w-full truncate box-border ${className ?? ''}`}
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-      disabled={disabled || loading}
-    >
-      <option value="">{t('pickers.subjectAll')}</option>
-      {(() => {
-        const byName = (a: string, b: string) => a.localeCompare(b, i18n?.language?.startsWith('en') ? 'en' : 'es', { sensitivity: 'base' })
-        const labelFor = (m: Materia) => {
-          const s = getSubjectLabel(m)
-          return s || `${m.clave ? `${m.clave} — ` : ''}${m.nombre}`
-        }
+  const handleFocus: React.FocusEventHandler<HTMLSelectElement> = () => {
+    speak(
+      t(
+        "pickers.subjectHelp",
+        "Selector de materia. Primero elige una carrera si es necesario."
+      )
+    )
+  }
 
-        // Si hay carrera seleccionada, lista plana ordenada por nombre/clave
-        if (carreraId) {
-          const list = [...items].sort((a, b) => byName(labelFor(a), labelFor(b)))
-          return list.map(m => (
-            <option key={`${m.id_materia}`} value={m.id_materia}>
-              {getSubjectLabel(m)}
-            </option>
-          ))
-        }
-
-        // Sin carrera: agrupar por carrera y ordenar
-        const groups = new Map<string, Materia[]>()
-        for (const m of items) {
-          const carreraObj = m.carrera || (m.carrera_nombre ? { nombre: m.carrera_nombre } : undefined)
-          const carreraLabel = getCareerLabel(carreraObj) || m.carrera_nombre || m.carrera_clave || '— Sin carrera'
-          const arr = groups.get(carreraLabel) || []
-          arr.push(m)
-          groups.set(carreraLabel, arr)
-        }
-        const carreraNames = Array.from(groups.keys()).sort(byName)
-        return carreraNames.map((car) => {
-          const list = (groups.get(car) || []).sort((a, b) => byName(labelFor(a), labelFor(b)))
-          return (
-            <optgroup key={car} label={car}>
-              {list.map(m => (
-                <option key={`${car}:${m.id_materia}`} value={m.id_materia}>
-                  {getSubjectLabel(m)}
-                </option>
-              ))}
-            </optgroup>
-          )
+  const handleChange: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
+    const v = e.target.value
+    const selected = list.find((m) => String(m.id_materia) === v) ?? null
+    onChange?.(v === "" ? null : Number(v))
+    if (selected) {
+      speak(
+        t("pickers.subjectSelected", "Materia seleccionada: {{label}}", {
+          label: getSubjectLabel(selected),
         })
-      })()}
-    </select>
-  )
+      )
+    }
+  }
 
-  // Wrap select in shrinkable container so long labels don't expand it
+  const handleMouseMove: React.MouseEventHandler<HTMLSelectElement> = (e) => {
+    const sel = e.currentTarget
+    const opt = sel.options[sel.selectedIndex]
+    if (opt) {
+      speak(
+        t("pickers.subjectOption", "Opción: {{label}}", {
+          label: opt.text,
+        })
+      )
+    }
+  }
+
   return (
-    <div className={`select-wrapper min-w-0 overflow-hidden`}>
-      {selectEl}
-    </div>
+    <select
+      className={`h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full ${className ?? ""
+        }`}
+      value={value ?? ""}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onMouseMove={handleMouseMove}
+      disabled={disabled}
+      aria-label={t("pickers.subjectLabel", "Materia")}
+    >
+      <option value="">{t("pickers.subjectPlaceholder", "Selecciona materia")}</option>
+      {list.map((m) => (
+        <option key={m.id_materia} value={m.id_materia}>
+          {getSubjectLabel(m)}
+        </option>
+      ))}
+    </select>
   )
 }

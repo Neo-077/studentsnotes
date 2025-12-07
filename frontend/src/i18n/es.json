@@ -71,6 +71,8 @@
       "sidebarFgColorAria": "Color texto sidebar",
       "otherOptions": "Otras opciones",
       "highlightInteractive": "Resaltar elementos interactivos",
+      "dyslexicFont": "Fuente para dislexia",
+      "dyslexicFontEnable": "Activar fuente OpenDyslexic",
       "focusMode": "Modo enfoque",
       "bigPointer": "Puntero grande",
       "language": "Idioma",
@@ -83,7 +85,12 @@
       "test": "Probar",
       "stop": "Detener",
       "voice": "Voz",
-      "voiceHint": "Haz clic sobre cualquier texto para escucharlo cuando esté activado."
+      "voiceHint": "Haz clic sobre cualquier texto para escucharlo cuando esté activado.",
+      "colorBlindMode": "Modo Daltonismo",
+      "colorBlindRG": "Protanopía - Visión azul/amarillo (Daltonismo rojo-verde)",
+      "colorBlindGreen": "Deuteranopía - Insensibilidad al verde (Daltonismo rojo-verde)",
+      "colorBlindBY": "Tritanopía - Insensibilidad al azul (Daltonismo azul-amarillo)",
+      "disableDaltonism": "Deshabilitado"
     },
     "pointerSize": "Tamaño del puntero",
     "enrollments": "Inscripciones",

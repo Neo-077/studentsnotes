@@ -11,6 +11,7 @@ import {
   Label,
 } from "recharts";
 import { useTranslation } from "react-i18next";
+import { useAccessibility } from "../store/useAccessibility";
 
 type AlumnoRow = {
   id_inscripcion: number;
@@ -24,6 +25,13 @@ type AlumnoRow = {
 
 export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) {
   const { t, i18n } = useTranslation();
+  const { customColorsEnabled, customTextColor, customPrimaryColor, customBgColor } = useAccessibility();
+
+  // Colores dinámicos del tema
+  const chartTextColor = customColorsEnabled ? customTextColor : '#000000'
+  const chartPrimaryColor = customColorsEnabled ? customPrimaryColor : '#63C1CA'
+  const chartBgColor = customColorsEnabled ? customBgColor : '#FFFFFF'
+  const chartGridColor = customColorsEnabled ? customTextColor : '#CCCCCC'
 
   const maxAsistenciasPorUnidad = useMemo(() => {
     const maxPorUnidad: Record<number, number> = {};
@@ -79,7 +87,7 @@ export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) 
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-slate-500 dark:text-slate-400 text-sm">
+        <p className="text-sm" style={{ color: chartTextColor }}>
           {t("classGroupDetail.charts.scatterNoData")}
         </p>
       </div>
@@ -88,28 +96,28 @@ export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) 
 
   return (
     <div className="w-full h-full">
-      <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4">
+      <h3 className="text-base font-semibold mb-4" style={{ color: chartTextColor }}>
         {t("classGroupDetail.charts.scatterTitle")}
       </h3>
 
       <ResponsiveContainer width="100%" height={350}>
         <ScatterChart margin={{ top: 20, right: 30, bottom: 60, left: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+          <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
 
           {/* EJE X */}
           <XAxis
             type="number"
             dataKey="asistencia"
             name={t("classGroupDetail.charts.scatterTooltipAttendance")}
-            stroke="var(--muted)"
-            tick={{ fill: "var(--muted)", fontSize: 12 }}
+            stroke={chartTextColor}
+            tick={{ fill: chartTextColor, fontSize: 12 }}
             domain={[0, 100]}
           >
             <Label
               value={t("classGroupDetail.charts.scatterXAxisLabel")}
               position="bottom"
               offset={-10}
-              style={{ fill: "var(--text)", fontSize: 14, fontWeight: 600 }}
+              style={{ fill: chartTextColor, fontSize: 14, fontWeight: 600 }}
             />
           </XAxis>
 
@@ -118,8 +126,8 @@ export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) 
             type="number"
             dataKey="promedio"
             name={t("classGroupDetail.charts.scatterTooltipAvg")}
-            stroke="var(--muted)"
-            tick={{ fill: "var(--muted)", fontSize: 12 }}
+            stroke={chartTextColor}
+            tick={{ fill: chartTextColor, fontSize: 12 }}
             domain={[0, 100]}
           >
             <Label
@@ -127,7 +135,7 @@ export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) 
               angle={-90}
               position="insideLeft"
               style={{
-                fill: "var(--text)",
+                fill: chartTextColor,
                 fontSize: 14,
                 fontWeight: 600,
                 textAnchor: "middle",
@@ -142,15 +150,15 @@ export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) 
               if (active && payload && payload.length) {
                 const d = payload[0].payload;
                 return (
-                  <div className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700">
-                    <p className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-1">
+                  <div className="p-3 rounded-lg shadow-lg border" style={{ backgroundColor: chartBgColor, borderColor: chartTextColor }}>
+                    <p className="font-semibold text-sm mb-1" style={{ color: chartTextColor }}>
                       {d.nombre}
                     </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                    <p className="text-xs" style={{ color: chartTextColor, opacity: 0.8 }}>
                       {t("classGroupDetail.charts.scatterTooltipAvg")}:{" "}
                       <span className="font-semibold">{d.promedio}</span>
                     </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                    <p className="text-xs" style={{ color: chartTextColor, opacity: 0.8 }}>
                       {t("classGroupDetail.charts.scatterTooltipAttendance")}:{" "}
                       <span className="font-semibold">{d.asistencia}%</span>
                     </p>
@@ -166,7 +174,7 @@ export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) 
             wrapperStyle={{ paddingTop: 20 }}
             iconType="circle"
             formatter={() => (
-              <span style={{ color: "var(--text)", fontSize: 13, fontWeight: 500 }}>
+              <span style={{ color: chartTextColor, fontSize: 13, fontWeight: 500 }}>
                 {t("classGroupDetail.charts.scatterLegend")}
               </span>
             )}
@@ -176,9 +184,9 @@ export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) 
           <Scatter
             name={t("classGroupDetail.charts.scatterLegend")}
             data={data}
-            fill="#3b82f6"
+            fill={chartPrimaryColor}
             fillOpacity={0.6}
-            stroke="#2563eb"
+            stroke={chartPrimaryColor}
             strokeWidth={2}
           />
         </ScatterChart>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paletas de Color para Daltonismo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #1e3452;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+
+        .palettes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .palette {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .palette-header {
+            padding: 20px;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .palette-protanopia .palette-header {
+            background: #0072E3;
+        }
+
+        .palette-deuteranopia .palette-header {
+            background: #0072E3;
+        }
+
+        .palette-tritanopia .palette-header {
+            background: #E60000;
+        }
+
+        .palette-disabled .palette-header {
+            background: #666;
+        }
+
+        .palette-description {
+            padding: 15px 20px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .colors {
+            padding: 20px;
+        }
+
+        .color-item {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .color-box {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #666;
+        }
+
+        .color-info {
+            flex: 1;
+        }
+
+        .color-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .color-code {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .comparison {
+            margin-top: 40px;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .comparison h2 {
+            color: #1e3452;
+            margin-bottom: 20px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .comparison-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #1e3452;
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .color-sample {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            display: inline-block;
+        }
+
+        .emoji {
+            font-size: 24px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎨 Paletas de Color para Daltonismo</h1>
+        <p class="subtitle">Colores optimizados para personas con ceguera al color (WCAG AAA)</p>
+
+        <div class="palettes">
+            <!-- Protanopía -->
+            <div class="palette palette-protanopia">
+                <div class="palette-header">
+                    <span class="emoji">🔵</span>
+                    Protanopía
+                </div>
+                <div class="palette-description">
+                    Ausencia de cono rojo - No distingue rojo/verde bien
+                </div>
+                <div class="colors">
+                    <div class="color-item">
+                        <div class="color-box" style="background: #FFFFFF; border: 2px solid #ddd;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Fondo</div>
+                            <div class="color-code">#FFFFFF</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #000000;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Texto</div>
+                            <div class="color-code">#000000</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #0072E3;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Primario</div>
+                            <div class="color-code">#0072E3</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #003D7A;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Sidebar</div>
+                            <div class="color-code">#003D7A</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deuteranopía -->
+            <div class="palette palette-deuteranopia">
+                <div class="palette-header">
+                    <span class="emoji">🔵</span>
+                    Deuteranopía
+                </div>
+                <div class="palette-description">
+                    Ausencia de cono verde - No distingue rojo/verde bien
+                </div>
+                <div class="colors">
+                    <div class="color-item">
+                        <div class="color-box" style="background: #FFFFFF; border: 2px solid #ddd;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Fondo</div>
+                            <div class="color-code">#FFFFFF</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #000000;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Texto</div>
+                            <div class="color-code">#000000</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #0072E3;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Primario</div>
+                            <div class="color-code">#0072E3</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #003D7A;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Sidebar</div>
+                            <div class="color-code">#003D7A</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tritanopía -->
+            <div class="palette palette-tritanopia">
+                <div class="palette-header">
+                    <span class="emoji">🔴</span>
+                    Tritanopía
+                </div>
+                <div class="palette-description">
+                    Ausencia de cono azul - No distingue azul/amarillo bien
+                </div>
+                <div class="colors">
+                    <div class="color-item">
+                        <div class="color-box" style="background: #FFFFFF; border: 2px solid #ddd;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Fondo</div>
+                            <div class="color-code">#FFFFFF</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #000000;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Texto</div>
+                            <div class="color-code">#000000</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #E60000;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Primario</div>
+                            <div class="color-code">#E60000</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #1A1A1A;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Sidebar</div>
+                            <div class="color-code">#1A1A1A</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deshabilitado -->
+            <div class="palette palette-disabled">
+                <div class="palette-header">
+                    <span class="emoji">✕</span>
+                    Deshabilitado
+                </div>
+                <div class="palette-description">
+                    Colores normales de la aplicación
+                </div>
+                <div class="colors">
+                    <div class="color-item">
+                        <div class="color-box" style="background: #FFFFFF; border: 2px solid #ddd;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Fondo</div>
+                            <div class="color-code">#FFFFFF</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #1E3452;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Texto</div>
+                            <div class="color-code">#1E3452</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #63C1CA;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Primario</div>
+                            <div class="color-code">#63C1CA</div>
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <div class="color-box" style="background: #1E3452;"></div>
+                        <div class="color-info">
+                            <div class="color-name">Sidebar</div>
+                            <div class="color-code">#1E3452</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="comparison">
+            <h2>📊 Comparación de Contraste</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Fondo</th>
+                        <th>Texto</th>
+                        <th>Primario</th>
+                        <th>Contraste (Ratio)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Protanopía</strong></td>
+                        <td><span class="color-sample" style="background: #FFFFFF; border: 2px solid #999;"></span></td>
+                        <td><span class="color-sample" style="background: #000000;"></span></td>
+                        <td><span class="color-sample" style="background: #0072E3;"></span></td>
+                        <td>21:1 (AAA) ✅</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Deuteranopía</strong></td>
+                        <td><span class="color-sample" style="background: #FFFFFF; border: 2px solid #999;"></span></td>
+                        <td><span class="color-sample" style="background: #000000;"></span></td>
+                        <td><span class="color-sample" style="background: #0072E3;"></span></td>
+                        <td>21:1 (AAA) ✅</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tritanopía</strong></td>
+                        <td><span class="color-sample" style="background: #FFFFFF; border: 2px solid #999;"></span></td>
+                        <td><span class="color-sample" style="background: #000000;"></span></td>
+                        <td><span class="color-sample" style="background: #E60000;"></span></td>
+                        <td>21:1 (AAA) ✅</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <footer>
+            <p>Basado en estándares WCAG 2.1 Level AAA y IBM Color Palette</p>
+            <p>Probado y recomendado para personas con daltonismo (ceguera al color)</p>
+        </footer>
+    </div>
+</body>
+
+</html>

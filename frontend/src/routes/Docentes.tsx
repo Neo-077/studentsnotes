@@ -7,6 +7,8 @@ import confirmService from '../lib/confirmService'
 import { useTranslation } from 'react-i18next'
 import { getGenderLabel } from '../lib/labels'
 import { FiDownload, FiUpload, FiPlus, FiEdit, FiTrash2, FiSearch } from 'react-icons/fi'
+import { useAccessibility } from '../store/useAccessibility'
+import { TTS } from '../lib/tts'
 
 export default function Docentes() {
   const { t, i18n } = useTranslation()
@@ -40,10 +42,81 @@ export default function Docentes() {
     id_genero?: number | ''
   }>({ open: false })
 
-  // crear (sin correo)
-  const [f, setF] = useState({
-    rfc: '', nombre: '', ap_paterno: '', ap_materno: '', id_genero: '' as number | string
-  })
+  // ===== Accesibilidad / Voz =====
+  const { voiceEnabled, voiceRate } = useAccessibility((s) => ({
+    voiceEnabled: s.voiceEnabled,
+    voiceRate: s.voiceRate,
+  }))
+
+  const speak = (text?: string) => {
+    if (!voiceEnabled) return
+    if (!text) return
+    if (!TTS.isSupported()) return
+    TTS.speak(text, { rate: voiceRate })
+  }
+
+  // Textos explicativos de los apartados
+  const pageHelpText = t(
+    'teachers.tts.pageHelp',
+    'En esta pantalla puedes administrar docentes: darlos de alta con su RFC, nombre, apellidos y género, generarles un correo institucional, buscarlos, importarlos desde archivo, y editar o eliminar registros existentes.'
+  )
+
+  const createSectionHelp = t(
+    'teachers.tts.createSectionHelp',
+    'En este apartado puedes registrar un nuevo docente. Escribe el RFC sin espacios, el nombre y apellidos, selecciona el género si aplica, revisa el correo sugerido y después presiona el botón para agregar docente.'
+  )
+
+  const listSectionHelp = t(
+    'teachers.tts.listSectionHelp',
+    'En este apartado puedes buscar docentes por nombre, RFC o correo. También puedes descargar una plantilla para importarlos desde Excel, subir un archivo con varios docentes y administrar la lista con los botones de editar y eliminar.'
+  )
+
+  const searchHelpText = t(
+    'teachers.tts.searchHelp',
+    'En este campo puedes escribir parte del nombre, apellido, RFC o correo del docente para filtrar la lista de resultados.'
+  )
+
+  const rfcLabel = t('teachers.form.rfcPlaceholder')
+  const rfcInstructions = t(
+    'teachers.tts.rfcInstructions',
+    'En este campo escribe el RFC completo del docente, sin espacios ni guiones. Es obligatorio y se validará su formato.'
+  )
+
+  const firstNameLabel = t('teachers.form.firstNamePlaceholder')
+  const firstNameInstructions = t(
+    'teachers.tts.firstNameInstructions',
+    'En este campo escribe el nombre o nombres del docente tal como aparecen en documentos oficiales.'
+  )
+
+  const lastName1Label = t('teachers.form.lastName1Placeholder')
+  const lastName1Instructions = t(
+    'teachers.tts.lastName1Instructions',
+    'En este campo escribe el apellido paterno del docente. Es obligatorio.'
+  )
+
+  const lastName2Label = t('teachers.form.lastName2Placeholder')
+  const lastName2Instructions = t(
+    'teachers.tts.lastName2Instructions',
+    'En este campo escribe el apellido materno del docente. Si no tiene o no aplica, puedes dejarlo en blanco.'
+  )
+
+  const genderLabel = t('teachers.form.genderPlaceholder')
+  const genderInstructions = t(
+    'teachers.tts.genderInstructions',
+    'En esta lista desplegable puedes seleccionar el género del docente. Si no quieres registrar el género, puedes dejar la opción por defecto.'
+  )
+
+  const fieldHelpButtonLabel = t(
+    'teachers.tts.fieldHelpButton',
+    '¿Qué debo escribir?'
+  )
+
+  const fieldHelpAria = (label: string) =>
+    t(
+      'teachers.tts.fieldHelpAria',
+      'Escuchar instrucciones del campo {{label}}',
+      { label }
+    )
 
   /** ========= Helpers ========= **/
   const norm = (s: any) =>
@@ -172,6 +245,10 @@ export default function Docentes() {
   }, [rows, q])
 
   /** ========= Crear (correo auto) ========= **/
+  const [f, setF] = useState({
+    rfc: '', nombre: '', ap_paterno: '', ap_materno: '', id_genero: '' as number | string
+  })
+
   async function onCreate(e: React.FormEvent) {
     e.preventDefault(); setMsg(null)
 
@@ -284,6 +361,33 @@ export default function Docentes() {
     XLSX.utils.book_append_sheet(wb, wsMain, 'DOCENTES')
     XLSX.utils.book_append_sheet(wb, wsHelp, 'LISTAS')
     XLSX.writeFile(wb, 'plantilla_docentes.xlsx')
+  }
+
+  function downloadDocentesXLSX() {
+    const headers = [
+      t('teachers.table.rfc', 'RFC'),
+      t('teachers.table.firstName', 'Nombre'),
+      t('teachers.table.lastName1', 'Apellido Paterno'),
+      t('teachers.table.lastName2', 'Apellido Materno'),
+      t('teachers.table.email', 'Correo'),
+      t('teachers.table.gender', 'Género'),
+    ]
+
+    const rows = dlist.map((d) => [
+      d.rfc,
+      d.nombre,
+      d.ap_paterno ?? '—',
+      d.ap_materno ?? '—',
+      d.correo,
+      getGenderLabel(generos.find(g => g.id_genero === d.id_genero)) || '—',
+    ])
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Docentes')
+
+    const filename = `docentes_${new Date().toISOString().split('T')[0]}.xlsx`
+    XLSX.writeFile(wb, filename)
   }
 
   function sheetToRows(sheet: XLSX.WorkSheet) {
@@ -472,6 +576,7 @@ export default function Docentes() {
         }
       })()
   }
+
   function askEdit(d: Docente) {
     setEdit({
       open: true, id: d.id_docente, rfc: d.rfc, nombre: d.nombre,
@@ -480,7 +585,45 @@ export default function Docentes() {
     })
   }
 
+  function docenteSummary(d: Docente): string {
+    const nombreCompleto = `${d.nombre} ${d.ap_paterno ?? ''} ${d.ap_materno ?? ''}`.trim()
+    const generoLabel = getGenderLabel(generos.find(g => g.id_genero === d.id_genero)) || ''
+    let txt = `Docente ${nombreCompleto}. RFC ${d.rfc}. Correo ${d.correo}.`
+    if (generoLabel) {
+      txt += ` Género: ${generoLabel}.`
+    }
+    return txt
+  }
+
+  // Helper: columna → valor
+  const describeCell = (col: string, colLabel: string, d: Docente) => {
+    const value =
+      col === "rfc"
+        ? d.rfc
+        : col === "nombre"
+          ? d.nombre
+          : col === "ap_paterno"
+            ? d.ap_paterno ?? "—"
+            : col === "ap_materno"
+              ? d.ap_materno ?? "—"
+              : col === "correo"
+                ? d.correo
+                : col === "genero"
+                  ? getGenderLabel(generos.find(g => g.id_genero === d.id_genero)) || "—"
+                  : ""
+
+    return `${colLabel}, ${value}.`
+  }
+
   /** ========= Render ========= **/
+  // LABELS de columnas (para la voz)
+  const rfcColLabel = t("teachers.table.rfc")
+  const firstNameColLabel = t("teachers.table.firstName")
+  const lastName1ColLabel = t("teachers.table.lastName1")
+  const lastName2ColLabel = t("teachers.table.lastName2")
+  const emailColLabel = t("teachers.table.email")
+  const genderColLabel = t("teachers.table.gender")
+
   const previewEmail = emailFromLocal(
     buildEmailLocalBase(f.nombre, f.ap_paterno)
   )
@@ -494,57 +637,173 @@ export default function Docentes() {
             {t('teachers.subtitle')}
           </p>
         </div>
+
+        {/* Botón general para explicar la pantalla */}
+        <button
+          type="button"
+          onClick={() => speak(pageHelpText)}
+          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          aria-label={t('teachers.tts.pageHelpAria', 'Escuchar explicación de la pantalla de docentes')}
+        >
+          <span aria-hidden="true">🔊</span>
+          <span>{t('teachers.tts.pageHelpButton', 'Explicar pantalla')}</span>
+        </button>
       </div>
 
       {/* Crear (sin correo) */}
       <form onSubmit={onCreate} className="rounded-2xl border bg-white p-3 shadow-sm grid md:grid-cols-3 gap-3">
+        {/* Encabezado del apartado con ayuda de voz */}
+        <div className="md:col-span-3 flex items-center justify-between gap-2 mb-1">
+          <span className="text-xs font-semibold text-slate-700">
+            {t('teachers.form.sectionTitle', 'Agregar nuevo docente')}
+          </span>
+          <button
+            type="button"
+            onClick={() => speak(createSectionHelp)}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            aria-label={t('teachers.tts.createSectionHelpAria', 'Escuchar explicación del apartado para crear docentes')}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>{t('teachers.tts.sectionHelpButton', 'Explicar apartado')}</span>
+          </button>
+        </div>
+
+        {/* RFC */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t('teachers.form.rfcPlaceholder')} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="docente-rfc">
+              {rfcLabel} <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(rfcInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={fieldHelpAria(rfcLabel)}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{fieldHelpButtonLabel}</span>
+            </button>
+          </div>
           <input
+            id="docente-rfc"
             className="h-10 rounded-xl border px-3 text-sm"
-            placeholder={t('teachers.form.rfcPlaceholder')}
+            placeholder={rfcLabel}
             value={f.rfc}
             aria-required="true"
+            aria-label={rfcLabel}
+            onFocus={() => speak(rfcLabel)}
             onChange={e => setF({ ...f, rfc: e.target.value })}
           />
         </div>
+
+        {/* Nombre */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t('teachers.form.firstNamePlaceholder')} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="docente-nombre">
+              {firstNameLabel} <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(firstNameInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={fieldHelpAria(firstNameLabel)}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{fieldHelpButtonLabel}</span>
+            </button>
+          </div>
           <input
+            id="docente-nombre"
             className="h-10 rounded-xl border px-3 text-sm"
-            placeholder={t('teachers.form.firstNamePlaceholder')}
+            placeholder={firstNameLabel}
             value={f.nombre}
             aria-required="true"
+            aria-label={firstNameLabel}
+            onFocus={() => speak(firstNameLabel)}
             onChange={e => setF({ ...f, nombre: e.target.value })}
           />
         </div>
+
+        {/* Apellido paterno */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t('teachers.form.lastName1Placeholder')} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="docente-ap-paterno">
+              {lastName1Label} <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(lastName1Instructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={fieldHelpAria(lastName1Label)}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{fieldHelpButtonLabel}</span>
+            </button>
+          </div>
           <input
+            id="docente-ap-paterno"
             className="h-10 rounded-xl border px-3 text-sm"
-            placeholder={t('teachers.form.lastName1Placeholder')}
+            placeholder={lastName1Label}
             value={f.ap_paterno}
             aria-required="true"
+            aria-label={lastName1Label}
+            onFocus={() => speak(lastName1Label)}
             onChange={e => setF({ ...f, ap_paterno: e.target.value })}
           />
         </div>
+
+        {/* Apellido materno */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t('teachers.form.lastName2Placeholder')}</label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="docente-ap-materno">
+              {lastName2Label}
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(lastName2Instructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={fieldHelpAria(lastName2Label)}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{fieldHelpButtonLabel}</span>
+            </button>
+          </div>
           <input
+            id="docente-ap-materno"
             className="h-10 rounded-xl border px-3 text-sm"
-            placeholder={t('teachers.form.lastName2Placeholder')}
+            placeholder={lastName2Label}
             value={f.ap_materno}
+            aria-label={lastName2Label}
+            onFocus={() => speak(lastName2Label)}
             onChange={e => setF({ ...f, ap_materno: e.target.value })}
           />
         </div>
+
+        {/* Género */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t('teachers.form.genderPlaceholder')}</label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="docente-genero">
+              {genderLabel}
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(genderInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={fieldHelpAria(genderLabel)}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{fieldHelpButtonLabel}</span>
+            </button>
+          </div>
           <select
+            id="docente-genero"
             className="h-10 rounded-xl border px-3 text-sm"
             value={f.id_genero}
+            aria-label={genderLabel}
+            onFocus={() => speak(genderLabel)}
             onChange={e => setF({ ...f, id_genero: e.target.value })}
           >
-            <option value="">{t('teachers.form.genderPlaceholder')}</option>
+            <option value="">{genderLabel}</option>
             {generos.map((g: any) => <option key={g.id_genero} value={g.id_genero}>{getGenderLabel(g) || g.descripcion}</option>)}
           </select>
         </div>
@@ -561,17 +820,8 @@ export default function Docentes() {
           </button>
           {msg && <span className="text-sm">{msg}</span>}
         </div>
-      </form>
 
-      {/* Listado + Import */}
-      <div className="rounded-2xl border bg-white p-3 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <input
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            placeholder={t('teachers.search.placeholder')}
-            className="h-10 flex-1 min-w-0 rounded-xl border px-3 text-sm w-full max-w-full box-border"
-          />
+        <div className="md:col-span-3 flex flex-wrap items-center gap-2">
           <button
             onClick={downloadTemplateXLSX}
             className="rounded-lg border px-3 py-2 text-sm inline-flex items-center"
@@ -590,6 +840,62 @@ export default function Docentes() {
             />
           </label>
         </div>
+      </form>
+
+      {/* Listado + Import */}
+      <div className="rounded-2xl border bg-white p-3 shadow-sm">
+        {/* Encabezado del apartado con ayuda de voz */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold">
+              {t('teachers.list.sectionTitle', 'Listado de docentes')}
+            </h3>
+            <button
+              type="button"
+              onClick={() => speak(listSectionHelp)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t('teachers.tts.listSectionHelpAria', 'Escuchar explicación del apartado de lista de docentes')}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t('teachers.tts.sectionHelpButton', 'Explicar apartado')}</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {/* Búsqueda con ayuda de voz */}
+          <div className="flex-1 min-w-0 flex items-center gap-1">
+            <div className="relative flex-1 min-w-0">
+              <FiSearch className="absolute left-2 top-2.5 text-slate-400" size={14} />
+              <input
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                placeholder={t('teachers.search.placeholder')}
+                className="h-10 w-full rounded-xl border pl-7 pr-3 text-sm box-border"
+                aria-label={t('teachers.search.placeholder')}
+                onFocus={() => speak(t('teachers.search.placeholder'))}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => speak(searchHelpText)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t('teachers.tts.searchHelpAria', 'Escuchar instrucciones del cuadro de búsqueda de docentes')}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t('teachers.tts.fieldHelpButton', '¿Cómo buscar?')}</span>
+            </button>
+          </div>
+
+          <button
+            onClick={downloadDocentesXLSX}
+            className="rounded-lg border px-3 py-2 text-sm inline-flex items-center ml-auto"
+          >
+            <FiDownload className="mr-2" size={16} />
+            {t('teachers.buttons.download', 'Descargar lista')}
+          </button>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
@@ -618,13 +924,120 @@ export default function Docentes() {
                 </tr>
               ) : dlist.map(d => (
                 <tr key={d.id_docente} className="[&>td]:px-3 [&>td]:py-2">
-                  <td className="font-mono">{d.rfc}</td>
-                  <td>{d.nombre}</td>
-                  <td>{d.ap_paterno ?? '—'}</td>
-                  <td>{d.ap_materno ?? '—'}</td>
-                  <td>{d.correo}</td>
-                  <td>{getGenderLabel(generos.find(g => g.id_genero === d.id_genero)) || '—'}</td>
+                  <td
+                    className="font-mono cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={describeCell("rfc", rfcColLabel, d)}
+                    onClick={() => speak(describeCell("rfc", rfcColLabel, d))}
+                    onFocus={() => speak(describeCell("rfc", rfcColLabel, d))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        speak(describeCell("rfc", rfcColLabel, d))
+                      }
+                    }}
+                  >
+                    {d.rfc}
+                  </td>
+
+                  <td
+                    className="cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={describeCell("nombre", firstNameColLabel, d)}
+                    onClick={() => speak(describeCell("nombre", firstNameColLabel, d))}
+                    onFocus={() => speak(describeCell("nombre", firstNameColLabel, d))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        speak(describeCell("nombre", firstNameColLabel, d))
+                      }
+                    }}
+                  >
+                    {d.nombre}
+                  </td>
+
+                  <td
+                    className="cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={describeCell("ap_paterno", lastName1ColLabel, d)}
+                    onClick={() => speak(describeCell("ap_paterno", lastName1ColLabel, d))}
+                    onFocus={() => speak(describeCell("ap_paterno", lastName1ColLabel, d))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        speak(describeCell("ap_paterno", lastName1ColLabel, d))
+                      }
+                    }}
+                  >
+                    {d.ap_paterno ?? '—'}
+                  </td>
+
+                  <td
+                    className="cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={describeCell("ap_materno", lastName2ColLabel, d)}
+                    onClick={() => speak(describeCell("ap_materno", lastName2ColLabel, d))}
+                    onFocus={() => speak(describeCell("ap_materno", lastName2ColLabel, d))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        speak(describeCell("ap_materno", lastName2ColLabel, d))
+                      }
+                    }}
+                  >
+                    {d.ap_materno ?? '—'}
+                  </td>
+
+                  <td
+                    className="cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={describeCell("correo", emailColLabel, d)}
+                    onClick={() => speak(describeCell("correo", emailColLabel, d))}
+                    onFocus={() => speak(describeCell("correo", emailColLabel, d))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        speak(describeCell("correo", emailColLabel, d))
+                      }
+                    }}
+                  >
+                    {d.correo}
+                  </td>
+
+                  <td
+                    className="cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={describeCell("genero", genderColLabel, d)}
+                    onClick={() => speak(describeCell("genero", genderColLabel, d))}
+                    onFocus={() => speak(describeCell("genero", genderColLabel, d))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        speak(describeCell("genero", genderColLabel, d))
+                      }
+                    }}
+                  >
+                    {getGenderLabel(generos.find(g => g.id_genero === d.id_genero)) || '—'}
+                  </td>
                   <td className="text-right flex items-center gap-2 justify-end">
+                    {/* Botón de resumen de voz por docente */}
+                    <button
+                      type="button"
+                      onClick={() => speak(docenteSummary(d))}
+                      className="px-2 py-1.5 text-[11px] inline-flex items-center rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100"
+                      aria-label={t('teachers.tts.rowSummaryAria', 'Escuchar resumen del docente {{name}}', {
+                        name: d.nombre,
+                      })}
+                    >
+                      <span aria-hidden="true">🔊</span>
+                    </button>
+
                     <button
                       onClick={() => askEdit(d)}
                       className="px-3 py-1.5 text-xs inline-flex items-center"
@@ -666,43 +1079,51 @@ export default function Docentes() {
             </div>
             <div className="px-4 py-4 grid md:grid-cols-2 gap-3">
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">
+                <label className="text-xs text-slate-600" htmlFor="edit-rfc">
                   {t('teachers.editModal.rfcLabel')}
                 </label>
                 <input
+                  id="edit-rfc"
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.rfc ?? ''}
                   onChange={e => setEdit(s => ({ ...s, rfc: e.target.value }))}
+                  onFocus={() => speak(t('teachers.editModal.rfcLabel'))}
                 />
               </div>
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">
+                <label className="text-xs text-slate-600" htmlFor="edit-nombre">
                   {t('teachers.editModal.firstNameLabel')}
                 </label>
                 <input
+                  id="edit-nombre"
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.nombre ?? ''}
                   onChange={e => setEdit(s => ({ ...s, nombre: e.target.value }))}
+                  onFocus={() => speak(t('teachers.editModal.firstNameLabel'))}
                 />
               </div>
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">
+                <label className="text-xs text-slate-600" htmlFor="edit-ap-paterno">
                   {t('teachers.editModal.lastName1Label')}
                 </label>
                 <input
+                  id="edit-ap-paterno"
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.ap_paterno ?? ''}
                   onChange={e => setEdit(s => ({ ...s, ap_paterno: e.target.value }))}
+                  onFocus={() => speak(t('teachers.editModal.lastName1Label'))}
                 />
               </div>
               <div className="grid gap-1">
-                <label className="text-xs text-slate-600">
+                <label className="text-xs text-slate-600" htmlFor="edit-ap-materno">
                   {t('teachers.editModal.lastName2Label')}
                 </label>
                 <input
+                  id="edit-ap-materno"
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.ap_materno ?? ''}
                   onChange={e => setEdit(s => ({ ...s, ap_materno: e.target.value }))}
+                  onFocus={() => speak(t('teachers.editModal.lastName2Label'))}
                 />
               </div>
 
@@ -723,16 +1144,18 @@ export default function Docentes() {
               </div>
 
               <div className="grid gap-1 md:col-span-2">
-                <label className="text-xs text-slate-600">
+                <label className="text-xs text-slate-600" htmlFor="edit-genero">
                   {t('teachers.editModal.genderLabel')}
                 </label>
                 <select
+                  id="edit-genero"
                   className="h-10 rounded-xl border px-3 text-sm"
                   value={edit.id_genero ?? ''}
                   onChange={e => setEdit(s => ({
                     ...s,
                     id_genero: e.target.value ? Number(e.target.value) : ''
                   }))}
+                  onFocus={() => speak(t('teachers.editModal.genderLabel'))}
                 >
                   <option value="">{t('teachers.editModal.genderPlaceholder')}</option>
                   {generos.map((g: any) => (

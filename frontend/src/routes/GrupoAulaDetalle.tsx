@@ -11,7 +11,18 @@ import ControlChart from "../pages/ControlChart"
 import ModalBaja from "../components/grupoAulaDetalle/ModalBaja"
 import ParetoChart from "../pages/ParetoChart"
 import { useTranslation } from "react-i18next"
-import { FiDownload, FiUpload, FiArrowLeft, FiPlus, FiFilter, FiTrash2, FiRefreshCw, FiArrowRight } from 'react-icons/fi'
+import {
+  FiDownload,
+  FiUpload,
+  FiArrowLeft,
+  FiPlus,
+  FiFilter,
+  FiTrash2,
+  FiRefreshCw,
+  FiArrowRight,
+} from "react-icons/fi"
+import { useAccessibility } from "../store/useAccessibility"
+import { TTS } from "../lib/tts"
 
 type AlumnoRow = {
   id_inscripcion: number
@@ -85,8 +96,8 @@ function normalizeKey(k: string) {
 function calcularPromedioAlumno(unidades?: Array<{ unidad: number; calificacion?: number }>): number | null {
   if (!unidades || unidades.length === 0) return null
   const calificaciones = unidades
-    .map(u => u.calificacion)
-    .filter(c => c !== null && c !== undefined && !isNaN(c as number)) as number[]
+    .map((u) => u.calificacion)
+    .filter((c) => c !== null && c !== undefined && !isNaN(c as number)) as number[]
 
   if (calificaciones.length === 0) return null
   const suma = calificaciones.reduce((acc, cal) => acc + cal, 0)
@@ -98,13 +109,13 @@ function estaAprobado(unidades?: Array<{ unidad: number; calificacion?: number }
   if (!unidades || unidades.length === 0) return false
 
   const calificaciones = unidades
-    .map(u => u.calificacion)
-    .filter(c => c !== null && c !== undefined && !isNaN(c as number)) as number[]
+    .map((u) => u.calificacion)
+    .filter((c) => c !== null && c !== undefined && !isNaN(c as number)) as number[]
 
   if (calificaciones.length === 0) return false
 
   // Todas las calificaciones deben ser >= 70
-  return calificaciones.every(cal => cal >= 70)
+  return calificaciones.every((cal) => cal >= 70)
 }
 
 export default function GrupoAulaDetalle() {
@@ -145,6 +156,65 @@ export default function GrupoAulaDetalle() {
   const controlRef = useRef<HTMLDivElement | null>(null)
   const paretoRef = useRef<HTMLDivElement | null>(null)
 
+  // 🔊 Accesibilidad / voz
+  const { voiceEnabled, voiceRate } = useAccessibility((s) => ({
+    voiceEnabled: s.voiceEnabled,
+    voiceRate: s.voiceRate,
+  }))
+
+  const speak = (text?: string) => {
+    if (!voiceEnabled) return
+    if (!text) return
+    if (!TTS.isSupported()) return
+    TTS.speak(text, { rate: voiceRate })
+  }
+
+  // Textos explicativos (con fallback por si no existen en i18n)
+  const headerButtonsHelp = t(
+    "classGroupDetail.tts.headerButtonsHelp",
+    "En la parte superior hay tres botones: el primero, Exportar gráficas, genera un archivo PDF con todas las gráficas de abajo. El segundo, Exportar PDF, genera un reporte con la tabla de calificaciones y un resumen del grupo. El botón Regresar te lleva de vuelta a la lista de grupos de aula."
+  )
+
+  const gradesSectionIntro = t(
+    "classGroupDetail.tts.gradesSectionIntro",
+    "En esta sección puedes ver y capturar las calificaciones y asistencias de cada estudiante. La tabla muestra el número de control, el nombre completo, las calificaciones y asistencias por unidad, el promedio final y una columna de acciones para dar de baja o reactivar inscripciones. Al final de la tarjeta encontrarás botones de paginación para moverte entre páginas de alumnos."
+  )
+
+  const gradesToolbarHelp = t(
+    "classGroupDetail.tts.gradesToolbarHelp",
+    "Debajo de este mensaje hay controles para gestionar el grupo: el campo de texto permite agregar un estudiante escribiendo su número de control y pulsando el botón Agregar estudiante. El botón Importar inscripciones te permite cargar un archivo de Excel o CSV con varios alumnos a la vez. El botón Subir calificaciones permite importar calificaciones y asistencias desde un archivo. El menú Plantillas te deja descargar archivos de ejemplo para llenar correctamente las inscripciones y las calificaciones."
+  )
+
+  const chartsSectionIntro = t(
+    "classGroupDetail.tts.chartsSectionIntro",
+    "La sección de gráficas te ayuda a interpretar visualmente los resultados del grupo. Primero verás un gráfico de pastel con el porcentaje de alumnos aprobados y reprobados. Después, un diagrama de dispersión que relaciona el promedio con la asistencia. Luego, una gráfica de control que muestra cómo evoluciona el promedio del grupo por unidad. Finalmente, un diagrama de Pareto que resalta las principales causas de reprobación o problemas detectados."
+  )
+
+  const pieTitle = t("classGroupDetail.charts.pieTitle", "Distribución de aprobados y reprobados")
+  const scatterTitle = t("classGroupDetail.charts.scatterTitle", "Relación promedio y asistencia")
+  const controlTitle = t("classGroupDetail.charts.controlTitle", "Promedio por unidad")
+  const paretoTitle = t("classGroupDetail.charts.paretoTitle", "Diagrama de Pareto de problemas")
+
+  const pieExplanation = t(
+    "classGroupDetail.tts.pieExplanation",
+    "Este gráfico de pastel muestra la proporción de estudiantes aprobados y reprobados en el grupo. Cada segmento representa un porcentaje del total de alumnos, para que puedas ver rápidamente qué tan alto es el nivel de aprobación."
+  )
+
+  const scatterExplanation = t(
+    "classGroupDetail.tts.scatterExplanation",
+    "Este diagrama de dispersión muestra un punto por cada estudiante. En el eje horizontal se representa el promedio de calificación y en el eje vertical la asistencia. Sirve para ver si los alumnos con mejor asistencia tienden a tener mejores calificaciones y detectar casos atípicos."
+  )
+
+  const controlExplanation = t(
+    "classGroupDetail.tts.controlExplanation",
+    "Esta gráfica de control muestra cómo cambia el promedio del grupo en cada unidad. Te permite identificar si el desempeño general del grupo se mantiene estable, mejora o empeora conforme avanzan las unidades."
+  )
+
+  const paretoExplanation = t(
+    "classGroupDetail.tts.paretoExplanation",
+    "En este diagrama de Pareto se ordenan las principales causas de reprobación o problemas, de la más frecuente a la menos frecuente. Las barras muestran la cantidad o porcentaje de casos por causa y la línea acumulada te ayuda a ver qué pocas causas concentran la mayoría de los problemas."
+  )
+
   // === Sólo alumnos ACTIVOS (se ocultan BAJA en la tabla) ===
   const activeRows = useMemo(
     () =>
@@ -179,7 +249,10 @@ export default function GrupoAulaDetalle() {
   const pageSafeAlu = Math.min(pageAlu, totalPagesAlu)
   const startAlu = (pageSafeAlu - 1) * pageSizeAlu
   const endAlu = startAlu + pageSizeAlu
-  const pagedAlu = useMemo(() => sortedActiveRows.slice(startAlu, endAlu), [sortedActiveRows, startAlu, endAlu])
+  const pagedAlu = useMemo(
+    () => sortedActiveRows.slice(startAlu, endAlu),
+    [sortedActiveRows, startAlu, endAlu]
+  )
 
   useEffect(() => {
     if (!Number.isFinite(id_grupo)) {
@@ -198,6 +271,7 @@ export default function GrupoAulaDetalle() {
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
+
   function getEstado(row: AlumnoRow): string {
     return String(row?.status ?? row?.estado ?? row?.inscripcion_status ?? "ACTIVA").toUpperCase()
   }
@@ -407,7 +481,7 @@ export default function GrupoAulaDetalle() {
     try {
       const elegibles = await fetchElegiblesParaGrupo(id_grupo)
       const header = ["no_control", "nombre", "ap_paterno", "ap_materno"]
-      const rows: (string[])[] =
+      const rows: string[][] =
         elegibles.length > 0
           ? elegibles.map((e) => [
             String(e.no_control ?? "").trim(),
@@ -462,7 +536,8 @@ export default function GrupoAulaDetalle() {
       format: "a4",
     })
 
-    const tituloPDF = `${t("classGroupDetail.charts.pdfTitlePrefix")}${titulo || t("classGroupDetail.charts.pdfTitleFallback", { id: id_grupo })}`
+    const tituloPDF = `${t("classGroupDetail.charts.pdfTitlePrefix")}${titulo || t("classGroupDetail.charts.pdfTitleFallback", { id: id_grupo })
+      }`
     const sub = (() => {
       const parts: string[] = []
       if ((grupo as any)?.clave) parts.push(String((grupo as any).clave))
@@ -499,7 +574,9 @@ export default function GrupoAulaDetalle() {
     const body = (exportRows || []).map((r) => {
       const base = [
         String(r?.estudiante?.no_control || ""),
-        `${(r?.estudiante?.nombre || "").toString().toUpperCase()} ${(r?.estudiante?.ap_paterno || "").toString().toUpperCase()}`.trim(),
+        `${(r?.estudiante?.nombre || "").toString().toUpperCase()} ${(r?.estudiante?.ap_paterno || "")
+          .toString()
+          .toUpperCase()}`.trim(),
       ]
       const cells: (string | number)[] = []
       for (let u = 1; u <= unidades; u++) {
@@ -538,9 +615,7 @@ export default function GrupoAulaDetalle() {
       rowPageBreak: "avoid",
       didDrawPage: (data) => {
         const pageCount =
-          (doc as any).internal?.getNumberOfPages?.() ??
-          (doc as any).getNumberOfPages?.() ??
-          1
+          (doc as any).internal?.getNumberOfPages?.() ?? (doc as any).getNumberOfPages?.() ?? 1
         const pageSize = doc.internal.pageSize
         const w = (pageSize as any).getWidth ? (pageSize as any).getWidth() : (pageSize as any).width
         const h = (pageSize as any).getHeight ? (pageSize as any).getHeight() : (pageSize as any).height
@@ -573,10 +648,9 @@ export default function GrupoAulaDetalle() {
     } catch { }
 
     doc.save(
-      `Calificaciones_${(titulo || t("classGroupDetail.charts.pdfTitleFallback", { id: id_grupo })).replace(
-        /\s+/g,
-        "_"
-      )}.pdf`
+      `Calificaciones_${(
+        titulo || t("classGroupDetail.charts.pdfTitleFallback", { id: id_grupo })
+      ).replace(/\s+/g, "_")}.pdf`
     )
   }
 
@@ -587,6 +661,13 @@ export default function GrupoAulaDetalle() {
       img.onerror = rej
       img.src = src
     })
+
+  const shouldIncludeNode = (node: HTMLElement | null) => {
+    if (!node) return true
+    if ((node as HTMLElement).dataset?.exportHide === "true") return false
+    if (node.classList?.contains("tts-button")) return false
+    return true
+  }
 
   async function getChartImage(host: HTMLElement) {
     const isRecharts = !!host.querySelector(".recharts-wrapper")
@@ -603,7 +684,7 @@ export default function GrupoAulaDetalle() {
           const tag = (el.tagName || "").toLowerCase()
           if (tag === "iframe") return false
           if (el.classList?.contains("recharts-tooltip-wrapper")) return false
-          return true
+          return shouldIncludeNode(el)
         },
       })
       const img = await loadImage(dataUrl)
@@ -655,6 +736,7 @@ export default function GrupoAulaDetalle() {
       cacheBust: true,
       width: Math.max(1, Math.round(rect.width)),
       height: Math.max(1, Math.round(rect.height)),
+      filter: (node) => shouldIncludeNode(node as HTMLElement),
     })
     const tmp = await loadImage(dataUrl)
     return { dataUrl, width: tmp.naturalWidth, height: tmp.naturalHeight }
@@ -728,7 +810,7 @@ export default function GrupoAulaDetalle() {
       const unlock = lockScroll()
       const undoTheme = forceLightThemeForExport()
 
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise((resolve) => setTimeout(resolve, 300))
 
       const bloques: Array<{ ref: React.RefObject<HTMLDivElement>; titulo: string }> = [
         { ref: pieRef, titulo: t("classGroupDetail.charts.pieTitle") },
@@ -765,7 +847,8 @@ export default function GrupoAulaDetalle() {
         doc.setFont("helvetica", "bold")
         doc.setFontSize(14)
         doc.text(
-          `${tituloGraf} — ${titulo || t("classGroupDetail.charts.pdfTitleFallback", { id: id_grupo })}`,
+          `${tituloGraf} — ${titulo || t("classGroupDetail.charts.pdfTitleFallback", { id: id_grupo })
+          }`,
           margin,
           margin
         )
@@ -807,10 +890,9 @@ export default function GrupoAulaDetalle() {
       }
 
       doc.save(
-        `${t("classGroupDetail.charts.exportFilePrefix")}${(titulo || t(
-          "classGroupDetail.charts.pdfTitleFallback",
-          { id: id_grupo }
-        )).replace(/\s+/g, "_")}.pdf`
+        `${t("classGroupDetail.charts.exportFilePrefix")}${(
+          titulo || t("classGroupDetail.charts.pdfTitleFallback", { id: id_grupo })
+        ).replace(/\s+/g, "_")}.pdf`
       )
       undoTheme()
       unlock()
@@ -833,7 +915,9 @@ export default function GrupoAulaDetalle() {
       setMsgAlu(t("classGroupDetail.messages.enrollmentReactivated"))
     } catch (e: any) {
       setMsgKind("error")
-      setMsgAlu(e?.response?.data?.message || e.message || t("classGroupDetail.messages.enrollmentReactivatedError"))
+      setMsgAlu(
+        e?.response?.data?.message || e.message || t("classGroupDetail.messages.enrollmentReactivatedError")
+      )
     }
   }
 
@@ -975,18 +1059,15 @@ export default function GrupoAulaDetalle() {
         let nc = String(
           (r["NO_CONTROL"] ??
             (r as any)["NO CONTROL"] ??
-            (r as any)["NO._CONTROL"] ??
-            (r as any)["NO. CONTROL"] ??
-            (r as any)["NO"] ??
-            (r as any)["NO_"] ??
-            (r as any)["NOCONTROL"] ??
-            (r as any)["NO CONTROL "] ??
             (r as any)["NO_CONTROL "] ??
             (r as any)["NO_CONTROL."] ??
             (r as any)["NO_CONTROL__"] ??
+            (r as any)["NO. CONTROL"] ??
+            (r as any)["NO._CONTROL"] ??
             (r as any)["NO."] ??
-            (r as any)["NO_CONTROL"] ??
-            (r as any)["NO.CONTROL"] ??
+            (r as any)["NO"] ??
+            (r as any)["NO_"] ??
+            (r as any)["NOCONTROL"] ??
             (r as any)["no_control"] ??
             (r as any)["No. control"] ??
             "") as string
@@ -1054,8 +1135,7 @@ export default function GrupoAulaDetalle() {
   }
 
   const headerTitle =
-    titulo ||
-    t("classGroupDetail.header.titleFallback", { id: id_grupo })
+    titulo || t("classGroupDetail.header.titleFallback", { id: id_grupo })
   const headerFull = t("classGroupDetail.header.title", { title: headerTitle })
 
   return (
@@ -1101,9 +1181,25 @@ export default function GrupoAulaDetalle() {
       `}</style>
 
       {/* ====== Header / acciones ====== */}
-      <div className="flex items-center justify-between">
-        <div className="font-semibold text-lg">{headerFull}</div>
-        <div className="flex gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-1">
+          <div className="font-semibold text-lg">{headerFull}</div>
+          {/* Botón de voz para explicar los botones superiores */}
+          <button
+            type="button"
+            onClick={() => speak(headerButtonsHelp)}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+            aria-label={t(
+              "classGroupDetail.tts.headerButtonsHelpAria",
+              "Escuchar explicación de los botones de exportar y regresar"
+            )}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>{t("classGroupDetail.tts.headerButtonsHelpLabel", "Explicación de botones de arriba")}</span>
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center justify-end">
           <button
             onClick={() => exportarGraficasPDF()}
             className="h-9 rounded-md border px-3 text-sm font-medium transition-colors inline-flex items-center justify-center
@@ -1127,7 +1223,10 @@ export default function GrupoAulaDetalle() {
             {t("classGroupDetail.buttons.exportPDF")}
           </button>
 
-          <Link to="/grupos/aula" className="rounded-md border px-3 py-1 text-sm inline-flex items-center">
+          <Link
+            to="/grupos/aula"
+            className="rounded-md border px-3 py-1 text-sm inline-flex items-center"
+          >
             <FiArrowLeft className="mr-2" size={16} />
             {t("classGroupDetail.buttons.back")}
           </Link>
@@ -1136,11 +1235,35 @@ export default function GrupoAulaDetalle() {
 
       {/* Mensaje */}
       {msgAlu && (
-        <div className={`text-sm ${msgKind === "ok" ? "text-emerald-600" : "text-red-600"}`}>{msgAlu}</div>
+        <div className={`text-sm ${msgKind === "ok" ? "text-emerald-600" : "text-red-600"}`}>
+          {msgAlu}
+        </div>
       )}
 
-      {/* ====== Tabla alumnos ====== */}
+      {/* ====== Tabla alumnos / Calificaciones ====== */}
       <div className="rounded-2xl bg-white border p-4 space-y-3">
+        {/* Título + explicación por voz de la sección de calificaciones */}
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-slate-800">
+            {t(
+              "classGroupDetail.tts.gradesSectionTitle",
+              "Calificaciones y asistencia del grupo"
+            )}
+          </h3>
+          <button
+            type="button"
+            onClick={() => speak(gradesSectionIntro)}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+            aria-label={t(
+              "classGroupDetail.tts.gradesSectionIntroAria",
+              "Escuchar explicación general de la sección de calificaciones"
+            )}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>{t("classGroupDetail.tts.listenGradesIntro", "Escuchar explicación de esta sección")}</span>
+          </button>
+        </div>
+
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-600">
             {t("classGroupDetail.summary.capacity", {
@@ -1154,8 +1277,9 @@ export default function GrupoAulaDetalle() {
               </span>
             )}
           </div>
-
-          <div className="flex gap-2 items-center">
+        </div>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex gap-2 items-center flex-wrap">
             {/* Agregar por No. control */}
             <input
               id="alu_noctrl"
@@ -1188,7 +1312,6 @@ export default function GrupoAulaDetalle() {
             />
             <button
               className="h-9 rounded-md border px-3 text-sm font-medium transition-colors inline-flex items-center"
-
               disabled={importing}
               onClick={() => fileRef.current?.click()}
               title={t("classGroupDetail.tooltips.importEnrollments")}
@@ -1221,88 +1344,88 @@ export default function GrupoAulaDetalle() {
                 ? t("classGroupDetail.buttons.uploadGradesLoading")
                 : t("classGroupDetail.buttons.uploadGrades")}
             </button>
+          </div>
 
-            {/* Menú de plantillas */}
-            <div ref={templateButtonRef} className="relative">
-              <button
-                className="h-9 rounded-md border px-3 text-sm font-medium transition-colors inline-flex items-center"
-                onClick={() => setShowTemplateOptions((v) => !v)}
-              >
-                <FiFilter className="mr-2" size={14} />
-                {t("classGroupDetail.buttons.template")}
-              </button>
+          {/* Menú de plantillas */}
+          <div ref={templateButtonRef} className="relative">
+            <button
+              className="h-9 rounded-md border px-3 text-sm font-medium transition-colors inline-flex items-center"
+              onClick={() => setShowTemplateOptions((v) => !v)}
+            >
+              <FiFilter className="mr-2" size={14} />
+              {t("classGroupDetail.buttons.template")}
+            </button>
 
-              {showTemplateOptions && (
-                <div className="absolute right-0 mt-1 w-56 z-30 overflow-hidden dropdown-menu">
-                  <ul className="py-1">
-                    {/* Inscripciones */}
-                    <li className="px-3 py-1 text-[11px] text-slate-500">
-                      {t("classGroupDetail.templatesMenu.enrollmentsSection")}
-                    </li>
-                    <li>
-                      <a
-                        className="dropdown-item"
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          void downloadTemplateXLSX()
-                          setShowTemplateOptions(false)
-                        }}
-                      >
-                        {t("classGroupDetail.templatesMenu.enrollmentsXlsx")}
-                      </a>
-                    </li>
+            {showTemplateOptions && (
+              <div className="absolute right-0 mt-1 w-56 z-30 overflow-hidden dropdown-menu">
+                <ul className="py-1">
+                  {/* Inscripciones */}
+                  <li className="px-3 py-1 text-[11px] text-slate-500">
+                    {t("classGroupDetail.templatesMenu.enrollmentsSection")}
+                  </li>
+                  <li>
+                    <a
+                      className="dropdown-item"
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        void downloadTemplateXLSX()
+                        setShowTemplateOptions(false)
+                      }}
+                    >
+                      {t("classGroupDetail.templatesMenu.enrollmentsXlsx")}
+                    </a>
+                  </li>
 
-                    <li>
-                      <a
-                        className="dropdown-item"
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          void downloadTemplateCSV()
-                          setShowTemplateOptions(false)
-                        }}
-                      >
-                        {t("classGroupDetail.templatesMenu.enrollmentsCsv")}
-                      </a>
-                    </li>
+                  <li>
+                    <a
+                      className="dropdown-item"
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        void downloadTemplateCSV()
+                        setShowTemplateOptions(false)
+                      }}
+                    >
+                      {t("classGroupDetail.templatesMenu.enrollmentsCsv")}
+                    </a>
+                  </li>
 
-                    <div className="dropdown-sep" />
+                  <div className="dropdown-sep" />
 
-                    {/* Calificaciones */}
-                    <li className="px-3 py-1 text-[11px] text-slate-500">
-                      {t("classGroupDetail.templatesMenu.gradesSection")}
-                    </li>
-                    <li>
-                      <a
-                        className="dropdown-item"
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          void downloadGradesTemplateXLSX()
-                          setShowTemplateOptions(false)
-                        }}
-                      >
-                        {t("classGroupDetail.templatesMenu.gradesXlsx")}
-                      </a>
-                    </li>
-                    <li>
-                      <a
-                        className="dropdown-item"
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          void downloadGradesTemplateCSV()
-                          setShowTemplateOptions(false)
-                        }}
-                      >
-                        {t("classGroupDetail.templatesMenu.gradesCsv")}
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </div>
+                  {/* Calificaciones */}
+                  <li className="px-3 py-1 text-[11px] text-slate-500">
+                    {t("classGroupDetail.templatesMenu.gradesSection")}
+                  </li>
+                  <li>
+                    <a
+                      className="dropdown-item"
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        void downloadGradesTemplateXLSX()
+                        setShowTemplateOptions(false)
+                      }}
+                    >
+                      {t("classGroupDetail.templatesMenu.gradesXlsx")}
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      className="dropdown-item"
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        void downloadGradesTemplateCSV()
+                        setShowTemplateOptions(false)
+                      }}
+                    >
+                      {t("classGroupDetail.templatesMenu.gradesCsv")}
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1310,10 +1433,18 @@ export default function GrupoAulaDetalle() {
           <table className="min-w-full text-xs">
             <thead className="bg-slate-50">
               <tr className="[&>th]:px-2 [&>th]:py-1.5 text-left">
-                <th className="text-[10px] font-semibold">{t("classGroupDetail.table.noControl")}</th>
-                <th className="text-[10px] font-semibold">{t("classGroupDetail.table.firstName")}</th>
-                <th className="text-[10px] font-semibold">{t("classGroupDetail.table.lastName1")}</th>
-                <th className="text-[10px] font-semibold">{t("classGroupDetail.table.lastName2")}</th>
+                <th className="text-[10px] font-semibold">
+                  {t("classGroupDetail.table.noControl")}
+                </th>
+                <th className="text-[10px] font-semibold">
+                  {t("classGroupDetail.table.firstName")}
+                </th>
+                <th className="text-[10px] font-semibold">
+                  {t("classGroupDetail.table.lastName1")}
+                </th>
+                <th className="text-[10px] font-semibold">
+                  {t("classGroupDetail.table.lastName2")}
+                </th>
                 {Array.from({ length: alumnos.unidades || 0 }, (_, i) => i + 1).map((u) => (
                   <Fragment key={`u_head_${u}`}>
                     <th className="text-center text-[10px] font-semibold">
@@ -1364,7 +1495,10 @@ export default function GrupoAulaDetalle() {
                   const promedio = calcularPromedioAlumno(r?.unidades)
 
                   return (
-                    <tr key={r.id_inscripcion} className="[&>td]:px-2 [&>td]:py-1 hover:bg-slate-50">
+                    <tr
+                      key={r.id_inscripcion}
+                      className="[&>td]:px-2 [&>td]:py-1 hover:bg-slate-50"
+                    >
                       <td className="whitespace-nowrap font-mono text-[11px]">
                         {r.estudiante?.no_control}
                       </td>
@@ -1379,8 +1513,10 @@ export default function GrupoAulaDetalle() {
                       </td>
 
                       {Array.from({ length: alumnos.unidades || 0 }, (_, i) => i + 1).map((u) => {
-                        const cal = r.unidades?.find((x) => x.unidad === u)?.calificacion ?? ""
-                        const asi = r.unidades?.find((x) => x.unidad === u)?.asistencia ?? ""
+                        const cal =
+                          r.unidades?.find((x) => x.unidad === u)?.calificacion ?? ""
+                        const asi =
+                          r.unidades?.find((x) => x.unidad === u)?.asistencia ?? ""
                         return (
                           <Fragment key={`u_row_${r.id_inscripcion}-${u}`}>
                             <td className="text-center">
@@ -1425,7 +1561,11 @@ export default function GrupoAulaDetalle() {
 
                       <td className="text-center font-semibold text-[11px]">
                         {promedio !== null ? (
-                          <span className={estaAprobado(r?.unidades) ? "text-emerald-600" : "text-red-600"}>
+                          <span
+                            className={
+                              estaAprobado(r?.unidades) ? "text-emerald-600" : "text-red-600"
+                            }
+                          >
                             {promedio}
                           </span>
                         ) : (
@@ -1490,37 +1630,125 @@ export default function GrupoAulaDetalle() {
         )}
       </div>
 
-      {/* ====== Sección de Gráficas (2 por fila) ====== */}
+      {/* ====== Sección de Gráficas ====== */}
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-800">
+          {t("classGroupDetail.charts.sectionTitle", "Gráficas de desempeño del grupo")}
+        </h3>
+        <button
+          type="button"
+          onClick={() => speak(chartsSectionIntro)}
+          data-export-hide="true"
+          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+          aria-label={t(
+            "classGroupDetail.tts.chartsSectionIntroAria",
+            "Escuchar explicación general de la sección de gráficas"
+          )}
+        >
+          <span aria-hidden="true">🔊</span>
+          <span>{t("classGroupDetail.tts.listenChartsIntro", "Explicación de las gráficas")}</span>
+        </button>
+      </div>
+
+      {/* ====== Gráficas (2 por fila) ====== */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Pie */}
         <div
           ref={pieRef}
           data-export-title={t("classGroupDetail.charts.pieTitle")}
           className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h4 className="text-sm font-semibold">{pieTitle}</h4>
+            <button
+              type="button"
+              onClick={() => speak(pieExplanation)}
+              data-export-hide="true"
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+              aria-label={t(
+                "classGroupDetail.tts.pieExplanationAria",
+                "Escuchar explicación del gráfico de pastel de aprobados y reprobados"
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
+            </button>
+          </div>
           <PieChartPage grupo={grupo} alumnos={activeRows} />
         </div>
 
+        {/* Scatter */}
         <div
           ref={scatterRef}
           data-export-title={t("classGroupDetail.charts.scatterTitle")}
           className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h4 className="text-sm font-semibold">{scatterTitle}</h4>
+            <button
+              type="button"
+              onClick={() => speak(scatterExplanation)}
+              data-export-hide="true"
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+              aria-label={t(
+                "classGroupDetail.tts.scatterExplanationAria",
+                "Escuchar explicación del diagrama de dispersión de promedio y asistencia"
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
+            </button>
+          </div>
           <ScatterChartPage alumnos={activeRows} />
         </div>
 
+        {/* Control */}
         <div
           ref={controlRef}
           data-export-title={t("classGroupDetail.charts.controlTitle")}
           className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h4 className="text-sm font-semibold">{controlTitle}</h4>
+            <button
+              type="button"
+              onClick={() => speak(controlExplanation)}
+              data-export-hide="true"
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+              aria-label={t(
+                "classGroupDetail.tts.controlExplanationAria",
+                "Escuchar explicación de la gráfica de control de promedio por unidad"
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
+            </button>
+          </div>
           <ControlChart promedio={promedio} />
         </div>
 
+        {/* Pareto */}
         <div
           ref={paretoRef}
           data-export-title={t("classGroupDetail.charts.paretoTitle")}
           className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
         >
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h4 className="text-sm font-semibold">{paretoTitle}</h4>
+            <button
+              type="button"
+              onClick={() => speak(paretoExplanation)}
+              data-export-hide="true"
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+              aria-label={t(
+                "classGroupDetail.tts.paretoExplanationAria",
+                "Escuchar explicación del diagrama de Pareto"
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
+            </button>
+          </div>
           <div className="h-[440px]">
             <ParetoChart id_grupo={id_grupo} />
           </div>
@@ -1536,12 +1764,32 @@ export default function GrupoAulaDetalle() {
           aria-label={t("classGroupDetail.charts.exportOverlayTitle")}
         >
           <div className="rounded-xl bg-white shadow-lg px-5 py-4 flex items-center gap-3">
-            <svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none" role="img" aria-label="cargando">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="4" />
-              <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+            <svg
+              className="h-6 w-6 animate-spin"
+              viewBox="0 0 24 24"
+              fill="none"
+              role="img"
+              aria-label="cargando"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeOpacity="0.25"
+                strokeWidth="4"
+              />
+              <path
+                d="M22 12a10 10 0 0 1-10 10"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
             </svg>
             <div>
-              <p className="font-medium">{t("classGroupDetail.charts.exportOverlayTitle")}</p>
+              <p className="font-medium">
+                {t("classGroupDetail.charts.exportOverlayTitle")}
+              </p>
               <p className="text-sm text-slate-600">
                 {t("classGroupDetail.charts.exportOverlaySubtitle")}
               </p>

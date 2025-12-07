@@ -134,6 +134,16 @@ html.high-contrast {
   --danger-bg-hover: #FF1F1F;
 }
 
+/* ===== Fuente para dislexia ===== */
+html.dyslexic-font,
+html.dyslexic-font body,
+html.dyslexic-font input,
+html.dyslexic-font textarea,
+html.dyslexic-font button,
+html.dyslexic-font select {
+  font-family: 'OpenDyslexic', 'Comic Sans MS', sans-serif !important;
+}
+
 /* ===== Mapear utilidades comunes a la paleta ===== */
 .bg-white {
   background-color: var(--card) !important;
@@ -706,4 +716,122 @@ html.dark {
 
   --danger-bg: #ef4444;
   --danger-fg: #FFFFFF;
+}
+
+/* ===== Accessibility Panel with Color Blind Support ===== */
+.accessibility-panel {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.accessibility-panel section h2 {
+  transition: color 0.15s ease;
+}
+
+.accessibility-panel button,
+.accessibility-panel [role="switch"] {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+/* Ensure text in accessibility panel is always readable */
+.accessibility-panel input[type="range"] {
+  accent-color: var(--primary);
+}
+
+/* Ensure all text inputs and selects in accessibility panel match the theme */
+.accessibility-panel input[type="text"],
+.accessibility-panel input[type="color"],
+.accessibility-panel select {
+  background-color: var(--bg);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* ===== GRÁFICOS Y CHARTS ===== */
+/* Aplicar colores del tema a gráficos (Recharts, Chart.js, etc.) */
+svg[role="img"],
+svg.chart,
+.recharts-wrapper,
+.chart-container,
+canvas {
+  color: var(--text) !important;
+}
+
+/* Colores para SVG icons - SOLO en contexto de gráficos, no en UI icons */
+/* UI icons (button SVGs) mantienen su color original definido por stroke="currentColor" con el color del padre */
+
+/* Para gráficos de Recharts específicamente */
+.recharts-wrapper svg {
+  color: var(--text);
+}
+
+/* Líneas y bordes SOLO en gráficos de Recharts */
+.recharts-wrapper svg line,
+.recharts-wrapper svg path,
+.recharts-wrapper svg rect,
+.recharts-wrapper svg circle,
+.recharts-wrapper svg polyline,
+.recharts-wrapper svg polygon {
+  stroke: var(--text) !important;
+}
+
+/* Excluir SVGs que son botones/iconos de UI (esto mantiene su apariencia original) */
+button svg,
+[role="button"] svg {
+  color: currentColor;
+  fill: none;
+  stroke: currentColor;
+}
+
+/* Para gráficos de Recharts específicamente */
+.recharts-text {
+  fill: var(--text) !important;
+  color: var(--text) !important;
+}
+
+.recharts-wrapper text {
+  fill: var(--text) !important;
+  color: var(--text) !important;
+}
+
+.recharts-cartesian-axis-tick text {
+  fill: var(--text) !important;
+}
+
+.recharts-legend-item text {
+  fill: var(--text) !important;
+  color: var(--text) !important;
+}
+
+/* Grid lines en gráficos */
+.recharts-cartesian-grid line {
+  stroke: var(--border) !important;
+}
+
+/* Tooltips en gráficos */
+.recharts-tooltip-wrapper {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+.recharts-tooltip {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* Chart.js */
+canvas {
+  mix-blend-mode: normal;
+}
+
+/* Colores dinámicos para barras/líneas en gráficos */
+.chart-bar,
+.chart-line {
+  stroke: var(--primary) !important;
+  fill: var(--primary) !important;
+}
+
+/* Área de gráficos */
+.chart-area {
+  fill: color-mix(in oklab, var(--primary), transparent 85%) !important;
 }

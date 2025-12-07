@@ -28,6 +28,7 @@ interface AccessibilityState {
   customPrimaryColor: string;
   customSidebarBgColor: string;
   customSidebarFgColor: string;
+  dyslexicFont: boolean;
 
   setReadingMaskEnabled: (on: boolean) => void;
   setReadingGuideEnabled: (on: boolean) => void;
@@ -52,6 +53,7 @@ interface AccessibilityState {
   setInteractiveHighlight: (on: boolean) => void;
   setVoiceEnabled: (on: boolean) => void;
   setVoiceRate: (rate: number) => void;
+  setDyslexicFont: (on: boolean) => void;
 }
 
 export const useAccessibility = create<AccessibilityState>()(
@@ -80,6 +82,7 @@ export const useAccessibility = create<AccessibilityState>()(
       interactiveHighlight: false,
       voiceEnabled: false,
       voiceRate: 1,
+      dyslexicFont: false,
       setFontSize: (fontSize) => set({ fontSize }),
       setContrastMode: (contrastMode) => set({ contrastMode }),
       toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
@@ -111,6 +114,7 @@ export const useAccessibility = create<AccessibilityState>()(
         set({ interactiveHighlight }),
       setVoiceEnabled: (voiceEnabled: boolean) => set({ voiceEnabled }),
       setVoiceRate: (voiceRate: number) => set({ voiceRate }),
+      setDyslexicFont: (dyslexicFont: boolean) => set({ dyslexicFont }),
     }),
     {
       name: "studentsnotes-accessibility",

@@ -7,6 +7,8 @@ import { Catalogos } from "../../lib/catalogos"
 import { useTranslation } from "react-i18next"
 import { getGenderLabel, getCareerLabel } from '../../lib/labels'
 import { FiSave } from 'react-icons/fi'
+import { useAccessibility } from "../../store/useAccessibility"
+import { TTS } from "../../lib/tts"
 
 // ————————————————————————————————————————————————————————————————
 // CONFIG GENERAL
@@ -88,7 +90,7 @@ function extractErrorMessage(err: any, t: (k: string, o?: any) => string): strin
   const meta = [method, url].filter(Boolean).join(" ")
 
   if (data && typeof data === "object") {
-    const jsonMsg = data.message || data.error || data.detail
+    const jsonMsg = (data as any).message || (data as any).error || (data as any).detail
     if (jsonMsg) {
       return [head, meta, String(jsonMsg)].filter(Boolean).join(" · ")
     }
@@ -184,6 +186,71 @@ export default function AddStudentForm({
       niceMax: toNice(_maxISO),
     }
   }, [anioCorteEff])
+
+  // 🔊 Accesibilidad / voz
+  const { voiceEnabled, voiceRate } = useAccessibility((s) => ({
+    voiceEnabled: s.voiceEnabled,
+    voiceRate: s.voiceRate,
+  }))
+
+  const speak = (textToSpeak?: string) => {
+    if (!voiceEnabled) return
+    if (!textToSpeak) return
+    if (!TTS.isSupported()) return
+
+    // Solo forzamos inglés; para español dejamos que use la voz buena por defecto
+    const lang = i18n.language?.startsWith("en") ? "en-US" : undefined
+
+    TTS.speak(textToSpeak, { rate: voiceRate, lang })
+  }
+
+  // Para no repetir constantemente al mover el mouse
+  const lastGenderHover = useRef<string | null>(null)
+  const lastCareerHover = useRef<string | null>(null)
+
+  // Labels e instrucciones por campo
+  const firstNameLabel = t("students.addForm.fields.firstName")
+  const firstNameInstructions = t(
+    "students.addForm.tts.firstNameInstructions",
+    "En este campo escribe el nombre o nombres del estudiante tal como aparecen en documentos oficiales."
+  )
+
+  const lastName1Label = t("students.addForm.fields.lastName1")
+  const lastName1Instructions = t(
+    "students.addForm.tts.lastName1Instructions",
+    "En este campo escribe el apellido paterno del estudiante."
+  )
+
+  const lastName2Label = t("students.addForm.fields.lastName2")
+  const lastName2Instructions = t(
+    "students.addForm.tts.lastName2Instructions",
+    "En este campo escribe el apellido materno del estudiante. Si no tiene, puedes dejarlo vacío."
+  )
+
+  const genderLabel = t("students.addForm.fields.gender")
+  const genderInstructions = t(
+    "students.addForm.tts.genderInstructions",
+    "En esta lista desplegable selecciona el género del estudiante."
+  )
+
+  const careerLabel = t("students.addForm.fields.career")
+  const careerInstructions = t(
+    "students.addForm.tts.careerInstructions",
+    "En esta lista desplegable selecciona la carrera a la que se inscribirá el estudiante."
+  )
+
+  const birthdateLabel = t("students.addForm.fields.birthdateLabel")
+  const birthdateInstructions = hasNativeDate
+    ? t(
+      "students.addForm.tts.birthdateInstructionsNative",
+      "En este campo selecciona la fecha de nacimiento del estudiante usando el calendario. Debe estar entre {{min}} y {{max}} para que tenga al menos 18 años en el año {{year}}.",
+      { min: niceMin, max: niceMax, year: anioCorteEff }
+    )
+    : t(
+      "students.addForm.tts.birthdateInstructionsText",
+      "En este campo escribe la fecha de nacimiento del estudiante en formato día, mes y año, por ejemplo 31/12/2000. Debe estar entre {{min}} y {{max}} para que tenga al menos 18 años en el año {{year}}.",
+      { min: niceMin, max: niceMax, year: anioCorteEff }
+    )
 
   // Schema Zod con mensajes traducidos
   const schemaWithRefine = useMemo(() => {
@@ -325,7 +392,10 @@ export default function AddStudentForm({
       })
 
       const createdMsg = t("students.addForm.messages.created")
-        ; (await import('../../lib/notifyService')).default.notify({ type: 'success', message: `${createdMsg}: ${clean.nombre} ${clean.ap_paterno}` })
+      ;(await import('../../lib/notifyService')).default.notify({
+        type: 'success',
+        message: `${createdMsg}: ${clean.nombre} ${clean.ap_paterno}`,
+      })
       reset({ id_carrera: defaultCarreraId } as Partial<FormValues>)
     } catch (e: any) {
       const details = extractErrorMessage(e, t)
@@ -341,7 +411,10 @@ export default function AddStudentForm({
     }
   }
 
+  // sacamos refs especiales para fecha, género y carrera
   const { ref: rhfDateRef, ...dateField } = register("fecha_nacimiento")
+  const { ref: rhfGenderRef, ...genderField } = register("id_genero")
+  const { ref: rhfCareerRef, ...careerField } = register("id_carrera")
 
   return (
     <form
@@ -354,13 +427,39 @@ export default function AddStudentForm({
       </h4>
 
       <div className="grid grid-cols-2 gap-3">
+        {/* Nombre */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t("students.addForm.fields.firstName")} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label
+              htmlFor="nombre"
+              className="text-xs text-slate-500"
+            >
+              {firstNameLabel}{" "}
+              <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(firstNameInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t(
+                "students.addForm.tts.fieldHelpAria",
+                "Escuchar instrucciones del campo {{label}}",
+                { label: firstNameLabel }
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+            </button>
+          </div>
+
           <input
+            id="nombre"
             className="border rounded-xl px-3 py-2"
-            placeholder={t("students.addForm.fields.firstName")}
+            placeholder={firstNameLabel}
             aria-required="true"
+            aria-label={firstNameLabel}
             autoComplete="given-name"
+            onFocus={() => speak(firstNameLabel)}
             {...register("nombre")}
           />
           {errors.nombre && (
@@ -370,13 +469,39 @@ export default function AddStudentForm({
           )}
         </div>
 
+        {/* Apellido paterno */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t("students.addForm.fields.lastName1")} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label
+              htmlFor="ap_paterno"
+              className="text-xs text-slate-500"
+            >
+              {lastName1Label}{" "}
+              <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(lastName1Instructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t(
+                "students.addForm.tts.fieldHelpAria",
+                "Escuchar instrucciones del campo {{label}}",
+                { label: lastName1Label }
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+            </button>
+          </div>
+
           <input
+            id="ap_paterno"
             className="border rounded-xl px-3 py-2"
-            placeholder={t("students.addForm.fields.lastName1")}
+            placeholder={lastName1Label}
             aria-required="true"
+            aria-label={lastName1Label}
             autoComplete="family-name"
+            onFocus={() => speak(lastName1Label)}
             {...register("ap_paterno")}
           />
           {errors.ap_paterno && (
@@ -386,25 +511,99 @@ export default function AddStudentForm({
           )}
         </div>
 
-        <input
-          className="border rounded-xl px-3 py-2 col-span-2 sm:col-span-1"
-          placeholder={t("students.addForm.fields.lastName2")}
-          autoComplete="additional-name"
-          {...register("ap_materno")}
-        />
+        {/* Apellido materno */}
+        <div className="grid gap-1 col-span-2 sm:col-span-1">
+          <div className="flex itemscenter justify-between gap-2">
+            <label
+              htmlFor="ap_materno"
+              className="text-xs text-slate-500"
+            >
+              {lastName2Label}
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(lastName2Instructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t(
+                "students.addForm.tts.fieldHelpAria",
+                "Escuchar instrucciones del campo {{label}}",
+                { label: lastName2Label }
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+            </button>
+          </div>
 
+          <input
+            id="ap_materno"
+            className="border rounded-xl px-3 py-2"
+            placeholder={lastName2Label}
+            aria-label={lastName2Label}
+            autoComplete="additional-name"
+            onFocus={() => speak(lastName2Label)}
+            {...register("ap_materno")}
+          />
+        </div>
+
+        {/* Género */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t("students.addForm.fields.gender")} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label
+              htmlFor="id_genero"
+              className="text-xs text-slate-500"
+            >
+              {genderLabel}{" "}
+              <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(genderInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t(
+                "students.addForm.tts.fieldHelpAria",
+                "Escuchar instrucciones del campo {{label}}",
+                { label: genderLabel }
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+            </button>
+          </div>
+
           <select
+            id="id_genero"
             className="border rounded-xl px-3 py-2"
             defaultValue=""
             aria-required="true"
-            {...register("id_genero")}
+            aria-label={genderLabel}
+            onFocus={() => speak(genderLabel)}
+            {...genderField}
+            ref={rhfGenderRef}
+            onChange={(e) => {
+              genderField.onChange(e)
+              const selected = generos.find(
+                (g: any) => String(g.id_genero) === e.target.value
+              )
+              if (selected) {
+                const label = getGenderLabel(selected) || selected.descripcion || ""
+                speak(`Género seleccionado: ${label}`)
+              }
+            }}
+            onMouseMove={(e) => {
+              const sel = e.currentTarget
+              const opt = sel.options[sel.selectedIndex]
+              if (!opt) return
+              const text = opt.text
+              if (lastGenderHover.current === text) return
+              lastGenderHover.current = text
+              speak(`Opción: ${text}`)
+            }}
           >
             <option value="" disabled>
-              {t("students.addForm.fields.gender")}
+              {genderLabel}
             </option>
-            {generos.map(g => (
+            {generos.map((g) => (
               <option key={g.id_genero} value={g.id_genero}>
                 {getGenderLabel(g) || g.descripcion}
               </option>
@@ -417,18 +616,64 @@ export default function AddStudentForm({
           )}
         </div>
 
+        {/* Carrera */}
         <div className="grid gap-1">
-          <label className="text-xs text-slate-500">{t("students.addForm.fields.career")} <span className="text-red-500" aria-hidden="true">*</span></label>
+          <div className="flex items-center justify-between gap-2">
+            <label
+              htmlFor="id_carrera"
+              className="text-xs text-slate-500"
+            >
+              {careerLabel}{" "}
+              <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => speak(careerInstructions)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t(
+                "students.addForm.tts.fieldHelpAria",
+                "Escuchar instrucciones del campo {{label}}",
+                { label: careerLabel }
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+            </button>
+          </div>
+
           <select
+            id="id_carrera"
             className="border rounded-xl px-3 py-2"
             defaultValue={defaultCarreraId ?? ""}
             aria-required="true"
-            {...register("id_carrera")}
+            aria-label={careerLabel}
+            onFocus={() => speak(careerLabel)}
+            {...careerField}
+            ref={rhfCareerRef}
+            onChange={(e) => {
+              careerField.onChange(e)
+              const selected = carreras.find(
+                (c: any) => String(c.id_carrera) === e.target.value
+              )
+              if (selected) {
+                const label = getCareerLabel(selected) || selected.nombre || ""
+                speak(`Carrera seleccionada: ${label}`)
+              }
+            }}
+            onMouseMove={(e) => {
+              const sel = e.currentTarget
+              const opt = sel.options[sel.selectedIndex]
+              if (!opt) return
+              const text = opt.text
+              if (lastCareerHover.current === text) return
+              lastCareerHover.current = text
+              speak(`Opción: ${text}`)
+            }}
           >
             <option value="" disabled>
-              {t("students.addForm.fields.career")}
+              {careerLabel}
             </option>
-            {carreras.map(c => (
+            {carreras.map((c) => (
               <option key={c.id_carrera} value={c.id_carrera}>
                 {getCareerLabel(c) || c.nombre}
               </option>
@@ -441,25 +686,43 @@ export default function AddStudentForm({
           )}
         </div>
 
+        {/* Fecha de nacimiento */}
         <div className="grid gap-1 col-span-2">
-          <label
-            htmlFor="fecha_nacimiento"
-            className="text-xs text-slate-500"
-          >
-            {t("students.addForm.fields.birthdateLabel")} <span className="text-red-500" aria-hidden="true">*</span>{" "}
-            <span className="text-slate-400">
-              (
-              {hasNativeDate
-                ? t("students.addForm.fields.birthdateFormatNative")
-                : t("students.addForm.fields.birthdateFormatText")}
-              ){" "}
-              ·{" "}
-              {t(
-                "students.addForm.fields.birthdateMustBe18InYear",
-                { year: anioCorteEff }
+          <div className="flex items-start justify-between gap-2">
+            <label
+              htmlFor="fecha_nacimiento"
+              className="text-xs text-slate-500"
+            >
+              {birthdateLabel}{" "}
+              <span className="text-red-500" aria-hidden="true">*</span>{" "}
+              <span className="text-slate-400">
+                (
+                {hasNativeDate
+                  ? t("students.addForm.fields.birthdateFormatNative")
+                  : t("students.addForm.fields.birthdateFormatText")}
+                ){" "}
+                ·{" "}
+                {t(
+                  "students.addForm.fields.birthdateMustBe18InYear",
+                  { year: anioCorteEff }
+                )}
+              </span>
+            </label>
+
+            <button
+              type="button"
+              onClick={() => speak(birthdateInstructions)}
+              className="mt-0.5 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t(
+                "students.addForm.tts.fieldHelpAria",
+                "Escuchar instrucciones del campo {{label}}",
+                { label: birthdateLabel }
               )}
-            </span>
-          </label>
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+            </button>
+          </div>
 
           <div className="relative">
             <input
@@ -467,6 +730,7 @@ export default function AddStudentForm({
               type={hasNativeDate ? "date" : "text"}
               className="h-10 w-full rounded-xl border px-3 pr-24 text-sm"
               aria-required="true"
+              aria-label={birthdateLabel}
               min={hasNativeDate ? minDate : undefined}
               max={hasNativeDate ? maxDate : undefined}
               placeholder={
@@ -476,6 +740,7 @@ export default function AddStudentForm({
               }
               inputMode={hasNativeDate ? undefined : "numeric"}
               pattern={hasNativeDate ? undefined : "\\d{2}/\\d{2}/\\d{4}"}
+              onFocus={() => speak(birthdateLabel)}
               {...dateField}
               ref={el => {
                 rhfDateRef(el)
@@ -491,6 +756,10 @@ export default function AddStudentForm({
                 else el?.focus()
               }}
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              aria-label={t(
+                "students.addForm.buttons.openCalendarAria",
+                "Abrir selector de fecha de nacimiento"
+              )}
             >
               {t("students.addForm.buttons.openCalendar")}
             </button>
@@ -517,10 +786,10 @@ export default function AddStudentForm({
         errors.id_genero ||
         errors.id_carrera ||
         errors.fecha_nacimiento) && (
-          <p className="text-sm text-red-600">
-            {t("students.addForm.validation.completeRequired")}
-          </p>
-        )}
+        <p className="text-sm text-red-600">
+          {t("students.addForm.validation.completeRequired")}
+        </p>
+      )}
 
       <button
         type="submit"

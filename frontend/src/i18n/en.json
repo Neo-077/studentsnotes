@@ -71,6 +71,8 @@
       "sidebarFgColorAria": "Sidebar text color",
       "otherOptions": "Other options",
       "highlightInteractive": "Highlight interactive elements",
+      "dyslexicFont": "Dyslexic-friendly font",
+      "dyslexicFontEnable": "Enable OpenDyslexic font",
       "focusMode": "Focus mode",
       "bigPointer": "Big pointer",
       "language": "Language",
@@ -83,7 +85,12 @@
       "test": "Test",
       "stop": "Stop",
       "voice": "Voice",
-      "voiceHint": "Click any text to hear it when this is enabled."
+      "voiceHint": "Click any text to hear it when this is enabled.",
+      "colorBlindMode": "Color Blind Mode",
+      "colorBlindRG": "Protanopia - Blue/Yellow vision (Red-green color blindness)",
+      "colorBlindGreen": "Deuteranopia - Green insensitivity (Red-green color blindness)",
+      "colorBlindBY": "Tritanopia - Blue insensitivity (Blue-yellow color blindness)",
+      "disableDaltonism": "Disabled"
     },
     "pointerSize": "Pointer size",
     "enrollments": "Enrollments",
