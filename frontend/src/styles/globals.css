@@ -43,8 +43,16 @@ html {
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: var(--text);
-  background-color: var(--bg);
+  color: var(--text) !important;
+  background-color: var(--bg) !important;
+  background-image: none !important;
+}
+
+#root {
+  color: var(--text) !important;
+  background-color: var(--bg) !important;
+  width: 100%;
+  height: 100%;
 }
 
 /* Contenedor raíz de la app */
@@ -100,6 +108,37 @@ body {
 /* Small responsive tweak so the value doesn't overlap on very small widths */
 .accessibility-range+.tabular-nums {
   min-width: 44px;
+}
+
+/* ===== Dark mode (tema oscuro) ===== */
+html.dark {
+  color-scheme: dark;
+
+  /* Fondo/base muy oscuros */
+  --bg: #071428;
+  --surface: #071428;
+  --card: #0b1722;
+
+  /* Texto claro */
+  --text: #E9EEF5;
+  --muted: #9AA6B2;
+
+  /* Bordes oscuros */
+  --border: #233240;
+  --ring: color-mix(in oklab, #63C1CA, transparent 55%);
+
+  /* Primario igual (cyan) */
+  --primary: #63C1CA;
+  --primary-ctr: #0B1220;
+
+  /* Sidebar oscuro */
+  --sidebar-bg: #0F2431;
+  --sidebar-fg: #E9EEF5;
+
+  /* Error rojo */
+  --danger-bg: #E11D48;
+  --danger-fg: #FFFFFF;
+  --danger-bg-hover: #BE123C;
 }
 
 /* ===== High contrast mode (aplica a TODO el sistema) ===== */
@@ -163,13 +202,34 @@ html.dyslexic-font select {
   color: var(--muted) !important;
 }
 
-.text-slate-500 {
+.text-slate-500,
+.text-slate-400,
+.text-slate-600,
+.text-slate-700 {
   color: var(--muted) !important;
-  opacity: .95;
+}
+
+.text-slate-800,
+.text-slate-900 {
+  color: var(--text) !important;
 }
 
 .border {
   border-color: var(--border) !important;
+}
+
+.border-slate-200,
+.border-slate-300 {
+  border-color: var(--border) !important;
+}
+
+.bg-slate-50,
+.bg-slate-100 {
+  background-color: var(--surface) !important;
+}
+
+.hover\:bg-slate-100:hover {
+  background-color: color-mix(in oklab, var(--surface), white 4%) !important;
 }
 
 .ring-1 {
@@ -550,24 +610,6 @@ table button:active {
   font-size: 18px;
 }
 
-/* Alto contraste (puedes afinar colores según tu paleta) */
-.high-contrast {
-  --tw-bg-opacity: 1;
-  --tw-text-opacity: 1;
-  background-color: #000 !important;
-  color: #fff !important;
-}
-
-.high-contrast .sidebar {
-  background-color: #000 !important;
-  color: #fff !important;
-}
-
-.high-contrast .sidebar-link.is-active {
-  background-color: #fff !important;
-  color: #000 !important;
-}
-
 /* El resto se apoya en Tailwind: .sr-only, focus-visible, etc. */
 
 /* Accessibility: highlight interactive elements when enabled */
@@ -692,30 +734,6 @@ html.big-pointer button {
 /* Small responsive tweak so the value doesn't overlap on very small widths */
 .accessibility-range+.tabular-nums {
   min-width: 48px;
-}
-
-/* ===== Dark theme variables (applied when `html.dark` is present) ===== */
-html.dark {
-  /* Use a deep neutral background and lighter text for dark mode */
-  --bg: #071428;
-  --surface: #071428;
-  --card: #0b1722;
-  --text: #E9EEF5;
-  --muted: #9AA6B2;
-  --border: #233240;
-  --ring: color-mix(in oklab, var(--primary), white 14%);
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.6), 0 1px 1px rgba(0, 0, 0, 0.45);
-
-  /* Primary/contrast mapping (kept similar to light but tuned for dark) */
-  --primary: var(--c-teal);
-  --primary-ctr: #0B1220;
-
-  /* Sidebar defaults for dark UI */
-  --sidebar-bg: #0F2431;
-  --sidebar-fg: #E9EEF5;
-
-  --danger-bg: #ef4444;
-  --danger-fg: #FFFFFF;
 }
 
 /* ===== Accessibility Panel with Color Blind Support ===== */

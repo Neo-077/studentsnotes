@@ -319,13 +319,13 @@ export default function Dashboard() {
           aria-label={
             exporting
               ? t(
-                  'dashboard.exporting_aria',
-                  'Exportando la gráfica del dashboard a PDF'
-                )
+                'dashboard.exporting_aria',
+                'Exportando la gráfica del dashboard a PDF'
+              )
               : t(
-                  'dashboard.exportPDF_aria',
-                  'Exportar la gráfica del dashboard a PDF'
-                )
+                'dashboard.exportPDF_aria',
+                'Exportar la gráfica del dashboard a PDF'
+              )
           }
         >
           <svg
@@ -371,68 +371,70 @@ export default function Dashboard() {
               <div className="relative">
                 <div className="flex items-start justify-between mb-4">
                   {/* 🔊 Botón de icono que lee la tarjeta completa */}
-                  <button
-                    type="button"
-                    onClick={() => speak(cardVoiceText)}
-                    className="p-3 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[var(--card)]"
-                    style={{ backgroundColor: item.iconBg }}
-                    aria-label={t(
-                      'dashboard.readCardVoice_aria',
-                      'Leer información de la tarjeta: {{name}}',
-                      { name: item.name }
-                    )}
-                  >
-                    <div style={{ color: item.iconColor }}>
-                      {index === 0 && (
-                        <svg
-                          className="w-8 h-8"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          aria-hidden="true"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                          />
-                        </svg>
+                  {voiceEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => speak(cardVoiceText)}
+                      className="p-3 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-[var(--card)]"
+                      style={{ backgroundColor: item.iconBg }}
+                      aria-label={t(
+                        'dashboard.readCardVoice_aria',
+                        'Leer información de la tarjeta: {{name}}',
+                        { name: item.name }
                       )}
-                      {index === 1 && (
-                        <svg
-                          className="w-8 h-8"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          aria-hidden="true"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                          />
-                        </svg>
-                      )}
-                      {index === 2 && (
-                        <svg
-                          className="w-8 h-8"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          aria-hidden="true"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </button>
+                    >
+                      <div style={{ color: item.iconColor }}>
+                        {index === 0 && (
+                          <svg
+                            className="w-8 h-8"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                            />
+                          </svg>
+                        )}
+                        {index === 1 && (
+                          <svg
+                            className="w-8 h-8"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                          </svg>
+                        )}
+                        {index === 2 && (
+                          <svg
+                            className="w-8 h-8"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+                  )}
 
                   <div className="text-right">
                     <div className="text-xs font-medium text-slate-500 dark:text-[var(--muted)] uppercase tracking-wide">
@@ -523,23 +525,25 @@ export default function Dashboard() {
           </p>
 
           {/* 🔊 Botón para leer explicación completa de la gráfica */}
-          <button
-            type="button"
-            onClick={() => speak(chartFullExplanation)}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-[var(--border)] bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-[var(--text)] hover:bg-slate-100 dark:hover:bg-slate-700/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
-            aria-label={t(
-              'dashboard.readChartExplanation_aria',
-              'Escuchar una explicación completa de la gráfica'
-            )}
-          >
-            <span aria-hidden="true">🔊</span>
-            <span>
-              {t(
-                'dashboard.readChartExplanation',
-                'Leer explicación completa de la gráfica'
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(chartFullExplanation)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-[var(--border)] bg-slate-50 dark:bg-slate-800/40 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-[var(--text)] hover:bg-slate-100 dark:hover:bg-slate-700/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50"
+              aria-label={t(
+                'dashboard.readChartExplanation_aria',
+                'Escuchar una explicación completa de la gráfica'
               )}
-            </span>
-          </button>
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>
+                {t(
+                  'dashboard.readChartExplanation',
+                  'Leer explicación completa de la gráfica'
+                )}
+              </span>
+            </button>
+          )}
 
           {/* Descripción oculta para lectores de pantalla */}
           <p id="dashboard-chart-desc" className="sr-only">

@@ -96,10 +96,6 @@ export default function ScatterChartPage({ alumnos }: { alumnos: AlumnoRow[] }) 
 
   return (
     <div className="w-full h-full">
-      <h3 className="text-base font-semibold mb-4" style={{ color: chartTextColor }}>
-        {t("classGroupDetail.charts.scatterTitle")}
-      </h3>
-
       <ResponsiveContainer width="100%" height={350}>
         <ScatterChart margin={{ top: 20, right: 30, bottom: 60, left: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />

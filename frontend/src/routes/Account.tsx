@@ -170,7 +170,7 @@ export default function Account() {
 
   return (
     <div className="grid gap-6 max-w-2xl">
-      
+
       {/* Encabezado con botón de voz */}
       <div className="flex items-center justify-between">
         <div>
@@ -180,13 +180,15 @@ export default function Account() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => speak(pageHelp)}
-          className="rounded-md border px-3 py-1 text-xs inline-flex items-center bg-slate-50 hover:bg-slate-100"
-        >
-          🔊 {t('account.tts.explainPage', 'Explicar pantalla')}
-        </button>
+        {voiceEnabled && (
+          <button
+            type="button"
+            onClick={() => speak(pageHelp)}
+            className="rounded-md border px-3 py-1 text-xs inline-flex items-center bg-slate-50 hover:bg-slate-100"
+          >
+            🔊 {t('account.tts.explainPage', 'Explicar pantalla')}
+          </button>
+        )}
       </div>
 
       {/* === Cambiar contraseña === */}
@@ -195,27 +197,31 @@ export default function Account() {
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-medium">{t('account.passwordSectionTitle')}</h3>
-          <button
-            type="button"
-            onClick={() => speak(passwordSectionHelp)}
-            className="rounded-md border px-2 py-1 text-xs bg-slate-50 hover:bg-slate-100"
-          >
-            🔊 {t('account.tts.explainSection', 'Explicar')}
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(passwordSectionHelp)}
+              className="rounded-md border px-2 py-1 text-xs bg-slate-50 hover:bg-slate-100"
+            >
+              🔊 {t('account.tts.explainSection', 'Explicar')}
+            </button>
+          )}
         </div>
 
         <form onSubmit={changePassword} className="grid gap-3">
-          
+
           {/* Campo contraseña actual */}
           <div className="flex items-center justify-between">
             <label className="text-xs text-slate-700">{t('account.currentPasswordPlaceholder')}</label>
-            <button
-              type="button"
-              onClick={() => speak(helpCurrentPw)}
-              className="text-[11px] border rounded px-2 py-0.5 bg-slate-50"
-            >
-              🔊 ¿Qué hacer?
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(helpCurrentPw)}
+                className="text-[11px] border rounded px-2 py-0.5 bg-slate-50"
+              >
+                🔊 ¿Qué hacer?
+              </button>
+            )}
           </div>
           <input
             type="password"
@@ -228,13 +234,15 @@ export default function Account() {
           {/* Nueva contraseña */}
           <div className="flex items-center justify-between">
             <label className="text-xs text-slate-700">{t('account.newPasswordPlaceholder')}</label>
-            <button
-              type="button"
-              onClick={() => speak(helpNewPw)}
-              className="text-[11px] border rounded px-2 py-0.5 bg-slate-50"
-            >
-              🔊 ¿Qué hacer?
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(helpNewPw)}
+                className="text-[11px] border rounded px-2 py-0.5 bg-slate-50"
+              >
+                🔊 ¿Qué hacer?
+              </button>
+            )}
           </div>
           <input
             type="password"
@@ -247,13 +255,15 @@ export default function Account() {
           {/* Confirmar contraseña */}
           <div className="flex items-center justify-between">
             <label className="text-xs text-slate-700">{t('account.confirmPasswordPlaceholder')}</label>
-            <button
-              type="button"
-              onClick={() => speak(helpConfirmPw)}
-              className="text-[11px] border rounded px-2 py-0.5 bg-slate-50"
-            >
-              🔊 ¿Qué hacer?
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(helpConfirmPw)}
+                className="text-[11px] border rounded px-2 py-0.5 bg-slate-50"
+              >
+                🔊 ¿Qué hacer?
+              </button>
+            )}
           </div>
           <input
             type="password"
@@ -289,13 +299,15 @@ export default function Account() {
       <div className="rounded-2xl border bg-white p-4 shadow-sm max-w-xl">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-medium">{t('account.avatarSectionTitle')}</h3>
-          <button
-            type="button"
-            onClick={() => speak(avatarSectionHelp)}
-            className="rounded-md border px-2 py-1 text-xs bg-slate-50 hover:bg-slate-100"
-          >
-            🔊 {t('account.tts.explainSection', 'Explicar')}
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(avatarSectionHelp)}
+              className="rounded-md border px-2 py-1 text-xs bg-slate-50 hover:bg-slate-100"
+            >
+              🔊 {t('account.tts.explainSection', 'Explicar')}
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-4">

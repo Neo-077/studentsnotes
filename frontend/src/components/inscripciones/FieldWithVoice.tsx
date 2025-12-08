@@ -92,17 +92,19 @@ export const FieldWithVoice: React.FC<FieldWithVoiceProps> = ({
         </label>
 
         {/* Botón 🔊 para leer qué se debe hacer en el campo */}
-        <button
-          type="button"
-          onClick={() => speak(instructionsText)}
-          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-          aria-label={ariaButtonLabel}
-        >
-          <span aria-hidden="true">🔊</span>
-          <span>
-            {t("enrollmentsPage.fieldHelpButton", "¿Qué debo escribir?")}
-          </span>
-        </button>
+        {voiceEnabled && (
+          <button
+            type="button"
+            onClick={() => speak(instructionsText)}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            aria-label={ariaButtonLabel}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>
+              {t("enrollmentsPage.fieldHelpButton", "¿Qué debo escribir?")}
+            </span>
+          </button>
+        )}
       </div>
 
       {description && (

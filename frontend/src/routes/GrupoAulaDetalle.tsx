@@ -924,13 +924,34 @@ export default function GrupoAulaDetalle() {
   function estadoBadge(status?: string) {
     const s = (status || "").toUpperCase()
     const isBaja = s === "BAJA"
-    const clr = isBaja
-      ? "bg-red-50 text-red-700 ring-red-100"
-      : s === "APROBADA"
-        ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
-        : s === "REPROBADA"
-          ? "bg-amber-50 text-amber-700 ring-amber-100"
-          : "bg-slate-50 text-slate-700 ring-slate-100"
+
+    // Estilos adaptativos que funcionan en todos los modos
+    let badgeStyle: React.CSSProperties = {}
+    if (isBaja) {
+      badgeStyle = {
+        backgroundColor: "color-mix(in oklab, #E11D48, transparent 85%)",
+        color: "#E11D48",
+        borderColor: "color-mix(in oklab, #E11D48, transparent 70%)"
+      }
+    } else if (s === "APROBADA") {
+      badgeStyle = {
+        backgroundColor: "color-mix(in oklab, #10B981, transparent 85%)",
+        color: "#10B981",
+        borderColor: "color-mix(in oklab, #10B981, transparent 70%)"
+      }
+    } else if (s === "REPROBADA") {
+      badgeStyle = {
+        backgroundColor: "color-mix(in oklab, #F59E0B, transparent 85%)",
+        color: "#F59E0B",
+        borderColor: "color-mix(in oklab, #F59E0B, transparent 70%)"
+      }
+    } else {
+      badgeStyle = {
+        backgroundColor: "color-mix(in oklab, var(--surface), white 4%)",
+        color: "var(--muted)",
+        borderColor: "var(--border)"
+      }
+    }
 
     let label = s || "ACTIVA"
     if (isBaja) label = t("classGroupDetail.status.inactive")
@@ -939,7 +960,10 @@ export default function GrupoAulaDetalle() {
     else label = t("classGroupDetail.status.active")
 
     return (
-      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ring-1 ${clr}`}>
+      <span
+        className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ring-1"
+        style={badgeStyle}
+      >
         {label}
       </span>
     )
@@ -1185,18 +1209,31 @@ export default function GrupoAulaDetalle() {
         <div className="space-y-1">
           <div className="font-semibold text-lg">{headerFull}</div>
           {/* Botón de voz para explicar los botones superiores */}
-          <button
-            type="button"
-            onClick={() => speak(headerButtonsHelp)}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-            aria-label={t(
-              "classGroupDetail.tts.headerButtonsHelpAria",
-              "Escuchar explicación de los botones de exportar y regresar"
-            )}
-          >
-            <span aria-hidden="true">🔊</span>
-            <span>{t("classGroupDetail.tts.headerButtonsHelpLabel", "Explicación de botones de arriba")}</span>
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(headerButtonsHelp)}
+              className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--surface)",
+                color: "var(--text)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--surface)"
+              }}
+              aria-label={t(
+                "classGroupDetail.tts.headerButtonsHelpAria",
+                "Escuchar explicación de los botones de exportar y regresar"
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("classGroupDetail.tts.headerButtonsHelpLabel", "Explicación de botones de arriba")}</span>
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2 items-center justify-end">
@@ -1235,44 +1272,69 @@ export default function GrupoAulaDetalle() {
 
       {/* Mensaje */}
       {msgAlu && (
-        <div className={`text-sm ${msgKind === "ok" ? "text-emerald-600" : "text-red-600"}`}>
+        <div
+          className="text-sm"
+          style={{
+            color: msgKind === "ok" ? "#10B981" : "#E11D48"
+          }}
+        >
           {msgAlu}
         </div>
       )}
 
       {/* ====== Tabla alumnos / Calificaciones ====== */}
-      <div className="rounded-2xl bg-white border p-4 space-y-3">
+      <div className="rounded-2xl border p-4 space-y-3" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
         {/* Título + explicación por voz de la sección de calificaciones */}
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-800">
+          <h3 className="text-sm font-semibold" style={{ color: "var(--text)" }}>
             {t(
               "classGroupDetail.tts.gradesSectionTitle",
               "Calificaciones y asistencia del grupo"
             )}
           </h3>
-          <button
-            type="button"
-            onClick={() => speak(gradesSectionIntro)}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-            aria-label={t(
-              "classGroupDetail.tts.gradesSectionIntroAria",
-              "Escuchar explicación general de la sección de calificaciones"
-            )}
-          >
-            <span aria-hidden="true">🔊</span>
-            <span>{t("classGroupDetail.tts.listenGradesIntro", "Escuchar explicación de esta sección")}</span>
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(gradesSectionIntro)}
+              className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--surface)",
+                color: "var(--text)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--surface)"
+              }}
+              aria-label={t(
+                "classGroupDetail.tts.gradesSectionIntroAria",
+                "Escuchar explicación general de la sección de calificaciones"
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("classGroupDetail.tts.listenGradesIntro", "Escuchar explicación de esta sección")}</span>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="text-sm text-slate-600">
+          <div className="text-sm" style={{ color: "var(--muted)" }}>
             {t("classGroupDetail.summary.capacity", {
               current: sortedActiveRows.length,
               capacity: alumnos.cupo,
               units: alumnos.unidades,
             })}{" "}
             {sortedActiveRows.length >= (alumnos.cupo || 0) && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-700 ring-1 ring-red-100">
+              <span
+                className="ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] ring-1"
+                style={{
+                  backgroundColor: "color-mix(in oklab, #E11D48, transparent 85%)",
+                  color: "#E11D48",
+                  borderColor: "color-mix(in oklab, #E11D48, transparent 70%)"
+                }}
+              >
                 {t("classGroupDetail.summary.full")}
               </span>
             )}
@@ -1360,7 +1422,7 @@ export default function GrupoAulaDetalle() {
               <div className="absolute right-0 mt-1 w-56 z-30 overflow-hidden dropdown-menu">
                 <ul className="py-1">
                   {/* Inscripciones */}
-                  <li className="px-3 py-1 text-[11px] text-slate-500">
+                  <li className="px-3 py-1 text-[11px]" style={{ color: "var(--muted)" }}>
                     {t("classGroupDetail.templatesMenu.enrollmentsSection")}
                   </li>
                   <li>
@@ -1394,7 +1456,7 @@ export default function GrupoAulaDetalle() {
                   <div className="dropdown-sep" />
 
                   {/* Calificaciones */}
-                  <li className="px-3 py-1 text-[11px] text-slate-500">
+                  <li className="px-3 py-1 text-[11px]" style={{ color: "var(--muted)" }}>
                     {t("classGroupDetail.templatesMenu.gradesSection")}
                   </li>
                   <li>
@@ -1429,10 +1491,10 @@ export default function GrupoAulaDetalle() {
           </div>
         </div>
 
-        <div className="overflow-auto rounded-xl border custom-scrollbar">
+        <div className="overflow-auto rounded-xl border custom-scrollbar" style={{ borderColor: "var(--border)" }}>
           <table className="min-w-full text-xs">
-            <thead className="bg-slate-50">
-              <tr className="[&>th]:px-2 [&>th]:py-1.5 text-left">
+            <thead style={{ backgroundColor: "color-mix(in oklab, var(--surface), white 4%)" }}>
+              <tr className="[&>th]:px-2 [&>th]:py-1.5 text-left" style={{ color: "var(--text)" }}>
                 <th className="text-[10px] font-semibold">
                   {t("classGroupDetail.table.noControl")}
                 </th>
@@ -1469,7 +1531,8 @@ export default function GrupoAulaDetalle() {
                 <tr>
                   <td
                     colSpan={6 + (alumnos.unidades || 0) * 2}
-                    className="px-3 py-6 text-center text-slate-500"
+                    className="px-3 py-6 text-center"
+                    style={{ color: "var(--muted)" }}
                   >
                     {t("classGroupDetail.table.loading")}
                   </td>
@@ -1480,7 +1543,8 @@ export default function GrupoAulaDetalle() {
                 <tr>
                   <td
                     colSpan={6 + (alumnos.unidades || 0) * 2}
-                    className="px-3 py-6 text-center text-slate-500"
+                    className="px-3 py-6 text-center"
+                    style={{ color: "var(--muted)" }}
                   >
                     {t("classGroupDetail.table.empty")}
                   </td>
@@ -1497,7 +1561,16 @@ export default function GrupoAulaDetalle() {
                   return (
                     <tr
                       key={r.id_inscripcion}
-                      className="[&>td]:px-2 [&>td]:py-1 hover:bg-slate-50"
+                      className="[&>td]:px-2 [&>td]:py-1 transition"
+                      style={{
+                        color: "var(--text)"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent"
+                      }}
                     >
                       <td className="whitespace-nowrap font-mono text-[11px]">
                         {r.estudiante?.no_control}
@@ -1526,7 +1599,12 @@ export default function GrupoAulaDetalle() {
                                 max={100}
                                 defaultValue={cal as any}
                                 disabled={esBaja}
-                                className="h-7 w-12 rounded border px-1 text-[11px] text-center disabled:opacity-60 disabled:bg-slate-50"
+                                className="h-7 w-12 rounded border px-1 text-[11px] text-center disabled:opacity-60 transition"
+                                style={{
+                                  borderColor: "var(--border)",
+                                  backgroundColor: "var(--surface)",
+                                  color: "var(--text)"
+                                }}
                                 onBlur={(e) =>
                                   actualizarUnidad(
                                     r.id_inscripcion,
@@ -1544,7 +1622,12 @@ export default function GrupoAulaDetalle() {
                                 defaultValue={asi as any}
                                 disabled={esBaja}
                                 placeholder="0"
-                                className="h-7 w-12 rounded border px-1 text-[11px] text-center disabled:opacity-60 disabled:bg-slate-50"
+                                className="h-7 w-12 rounded border px-1 text-[11px] text-center disabled:opacity-60 transition"
+                                style={{
+                                  borderColor: "var(--border)",
+                                  backgroundColor: "var(--surface)",
+                                  color: "var(--text)"
+                                }}
                                 onBlur={(e) =>
                                   actualizarUnidad(
                                     r.id_inscripcion,
@@ -1562,21 +1645,32 @@ export default function GrupoAulaDetalle() {
                       <td className="text-center font-semibold text-[11px]">
                         {promedio !== null ? (
                           <span
-                            className={
-                              estaAprobado(r?.unidades) ? "text-emerald-600" : "text-red-600"
-                            }
+                            style={{
+                              color: estaAprobado(r?.unidades) ? "#10B981" : "#E11D48"
+                            }}
                           >
                             {promedio}
                           </span>
                         ) : (
-                          <span className="text-slate-400">—</span>
+                          <span style={{ color: "var(--muted)" }}>—</span>
                         )}
                       </td>
 
                       <td className="text-right whitespace-nowrap">
                         {esBaja ? (
                           <button
-                            className="rounded border px-2 py-0.5 text-[10px] text-emerald-700 hover:bg-emerald-50 inline-flex items-center"
+                            className="rounded border px-2 py-0.5 text-[10px] inline-flex items-center transition"
+                            style={{
+                              borderColor: "var(--border)",
+                              backgroundColor: "color-mix(in oklab, #10B981, transparent 90%)",
+                              color: "#10B981"
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = "color-mix(in oklab, #10B981, transparent 85%)"
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = "color-mix(in oklab, #10B981, transparent 90%)"
+                            }}
                             onClick={() => reactivarInscripcion(r.id_inscripcion)}
                             title={t("classGroupDetail.tooltips.reactivate")}
                           >
@@ -1612,7 +1706,7 @@ export default function GrupoAulaDetalle() {
               <FiArrowLeft className="mr-1" size={14} />
               {t("classGroupDetail.buttons.paginationPrev")}
             </button>
-            <span className="text-sm text-slate-600">
+            <span className="text-sm" style={{ color: "var(--muted)" }}>
               {t("classGroupDetail.pagination.summary", {
                 page: pageSafeAlu,
                 totalPages: totalPagesAlu,
@@ -1632,22 +1726,35 @@ export default function GrupoAulaDetalle() {
 
       {/* ====== Sección de Gráficas ====== */}
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">
+        <h3 className="text-sm font-semibold" style={{ color: "var(--text)" }}>
           {t("classGroupDetail.charts.sectionTitle", "Gráficas de desempeño del grupo")}
         </h3>
-        <button
-          type="button"
-          onClick={() => speak(chartsSectionIntro)}
-          data-export-hide="true"
-          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-          aria-label={t(
-            "classGroupDetail.tts.chartsSectionIntroAria",
-            "Escuchar explicación general de la sección de gráficas"
-          )}
-        >
-          <span aria-hidden="true">🔊</span>
-          <span>{t("classGroupDetail.tts.listenChartsIntro", "Explicación de las gráficas")}</span>
-        </button>
+        {voiceEnabled && (
+          <button
+            type="button"
+            onClick={() => speak(chartsSectionIntro)}
+            data-export-hide="true"
+            className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+            style={{
+              borderColor: "var(--border)",
+              backgroundColor: "var(--surface)",
+              color: "var(--text)"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--surface)"
+            }}
+            aria-label={t(
+              "classGroupDetail.tts.chartsSectionIntroAria",
+              "Escuchar explicación general de la sección de gráficas"
+            )}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>{t("classGroupDetail.tts.listenChartsIntro", "Explicación de las gráficas")}</span>
+          </button>
+        )}
       </div>
 
       {/* ====== Gráficas (2 por fila) ====== */}
@@ -1656,23 +1763,40 @@ export default function GrupoAulaDetalle() {
         <div
           ref={pieRef}
           data-export-title={t("classGroupDetail.charts.pieTitle")}
-          className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
+          className="rounded-xl border shadow-sm p-4"
+          style={{
+            backgroundColor: "var(--card)",
+            borderColor: "var(--border)"
+          }}
         >
           <div className="flex items-center justify-between gap-2 mb-2">
-            <h4 className="text-sm font-semibold">{pieTitle}</h4>
-            <button
-              type="button"
-              onClick={() => speak(pieExplanation)}
-              data-export-hide="true"
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-              aria-label={t(
-                "classGroupDetail.tts.pieExplanationAria",
-                "Escuchar explicación del gráfico de pastel de aprobados y reprobados"
-              )}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
-            </button>
+            <h4 className="text-sm font-semibold" style={{ color: "var(--text)" }}>{pieTitle}</h4>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(pieExplanation)}
+                data-export-hide="true"
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text)"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--surface)"
+                }}
+                aria-label={t(
+                  "classGroupDetail.tts.pieExplanationAria",
+                  "Escuchar explicación del gráfico de pastel de aprobados y reprobados"
+                )}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
+              </button>
+            )}
           </div>
           <PieChartPage grupo={grupo} alumnos={activeRows} />
         </div>
@@ -1681,23 +1805,40 @@ export default function GrupoAulaDetalle() {
         <div
           ref={scatterRef}
           data-export-title={t("classGroupDetail.charts.scatterTitle")}
-          className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
+          className="rounded-xl border shadow-sm p-4"
+          style={{
+            backgroundColor: "var(--card)",
+            borderColor: "var(--border)"
+          }}
         >
           <div className="flex items-center justify-between gap-2 mb-2">
-            <h4 className="text-sm font-semibold">{scatterTitle}</h4>
-            <button
-              type="button"
-              onClick={() => speak(scatterExplanation)}
-              data-export-hide="true"
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-              aria-label={t(
-                "classGroupDetail.tts.scatterExplanationAria",
-                "Escuchar explicación del diagrama de dispersión de promedio y asistencia"
-              )}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
-            </button>
+            <h4 className="text-sm font-semibold" style={{ color: "var(--text)" }}>{scatterTitle}</h4>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(scatterExplanation)}
+                data-export-hide="true"
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text)"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--surface)"
+                }}
+                aria-label={t(
+                  "classGroupDetail.tts.scatterExplanationAria",
+                  "Escuchar explicación del diagrama de dispersión de promedio y asistencia"
+                )}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
+              </button>
+            )}
           </div>
           <ScatterChartPage alumnos={activeRows} />
         </div>
@@ -1706,23 +1847,40 @@ export default function GrupoAulaDetalle() {
         <div
           ref={controlRef}
           data-export-title={t("classGroupDetail.charts.controlTitle")}
-          className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
+          className="rounded-xl border shadow-sm p-4"
+          style={{
+            backgroundColor: "var(--card)",
+            borderColor: "var(--border)"
+          }}
         >
           <div className="flex items-center justify-between gap-2 mb-2">
-            <h4 className="text-sm font-semibold">{controlTitle}</h4>
-            <button
-              type="button"
-              onClick={() => speak(controlExplanation)}
-              data-export-hide="true"
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-              aria-label={t(
-                "classGroupDetail.tts.controlExplanationAria",
-                "Escuchar explicación de la gráfica de control de promedio por unidad"
-              )}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
-            </button>
+            <h4 className="text-sm font-semibold" style={{ color: "var(--text)" }}>{controlTitle}</h4>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(controlExplanation)}
+                data-export-hide="true"
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text)"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--surface)"
+                }}
+                aria-label={t(
+                  "classGroupDetail.tts.controlExplanationAria",
+                  "Escuchar explicación de la gráfica de control de promedio por unidad"
+                )}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
+              </button>
+            )}
           </div>
           <ControlChart promedio={promedio} />
         </div>
@@ -1731,27 +1889,42 @@ export default function GrupoAulaDetalle() {
         <div
           ref={paretoRef}
           data-export-title={t("classGroupDetail.charts.paretoTitle")}
-          className="rounded-xl bg-white dark:bg-[var(--card)] border border-slate-200 dark:border-[var(--border)] shadow-sm p-4"
+          className="rounded-xl border shadow-sm p-4"
+          style={{
+            backgroundColor: "var(--card)",
+            borderColor: "var(--border)"
+          }}
         >
           <div className="flex items-center justify-between gap-2 mb-2">
-            <h4 className="text-sm font-semibold">{paretoTitle}</h4>
-            <button
-              type="button"
-              onClick={() => speak(paretoExplanation)}
-              data-export-hide="true"
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-              aria-label={t(
-                "classGroupDetail.tts.paretoExplanationAria",
-                "Escuchar explicación del diagrama de Pareto"
-              )}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
-            </button>
+            <h4 className="text-sm font-semibold" style={{ color: "var(--text)" }}>{paretoTitle}</h4>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(paretoExplanation)}
+                data-export-hide="true"
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text)"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--surface)"
+                }}
+                aria-label={t(
+                  "classGroupDetail.tts.paretoExplanationAria",
+                  "Escuchar explicación del diagrama de Pareto"
+                )}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t("classGroupDetail.tts.listenChart", "Explicar gráfica")}</span>
+              </button>
+            )}
           </div>
-          <div className="h-[440px]">
-            <ParetoChart id_grupo={id_grupo} />
-          </div>
+          <ParetoChart id_grupo={id_grupo} />
         </div>
       </section>
 
@@ -1763,7 +1936,7 @@ export default function GrupoAulaDetalle() {
           aria-modal="true"
           aria-label={t("classGroupDetail.charts.exportOverlayTitle")}
         >
-          <div className="rounded-xl bg-white shadow-lg px-5 py-4 flex items-center gap-3">
+          <div className="rounded-xl shadow-lg px-5 py-4 flex items-center gap-3" style={{ backgroundColor: "var(--card)" }}>
             <svg
               className="h-6 w-6 animate-spin"
               viewBox="0 0 24 24"

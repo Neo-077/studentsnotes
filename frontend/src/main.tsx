@@ -6,68 +6,48 @@ import App from "./App";
 import BigPointer from "./components/BigPointer";
 import "./styles/globals.css";
 import useAuth from "./store/useAuth";
-import { applyTheme } from "./lib/theme";
 import { TTS } from "./lib/tts";
 
-// ✅ IMPORTACIÓN QUE FALTABA
-import { useAccessibility } from "./store/useAccessibility";
+// ✅ Zustand es el único responsable de temas
+import { useAccessibility, applyThemeToDocument } from "./store/useAccessibility";
 import i18n from 'i18next'
 
+// 🔄 LIMPIAR localStorage viejo conflictivo INMEDIATAMENTE
+try {
+  localStorage.removeItem("sn_theme");
+  localStorage.removeItem("sn_high_contrast");
+  // Nota: NO limpiamos "studentsnotes-accessibility" para que se persista correctamente
+} catch { }
+
 useAuth.getState().init();
-applyTheme();
+
+// 🎨 Aplicar tema inicial
+try {
+  applyThemeToDocument(useAccessibility.getState());
+} catch (err) {
+  console.error("Error al aplicar tema inicial:", err);
+}
 
 function Root() {
-  // ⚠️ Esto debe estar dentro de un componente React, NO en el archivo global.
-  const { fontSize, contrastMode, focusMode, bigPointer, interactiveHighlight, voiceEnabled, voiceRate, pointerSize, customColorsEnabled, customBgColor, customTextColor, customPrimaryColor, customSidebarBgColor, customSidebarFgColor, dyslexicFont } = useAccessibility();
+  // ⚠️ Destructuración: accesibilidad NO tema
+  // El tema es manejado por el store y onRehydrateStorage de persist
+  const { fontSize, focusMode, bigPointer, interactiveHighlight, dyslexicFont, voiceEnabled, voiceRate, pointerSize } = useAccessibility();
 
-  // 🔧 Aplicar los cambios de accesibilidad directamente al <html>
+  // 🔧 Aplicar cambios de accesibilidad al <html>
   React.useEffect(() => {
     const root = document.documentElement;
 
     root.dataset.fontSize = fontSize;
-    root.dataset.contrastMode = contrastMode;
-
     root.classList.toggle("focus-mode", focusMode);
-    // big-pointer class is kept for backwards compatibility but does NOT hide the native cursor.
     root.classList.toggle("big-pointer", bigPointer);
     root.classList.toggle("interactive-highlight", interactiveHighlight);
     root.classList.toggle("dyslexic-font", dyslexicFont);
+  }, [fontSize, focusMode, bigPointer, interactiveHighlight, dyslexicFont]);
 
-    // 🎨 Aplicar colores personalizados del daltonismo
-    if (customColorsEnabled) {
-      root.style.setProperty('--bg', customBgColor);
-      root.style.setProperty('--surface', customBgColor);
-      root.style.setProperty('--card', customBgColor);
-      root.style.setProperty('--text', customTextColor);
-      root.style.setProperty('--primary', customPrimaryColor);
-      root.style.setProperty('--sidebar-bg', customSidebarBgColor);
-      root.style.setProperty('--sidebar-fg', customSidebarFgColor);
-      // Aplicar también a muted para que gráficos y elementos secundarios se vean bien
-      root.style.setProperty('--muted', customTextColor);
-      // Aplicar a border para que los bordes se vean con el color del texto
-      root.style.setProperty('--border', customTextColor);
-    } else {
-      // Reset a valores por defecto
-      root.style.removeProperty('--bg');
-      root.style.removeProperty('--surface');
-      root.style.removeProperty('--card');
-      root.style.removeProperty('--text');
-      root.style.removeProperty('--primary');
-      root.style.removeProperty('--muted');
-      root.style.removeProperty('--border');
-      root.style.removeProperty('--sidebar-bg');
-      root.style.removeProperty('--sidebar-fg');
-    }
-  }, [fontSize, contrastMode, focusMode, bigPointer, interactiveHighlight, customColorsEnabled, customBgColor, customTextColor, customPrimaryColor, customSidebarBgColor, customSidebarFgColor, dyslexicFont]);
-
-  // 🌓 Reacción al cambio del sistema (modo oscuro/claro)
+  // 🌓 Sistema de temas ahora es 100% responsabilidad de useAccessibility
+  // No necesitamos reaccionar a cambios del sistema operativo
   React.useEffect(() => {
-    if (!window.matchMedia) return;
-
-    try {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      mq.addEventListener?.("change", () => applyTheme());
-    } catch { }
+    // Sistema de temas centralizado en Zustand
   }, []);
 
   // 🔁 Refresh automático al volver de background/conexión

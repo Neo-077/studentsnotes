@@ -1,6 +1,5 @@
 // App.tsx
 import { Routes, Route, Navigate, Outlet, NavLink, useLocation } from 'react-router-dom'
-import { useEffect, useState } from 'react'
 import Inscripciones from './routes/Inscripciones'
 import Grupos from './routes/Grupos'
 import Login from './routes/Login'
@@ -12,8 +11,6 @@ import Materias from './routes/Materias'
 import GruposAula from './routes/GruposAula'
 import GrupoAulaDetalle from './routes/GrupoAulaDetalle'
 import Dashboard from './routes/Dashboard'
-import { toggleTheme, isDark } from './lib/theme'
-import { TTS } from './lib/tts'
 import Account from './routes/Account'
 import { useTranslation } from 'react-i18next'
 import { FiHome, FiUserPlus, FiLayers, FiUsers, FiUser, FiBook, FiSettings } from 'react-icons/fi'
@@ -24,49 +21,7 @@ import ReadingGuide from './components/ReadingGuide'
 import { useAccessibility } from './store/useAccessibility'
 import { AccessibilityMenu } from './components/AccessibilityMenu'
 
-type FontSizePref = 'normal' | 'large'
-
-function applyFontSize(pref: FontSizePref) {
-  if (typeof document === 'undefined') return
-  const root = document.documentElement
-  root.dataset.fontSize = pref
-  try {
-    localStorage.setItem('sn_font_size', pref)
-  } catch {
-    // ignore
-  }
-}
-
-function getStoredFontSize(): FontSizePref {
-  if (typeof window === 'undefined') return 'normal'
-  try {
-    const value = localStorage.getItem('sn_font_size') as FontSizePref | null
-    return value === 'large' ? 'large' : 'normal'
-  } catch {
-    return 'normal'
-  }
-}
-
-function applyHighContrast(enabled: boolean) {
-  if (typeof document === 'undefined') return
-  const root = document.documentElement
-  root.classList.toggle('high-contrast', enabled)
-  try {
-    localStorage.setItem('sn_high_contrast', enabled ? '1' : '0')
-  } catch {
-    // ignore
-  }
-}
-
-function getStoredHighContrast(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    return localStorage.getItem('sn_high_contrast') === '1'
-  } catch {
-    return false
-  }
-}
-
+// --- helper que ya tenías ---
 function getContrastCounterpart(hex: string) {
   const h = hex.replace('#', '')
   if (h.length === 3) {
@@ -81,16 +36,13 @@ function getContrastCounterpart(hex: string) {
     const b = parseInt(h.slice(4, 6), 16)
     return (r * 0.299 + g * 0.587 + b * 0.114) > 186 ? '#000000' : '#FFFFFF'
   }
-
-  // Fallback: always return a valid color string (prevents undefined)
   return '#000000'
 }
 
 function Shell() {
   const { t, i18n } = useTranslation()
+
   const {
-    fontSize,
-    contrastMode,
     readingMaskEnabled,
     readingMaskHeight,
     readingMaskOpacity,
@@ -99,88 +51,14 @@ function Shell() {
     readingGuideThickness,
     readingGuideColor,
     readingGuideOpacity,
+    contrastMode,
     customColorsEnabled,
     customBgColor,
-    customTextColor,
-    customPrimaryColor,
     customSidebarBgColor,
     customSidebarFgColor,
-    voiceEnabled,
-    voiceRate,
   } = useAccessibility()
 
-  const highContrast = contrastMode === 'high'
-  const [dark, setDark] = useState(isDark())
   const { session, user, role, avatarUrl, logout } = useAuth()
-
-  // Se eliminó la delegación global de pointerdown para evitar que la voz se dispare al hacer click en cualquier parte.
-  useEffect(() => {
-    applyFontSize(fontSize as any)
-  }, [fontSize])
-
-  useEffect(() => {
-    applyHighContrast(highContrast)
-  }, [highContrast])
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    const root = document.documentElement
-
-    // First, remove high-contrast if it was applied
-    root.classList.remove('high-contrast')
-
-    if (contrastMode === 'high') {
-      // Ensure dark theme class is removed so high-contrast variables win
-      root.classList.remove('dark')
-      setDark(false)
-      root.classList.add('high-contrast')
-      // Remove any inline sidebar overrides for high contrast mode
-      root.style.removeProperty('--sidebar-bg')
-      root.style.removeProperty('--sidebar-fg')
-    } else if (contrastMode === 'dark') {
-      // Dark mode: ensure .dark class is present
-      if (!root.classList.contains('dark')) {
-        root.classList.add('dark')
-        setDark(true)
-      }
-      // Remove inline sidebar overrides so dark theme CSS variables apply
-      if (!customColorsEnabled) {
-        root.style.removeProperty('--sidebar-bg')
-        root.style.removeProperty('--sidebar-fg')
-      }
-    } else if (contrastMode === 'default') {
-      // Default (light) mode: ensure .dark class is removed
-      if (root.classList.contains('dark')) {
-        root.classList.remove('dark')
-        setDark(false)
-      }
-      // Set sidebar to light colors in default mode
-      if (!customColorsEnabled) {
-        root.style.setProperty('--sidebar-bg', '#FFFFFF')
-        root.style.setProperty('--sidebar-fg', '#1E3452')
-      }
-    }
-  }, [contrastMode, customColorsEnabled])
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    const root = document.documentElement
-    if (customColorsEnabled) {
-      root.style.setProperty('--bg', customBgColor)
-      root.style.setProperty('--text', customTextColor)
-      root.style.setProperty('--primary', customPrimaryColor)
-      const ctr = getContrastCounterpart(customPrimaryColor)
-      root.style.setProperty('--primary-ctr', ctr)
-      root.style.setProperty('--sidebar-bg', customSidebarBgColor)
-      root.style.setProperty('--sidebar-fg', customSidebarFgColor)
-    } else {
-      root.style.removeProperty('--bg')
-      root.style.removeProperty('--text')
-      root.style.removeProperty('--primary')
-      root.style.removeProperty('--primary-ctr')
-      // Don't remove sidebar properties here - let contrastMode effect handle them
-    }
-  }, [customColorsEnabled, customBgColor, customTextColor, customPrimaryColor, customSidebarBgColor, customSidebarFgColor, contrastMode])
 
   const displayName =
     (user?.user_metadata?.full_name as string) ||
@@ -195,19 +73,25 @@ function Shell() {
     .map((w: string) => w[0]?.toUpperCase())
     .join('')
 
-  const currentLng = i18n.language?.startsWith('en') ? 'en' : 'es'
+  // === estilos DEL SIDEBAR unificados ===
+  // Usar variables CSS en lugar de estilos inline hardcodeados
+  const sidebarStyle: React.CSSProperties | undefined = (() => {
+    // 1) Paleta personalizada - usar inline solo para colores custom
+    if (customColorsEnabled) {
+      const bg = customSidebarBgColor || customBgColor || '#003D7A'
+      const fg = customSidebarFgColor || getContrastCounterpart(bg)
+      return {
+        background: bg,
+        color: fg,
+        borderRight: '1px solid rgba(15,23,42,0.15)',
+      }
+    }
 
-  useEffect(() => {
-    const onLang = () => {
-      try {
-        window.dispatchEvent(new Event('app:languageChanged'))
-      } catch { }
-    }
-    i18n.on && i18n.on('languageChanged', onLang)
-    return () => {
-      i18n.off && i18n.off('languageChanged', onLang)
-    }
-  }, [i18n])
+    // 2-4) Para todos los demás modos, usar variables CSS definidas en globals.css
+    // El sidebar ya tiene estilos en .sidebar que usan var(--sidebar-bg) y var(--sidebar-fg)
+    // No aplicar estilos inline para que las variables CSS se apliquen correctamente
+    return undefined
+  })()
 
   const navItemsAdmin = [
     { to: '/dashboard', label: t('nav.home') },
@@ -229,24 +113,15 @@ function Shell() {
 
   function getIconForPath(path: string) {
     switch (path) {
-      case '/dashboard':
-        return <FiHome className="w-5 h-5 flex-none" />
-      case '/inscripciones':
-        return <FiUserPlus className="w-5 h-5 flex-none" />
-      case '/grupos':
-        return <FiLayers className="w-5 h-5 flex-none" />
-      case '/grupos/aula':
-        return <FiUsers className="w-5 h-5 flex-none" />
-      case '/docentes':
-        return <FiUser className="w-5 h-5 flex-none" />
-      case '/materias':
-        return <FiBook className="w-5 h-5 flex-none" />
-      case '/estudiantes':
-        return <FiUsers className="w-5 h-5 flex-none" />
-      case '/cuenta':
-        return <FiSettings className="w-5 h-5 flex-none" />
-      default:
-        return null
+      case '/dashboard': return <FiHome className="w-5 h-5 flex-none" />
+      case '/inscripciones': return <FiUserPlus className="w-5 h-5 flex-none" />
+      case '/grupos': return <FiLayers className="w-5 h-5 flex-none" />
+      case '/grupos/aula': return <FiUsers className="w-5 h-5 flex-none" />
+      case '/docentes': return <FiUser className="w-5 h-5 flex-none" />
+      case '/materias': return <FiBook className="w-5 h-5 flex-none" />
+      case '/estudiantes': return <FiUsers className="w-5 h-5 flex-none" />
+      case '/cuenta': return <FiSettings className="w-5 h-5 flex-none" />
+      default: return null
     }
   }
 
@@ -259,14 +134,11 @@ function Shell() {
         {t('layout.skipToContent')}
       </a>
 
+      {/* ⬇⬇ AQUÍ USAMOS sidebarStyle solo si hay colores custom ⬇⬇ */}
       <aside
         className="sidebar p-4 lg:min-h-screen-fix lg:min-w-[260px] shadow-xl"
         aria-label={t('layout.sidebarAria')}
-        style={contrastMode === 'default' && !customColorsEnabled ? {
-          background: '#FFFFFF',
-          color: '#1E3452',
-          borderRight: '1px solid #E2E8F0'
-        } : undefined}
+        style={sidebarStyle || undefined}
       >
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
@@ -279,8 +151,6 @@ function Shell() {
         <div className="mb-3">
           <AccessibilityMenu inline />
         </div>
-
-        {/* Reset button moved into AccessibilityMenu; keep sidebar compact */}
 
         <nav className="mt-2" aria-label={t('layout.mainNavAria')}>
           <ul className="grid gap-1 text-sm">
@@ -333,7 +203,7 @@ function Shell() {
             {t('layout.logout')}
           </button>
         </div>
-      </aside >
+      </aside>
 
       <ConfirmModal />
       <NotificationToast />
@@ -360,7 +230,7 @@ function Shell() {
           <Outlet />
         </main>
       </div>
-    </div >
+    </div>
   )
 }
 

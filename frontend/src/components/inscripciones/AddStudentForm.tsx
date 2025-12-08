@@ -392,10 +392,10 @@ export default function AddStudentForm({
       })
 
       const createdMsg = t("students.addForm.messages.created")
-      ;(await import('../../lib/notifyService')).default.notify({
-        type: 'success',
-        message: `${createdMsg}: ${clean.nombre} ${clean.ap_paterno}`,
-      })
+        ; (await import('../../lib/notifyService')).default.notify({
+          type: 'success',
+          message: `${createdMsg}: ${clean.nombre} ${clean.ap_paterno}`,
+        })
       reset({ id_carrera: defaultCarreraId } as Partial<FormValues>)
     } catch (e: any) {
       const details = extractErrorMessage(e, t)
@@ -437,19 +437,21 @@ export default function AddStudentForm({
               {firstNameLabel}{" "}
               <span className="text-red-500" aria-hidden="true">*</span>
             </label>
-            <button
-              type="button"
-              onClick={() => speak(firstNameInstructions)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={t(
-                "students.addForm.tts.fieldHelpAria",
-                "Escuchar instrucciones del campo {{label}}",
-                { label: firstNameLabel }
-              )}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(firstNameInstructions)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={t(
+                  "students.addForm.tts.fieldHelpAria",
+                  "Escuchar instrucciones del campo {{label}}",
+                  { label: firstNameLabel }
+                )}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+              </button>
+            )}
           </div>
 
           <input
@@ -479,19 +481,21 @@ export default function AddStudentForm({
               {lastName1Label}{" "}
               <span className="text-red-500" aria-hidden="true">*</span>
             </label>
-            <button
-              type="button"
-              onClick={() => speak(lastName1Instructions)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={t(
-                "students.addForm.tts.fieldHelpAria",
-                "Escuchar instrucciones del campo {{label}}",
-                { label: lastName1Label }
-              )}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(lastName1Instructions)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={t(
+                  "students.addForm.tts.fieldHelpAria",
+                  "Escuchar instrucciones del campo {{label}}",
+                  { label: lastName1Label }
+                )}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+              </button>
+            )}
           </div>
 
           <input
@@ -520,19 +524,21 @@ export default function AddStudentForm({
             >
               {lastName2Label}
             </label>
-            <button
-              type="button"
-              onClick={() => speak(lastName2Instructions)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={t(
-                "students.addForm.tts.fieldHelpAria",
-                "Escuchar instrucciones del campo {{label}}",
-                { label: lastName2Label }
-              )}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(lastName2Instructions)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={t(
+                  "students.addForm.tts.fieldHelpAria",
+                  "Escuchar instrucciones del campo {{label}}",
+                  { label: lastName2Label }
+                )}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+              </button>
+            )}
           </div>
 
           <input
@@ -556,19 +562,21 @@ export default function AddStudentForm({
               {genderLabel}{" "}
               <span className="text-red-500" aria-hidden="true">*</span>
             </label>
-            <button
-              type="button"
-              onClick={() => speak(genderInstructions)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={t(
-                "students.addForm.tts.fieldHelpAria",
-                "Escuchar instrucciones del campo {{label}}",
-                { label: genderLabel }
-              )}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(genderInstructions)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={t(
+                  "students.addForm.tts.fieldHelpAria",
+                  "Escuchar instrucciones del campo {{label}}",
+                  { label: genderLabel }
+                )}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+              </button>
+            )}
           </div>
 
           <select
@@ -626,19 +634,21 @@ export default function AddStudentForm({
               {careerLabel}{" "}
               <span className="text-red-500" aria-hidden="true">*</span>
             </label>
-            <button
-              type="button"
-              onClick={() => speak(careerInstructions)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={t(
-                "students.addForm.tts.fieldHelpAria",
-                "Escuchar instrucciones del campo {{label}}",
-                { label: careerLabel }
-              )}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(careerInstructions)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={t(
+                  "students.addForm.tts.fieldHelpAria",
+                  "Escuchar instrucciones del campo {{label}}",
+                  { label: careerLabel }
+                )}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+              </button>
+            )}
           </div>
 
           <select
@@ -709,19 +719,21 @@ export default function AddStudentForm({
               </span>
             </label>
 
-            <button
-              type="button"
-              onClick={() => speak(birthdateInstructions)}
-              className="mt-0.5 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={t(
-                "students.addForm.tts.fieldHelpAria",
-                "Escuchar instrucciones del campo {{label}}",
-                { label: birthdateLabel }
-              )}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(birthdateInstructions)}
+                className="mt-0.5 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={t(
+                  "students.addForm.tts.fieldHelpAria",
+                  "Escuchar instrucciones del campo {{label}}",
+                  { label: birthdateLabel }
+                )}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t("students.addForm.tts.fieldHelpButton", "¿Qué debo escribir?")}</span>
+              </button>
+            )}
           </div>
 
           <div className="relative">
@@ -786,10 +798,10 @@ export default function AddStudentForm({
         errors.id_genero ||
         errors.id_carrera ||
         errors.fecha_nacimiento) && (
-        <p className="text-sm text-red-600">
-          {t("students.addForm.validation.completeRequired")}
-        </p>
-      )}
+          <p className="text-sm text-red-600">
+            {t("students.addForm.validation.completeRequired")}
+          </p>
+        )}
 
       <button
         type="submit"

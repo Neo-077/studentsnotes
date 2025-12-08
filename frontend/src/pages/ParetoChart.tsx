@@ -24,6 +24,17 @@ type Baja = {
   motivo?: string | null
 }
 
+function getCssVar(name: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback
+  try {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name)
+    const trimmed = value.trim()
+    return trimmed || fallback
+  } catch {
+    return fallback
+  }
+}
+
 export default function ParetoChart({ id_grupo }: Props) {
   const { t, i18n } = useTranslation()
   const { customColorsEnabled, customTextColor, customPrimaryColor, customBgColor } = useAccessibility()
@@ -31,11 +42,12 @@ export default function ParetoChart({ id_grupo }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Colores dinámicos del tema
-  const chartTextColor = customColorsEnabled ? customTextColor : '#000000'
-  const chartPrimaryColor = customColorsEnabled ? customPrimaryColor : '#63C1CA'
-  const chartBgColor = customColorsEnabled ? customBgColor : '#FFFFFF'
-  const chartGridColor = customColorsEnabled ? customTextColor : '#CCCCCC'
+  // Colores dinámicos del tema - usa variables CSS o colores personalizados
+  const chartTextColor = customColorsEnabled ? customTextColor : getCssVar('--text', '#1e293b')
+  const chartPrimaryColor = customColorsEnabled ? customPrimaryColor : getCssVar('--primary', '#3b82f6')
+  const chartBgColor = customColorsEnabled ? customBgColor : getCssVar('--card', '#ffffff')
+  const chartGridColor = getCssVar('--border', '#e2e8f0')
+  const chartMutedColor = getCssVar('--muted', '#64748b')
 
   useEffect(() => {
     let alive = true
@@ -138,8 +150,11 @@ export default function ParetoChart({ id_grupo }: Props) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 mx-auto" />
-          <p className="mt-2 text-gray-600">
+          <div
+            className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 mx-auto"
+            style={{ borderColor: chartPrimaryColor }}
+          />
+          <p className="mt-2" style={{ color: chartMutedColor }}>
             {t('classGroupDetail.charts.paretoLoading')}
           </p>
         </div>
@@ -149,16 +164,30 @@ export default function ParetoChart({ id_grupo }: Props) {
 
   if (error) {
     return (
-      <div className="bg-red-50 border-l-4 border-red-500 p-4">
-        <p className="text-sm text-red-700">{error}</p>
+      <div
+        className="border-l-4 p-4 rounded"
+        style={{
+          backgroundColor: 'color-mix(in oklab, var(--danger-bg), transparent 90%)',
+          borderColor: getCssVar('--danger-bg', '#ef4444'),
+          color: getCssVar('--danger-bg', '#ef4444')
+        }}
+      >
+        <p className="text-sm">{error}</p>
       </div>
     )
   }
 
   if (data.length === 0) {
     return (
-      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-        <p className="text-sm text-yellow-700">
+      <div
+        className="border-l-4 p-4 rounded"
+        style={{
+          backgroundColor: 'color-mix(in oklab, var(--warning-bg), transparent 90%)',
+          borderColor: getCssVar('--warning-bg', '#f59e0b'),
+          color: getCssVar('--warning-bg', '#f59e0b')
+        }}
+      >
+        <p className="text-sm">
           {t('classGroupDetail.charts.paretoEmpty')}
         </p>
       </div>
@@ -166,71 +195,68 @@ export default function ParetoChart({ id_grupo }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold" style={{ color: chartTextColor }}>
-        {t('classGroupDetail.charts.paretoMainTitle')}
-      </h2>
-      <div className="p-4 rounded-lg shadow" style={{ backgroundColor: chartBgColor }}>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
-              <XAxis dataKey="name" stroke={chartTextColor} />
-              <YAxis
-                yAxisId="left"
-                stroke={chartTextColor}
-                label={{
-                  value: t('classGroupDetail.charts.paretoYAxisLeft'),
-                  angle: -90,
-                  position: 'insideLeft',
-                  fill: chartTextColor,
-                }}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                domain={[0, 100]}
-                stroke={chartTextColor}
-                label={{
-                  value: t('classGroupDetail.charts.paretoYAxisRight'),
-                  angle: 90,
-                  position: 'insideRight',
-                  fill: chartTextColor,
-                }}
-              />
-              <Tooltip
-                contentStyle={{ backgroundColor: chartBgColor, borderColor: chartTextColor, color: chartTextColor }}
-                formatter={(value: any, _name: any, payload: any) => {
-                  const key = payload?.dataKey
-                  if (key === 'cumPct') {
-                    return [
-                      `${value}%`,
-                      t('classGroupDetail.charts.paretoTooltipAccumLabel'),
-                    ]
-                  }
-                  return [value, t('classGroupDetail.charts.paretoTooltipValueLabel')]
-                }}
-              />
-              <Legend wrapperStyle={{ color: chartTextColor }} />
-              <Bar
-                yAxisId="left"
-                dataKey="value"
-                name={t('classGroupDetail.charts.paretoBarName')}
-                fill={chartPrimaryColor}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="cumPct"
-                strokeWidth={2}
-                dot={false}
-                stroke={chartPrimaryColor}
-                name={t('classGroupDetail.charts.paretoLineName')}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+    <div className="p-4 rounded-lg shadow" style={{ backgroundColor: chartBgColor }}>
+      <ResponsiveContainer width="100%" height={350}>
+        <ComposedChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} />
+          <XAxis dataKey="name" stroke={chartTextColor} />
+          <YAxis
+            yAxisId="left"
+            stroke={chartTextColor}
+            label={{
+              value: t('classGroupDetail.charts.paretoYAxisLeft'),
+              angle: -90,
+              position: 'insideLeft',
+              fill: chartTextColor,
+            }}
+          />
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            domain={[0, 100]}
+            stroke={chartTextColor}
+            label={{
+              value: t('classGroupDetail.charts.paretoYAxisRight'),
+              angle: 90,
+              position: 'insideRight',
+              fill: chartTextColor,
+            }}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: chartBgColor,
+              borderColor: chartGridColor,
+              color: chartTextColor
+            }}
+            formatter={(value: any, _name: any, payload: any) => {
+              const key = payload?.dataKey
+              if (key === 'cumPct') {
+                return [
+                  `${value}%`,
+                  t('classGroupDetail.charts.paretoTooltipAccumLabel'),
+                ]
+              }
+              return [value, t('classGroupDetail.charts.paretoTooltipValueLabel')]
+            }}
+          />
+          <Legend wrapperStyle={{ color: chartTextColor }} />
+          <Bar
+            yAxisId="left"
+            dataKey="value"
+            name={t('classGroupDetail.charts.paretoBarName')}
+            fill={chartPrimaryColor}
+          />
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="cumPct"
+            strokeWidth={2}
+            dot={false}
+            stroke={chartPrimaryColor}
+            name={t('classGroupDetail.charts.paretoLineName')}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
     </div>
   )
 }

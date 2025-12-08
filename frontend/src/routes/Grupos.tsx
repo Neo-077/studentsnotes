@@ -628,48 +628,68 @@ export default function Grupos() {
   return (
     <div className="space-y-6">
       {/* ===== Filtros ===== */}
-      <div className="rounded-2xl border bg-white p-4 shadow-sm flex flex-wrap items-end gap-4">
+      <div className="rounded-2xl border p-4 shadow-sm flex flex-wrap items-end gap-4" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
         <div className="flex w-full items-center justify-between mb-2">
           <h2 className="text-base font-semibold">
             {t("groups.pageTitle", "Gestión de grupos")}
           </h2>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            onClick={() => speak(filtersSectionInstructions)}
-            aria-label={t(
-              "groups.tts.filtersSection.aria",
-              "Escuchar explicación de la sección de filtros"
-            )}
-          >
-            <span aria-hidden="true">🔊</span>
-            <span>{t("groups.tts.helpButton", "¿Cómo usar los filtros?")}</span>
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--surface)",
+                color: "var(--text)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--surface)"
+              }}
+              onClick={() => speak(filtersSectionInstructions)}
+              aria-label={t(
+                "groups.tts.filtersSection.aria",
+                "Escuchar explicación de la sección de filtros"
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("groups.tts.helpButton", "¿Cómo usar los filtros?")}</span>
+            </button>
+          )}
         </div>
 
         {/* Término */}
         <div className="grid gap-1 w-40 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <label className="text-xs text-slate-500">
+            <label className="text-xs" style={{ color: "var(--muted)" }}>
               {t("groups.filters.termLabel")}
             </label>
-            <button
-              type="button"
-              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs"
-              onClick={() => speak(termFilterInstructions)}
-              aria-label={t(
-                "groups.tts.filters.term.aria",
-                "Escuchar explicación del filtro de término"
-              )}
-            >
-              🔊
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                className="rounded-md border px-2 py-1 text-xs transition"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text)"
+                }}
+                onClick={() => speak(termFilterInstructions)}
+                aria-label={t(
+                  "groups.tts.filters.term.aria",
+                  "Escuchar explicación del filtro de término"
+                )}
+              >
+                🔊
+              </button>
+            )}
           </div>
           <select
             className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             value={terminoId ?? ""}
             aria-label={t("groups.filters.termLabel")}
-            onFocus={() => speak(t("groups.filters.termLabel"))}
+            onFocus={() => voiceEnabled && speak(t("groups.filters.termLabel"))}
             onChange={(e) => {
               const v = e.target.value
               if (!v) {
@@ -698,20 +718,27 @@ export default function Grupos() {
         {/* Carrera filtro */}
         <div className="grid gap-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <label className="text-xs text-slate-500">
+            <label className="text-xs" style={{ color: "var(--muted)" }}>
               {t("groups.filters.careerLabel")}
             </label>
-            <button
-              type="button"
-              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs"
-              onClick={() => speak(careerFilterInstructions)}
-              aria-label={t(
-                "groups.tts.filters.career.aria",
-                "Escuchar explicación del filtro de carrera"
-              )}
-            >
-              🔊
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                className="rounded-md border px-2 py-1 text-xs transition"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text)"
+                }}
+                onClick={() => speak(careerFilterInstructions)}
+                aria-label={t(
+                  "groups.tts.filters.career.aria",
+                  "Escuchar explicación del filtro de carrera"
+                )}
+              >
+                🔊
+              </button>
+            )}
           </div>
           <CarreraPicker
             value={carreraId ?? undefined}
@@ -727,20 +754,27 @@ export default function Grupos() {
         {/* Materia filtro */}
         <div className="grid gap-1 w-56 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <label className="text-xs text-slate-500">
+            <label className="text-xs" style={{ color: "var(--muted)" }}>
               {t("groups.filters.subjectLabel")}
             </label>
-            <button
-              type="button"
-              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs"
-              onClick={() => speak(subjectFilterInstructions)}
-              aria-label={t(
-                "groups.tts.filters.subject.aria",
-                "Escuchar explicación del filtro de materia"
-              )}
-            >
-              🔊
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                className="rounded-md border px-2 py-1 text-xs transition"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text)"
+                }}
+                onClick={() => speak(subjectFilterInstructions)}
+                aria-label={t(
+                  "groups.tts.filters.subject.aria",
+                  "Escuchar explicación del filtro de materia"
+                )}
+              >
+                🔊
+              </button>
+            )}
           </div>
           <MateriaPicker
             value={materiaId}
@@ -754,27 +788,34 @@ export default function Grupos() {
         {/* Buscador */}
         <div className="grid gap-1 flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <label className="text-xs text-slate-500">
+            <label className="text-xs" style={{ color: "var(--muted)" }}>
               {t("groups.filters.searchLabel")}
             </label>
-            <button
-              type="button"
-              className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs"
-              onClick={() => speak(searchFilterInstructions)}
-              aria-label={t(
-                "groups.tts.filters.search.aria",
-                "Escuchar explicación del cuadro de búsqueda"
-              )}
-            >
-              🔊
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                className="rounded-md border px-2 py-1 text-xs transition"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text)"
+                }}
+                onClick={() => speak(searchFilterInstructions)}
+                aria-label={t(
+                  "groups.tts.filters.search.aria",
+                  "Escuchar explicación del cuadro de búsqueda"
+                )}
+              >
+                🔊
+              </button>
+            )}
           </div>
           <input
             className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full max-w-full box-border min-w-0 truncate"
             placeholder={t("groups.filters.searchPlaceholder")}
             value={query}
             aria-label={t("groups.filters.searchLabel")}
-            onFocus={() => speak(t("groups.filters.searchLabel"))}
+            onFocus={() => voiceEnabled && speak(t("groups.filters.searchLabel"))}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
@@ -789,23 +830,48 @@ export default function Grupos() {
               "groups.buttons.downloadTemplateAria",
               "Descargar plantilla de Excel para grupos"
             )}
-            onFocus={() => speak(t("groups.buttons.downloadTemplate"))}
+            onFocus={() => voiceEnabled && speak(t("groups.buttons.downloadTemplate"))}
           >
             <FiDownload className="mr-2" size={16} />
             {t("groups.buttons.downloadTemplate")}
           </button>
-          <button
-            type="button"
-            className="self-start rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100"
-            onClick={() => speak(downloadTemplateInstructions)}
-          >
-            🔊 {t("groups.tts.helpButton", "¿Qué es la plantilla?")}
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              className="self-start rounded-md border px-3 py-1.5 text-xs transition"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--surface)",
+                color: "var(--text)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--surface)"
+              }}
+              onClick={() => speak(downloadTemplateInstructions)}
+            >
+              🔊 {t("groups.tts.helpButton", "¿Qué es la plantilla?")}
+            </button>
+          )}
         </div>
 
         {/* Importar archivo */}
         <div className="flex flex-col gap-1">
-          <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer inline-flex items-center min-w-0 shadow-sm hover:bg-slate-50">
+          <label className="rounded-lg border px-3 py-2 text-sm cursor-pointer inline-flex items-center min-w-0 shadow-sm transition"
+            style={{
+              borderColor: "var(--border)",
+              backgroundColor: "var(--surface)",
+              color: "var(--text)"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--surface)"
+            }}
+          >
             <FiUpload className="mr-2" size={16} />
             {t("groups.buttons.importFile")}
             <input
@@ -815,25 +881,39 @@ export default function Grupos() {
               onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
             />
           </label>
-          <button
-            type="button"
-            className="self-start rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100"
-            onClick={() => speak(importFileInstructions)}
-          >
-            🔊 {t("groups.tts.helpButton", "¿Cómo importar archivo?")}
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              className="self-start rounded-md border px-3 py-1.5 text-xs transition"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--surface)",
+                color: "var(--text)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--surface)"
+              }}
+              onClick={() => speak(importFileInstructions)}
+            >
+              🔊 {t("groups.tts.helpButton", "¿Cómo importar archivo?")}
+            </button>
+          )}
         </div>
       </div>
 
       {/* ===== Formulario ===== */}
       <form
         onSubmit={onCreate}
-        className="rounded-2xl border bg-white p-4 shadow-sm space-y-4"
+        className="rounded-2xl border p-4 shadow-sm space-y-4"
+        style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
       >
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h3 className="font-medium text-lg">{t("groups.form.title")}</h3>
-            <p className="mt-1 text-xs text-slate-500 max-w-xl">
+            <p className="mt-1 text-xs max-w-xl" style={{ color: "var(--text)" }}>
               {t(
                 "groups.form.subtitle",
                 "Lleva el orden de izquierda a derecha: primero la carrera y materia, luego docente y modalidad, y al final horario y cupo."
@@ -842,7 +922,18 @@ export default function Grupos() {
           </div>
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            style={{
+              borderColor: "var(--border)",
+              backgroundColor: "var(--surface)",
+              color: "var(--text)"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--surface)"
+            }}
             onClick={() => speak(formSectionInstructions)}
             aria-label={t(
               "groups.tts.formSection.aria",
@@ -862,29 +953,42 @@ export default function Grupos() {
         )}
 
         {/* SECCIÓN 1: Carrera y materia */}
-        <section className="rounded-xl bg-slate-50 px-3 py-3 space-y-3">
-          <p className="text-xs font-medium text-slate-600">
+        <section className="rounded-xl px-3 py-3 space-y-3" style={{ backgroundColor: "var(--surface)" }}>
+          <p className="text-xs font-medium" style={{ color: "var(--text)" }}>
             {t("groups.form.section1", "1. Información general del grupo")}
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             {/* Carrera */}
             <div className="grid gap-1">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs text-slate-500">
+                <label className="text-xs" style={{ color: "var(--muted)" }}>
                   {t("groups.form.careerLabel", "Carrera del grupo")}
                 </label>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-                  onClick={() => speak(formCareerInstructions)}
-                  aria-label={t(
-                    "groups.tts.form.career.aria",
-                    "Escuchar instrucciones del campo carrera del grupo"
-                  )}
-                >
-                  <span aria-hidden="true">🔊</span>
-                  <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
-                </button>
+                {voiceEnabled && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+                    style={{
+                      borderColor: "var(--border)",
+                      backgroundColor: "var(--surface)",
+                      color: "var(--text)"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "var(--surface)"
+                    }}
+                    onClick={() => speak(formCareerInstructions)}
+                    aria-label={t(
+                      "groups.tts.form.career.aria",
+                      "Escuchar instrucciones del campo carrera del grupo"
+                    )}
+                  >
+                    <span aria-hidden="true">🔊</span>
+                    <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
+                  </button>
+                )}
               </div>
               <CarreraPicker
                 value={carreraId ?? undefined}
@@ -896,7 +1000,7 @@ export default function Grupos() {
                 label={false}
                 className="h-10 w-full rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               />
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px]" style={{ color: "var(--text)" }}>
                 {t(
                   "groups.form.careerHint",
                   "Esta carrera también se usa para filtrar la tabla de grupos de arriba."
@@ -907,25 +1011,38 @@ export default function Grupos() {
             {/* Materia */}
             <div className="grid gap-1">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs text-slate-500">
+                <label className="text-xs" style={{ color: "var(--muted)" }}>
                   {t("groups.form.subjectLabel", "Materia")}
                   <span className="text-red-500" aria-hidden="true">
                     {" "}
                     *
                   </span>
                 </label>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-                  onClick={() => speak(formSubjectInstructions)}
-                  aria-label={t(
-                    "groups.tts.form.subject.aria",
-                    "Escuchar instrucciones del campo materia"
-                  )}
-                >
-                  <span aria-hidden="true">🔊</span>
-                  <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
-                </button>
+                {voiceEnabled && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+                    style={{
+                      borderColor: "var(--border)",
+                      backgroundColor: "var(--surface)",
+                      color: "var(--text)"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "var(--surface)"
+                    }}
+                    onClick={() => speak(formSubjectInstructions)}
+                    aria-label={t(
+                      "groups.tts.form.subject.aria",
+                      "Escuchar instrucciones del campo materia"
+                    )}
+                  >
+                    <span aria-hidden="true">🔊</span>
+                    <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
+                  </button>
+                )}
               </div>
               <MateriaPicker
                 value={form.id_materia}
@@ -940,15 +1057,15 @@ export default function Grupos() {
         </section>
 
         {/* SECCIÓN 2: Docente y modalidad */}
-        <section className="rounded-xl bg-slate-50 px-3 py-3 space-y-3">
-          <p className="text-xs font-medium text-slate-600">
+        <section className="rounded-xl px-3 py-3 space-y-3" style={{ backgroundColor: "var(--surface)" }}>
+          <p className="text-xs font-medium" style={{ color: "var(--muted)" }}>
             {t("groups.form.section2", "2. Docente y modalidad")}
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             {/* Docente */}
             <div className="grid gap-1">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs text-slate-500">
+                <label className="text-xs" style={{ color: "var(--muted)" }}>
                   {t("groups.form.teacherLabel", "Docente")}
                   <span className="text-red-500" aria-hidden="true">
                     {" "}
@@ -977,7 +1094,7 @@ export default function Grupos() {
                     id_docente: e.target.value ? Number(e.target.value) : null,
                   }))
                 }
-                onFocus={() => speak(t("groups.form.teacherLabel", "Docente"))}
+                onFocus={() => voiceEnabled && speak(t("groups.form.teacherLabel", "Docente"))}
               >
                 <option value="">
                   {t("groups.form.teacherPlaceholder", "Selecciona un docente")}
@@ -993,7 +1110,7 @@ export default function Grupos() {
             {/* Modalidad */}
             <div className="grid gap-1">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs text-slate-500">
+                <label className="text-xs" style={{ color: "var(--muted)" }}>
                   {t("groups.form.modalityLabel", "Modalidad")}
                   <span className="text-red-500" aria-hidden="true">
                     {" "}
@@ -1022,7 +1139,7 @@ export default function Grupos() {
                     id_modalidad: e.target.value ? Number(e.target.value) : null,
                   }))
                 }
-                onFocus={() => speak(t("groups.form.modalityLabel", "Modalidad"))}
+                onFocus={() => voiceEnabled && speak(t("groups.form.modalityLabel", "Modalidad"))}
               >
                 <option value="">
                   {t("groups.form.modalityPlaceholder", "Selecciona una modalidad")}
@@ -1038,33 +1155,46 @@ export default function Grupos() {
         </section>
 
         {/* SECCIÓN 3: Horario y cupo */}
-        <section className="rounded-xl bg-slate-50 px-3 py-3 space-y-3">
-          <p className="text-xs font-medium text-slate-600">
+        <section className="rounded-xl px-3 py-3 space-y-3" style={{ backgroundColor: "var(--surface)" }}>
+          <p className="text-xs font-medium" style={{ color: "var(--text)" }}>
             {t("groups.form.section3", "3. Horario y cupo")}
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             {/* Horario */}
             <div className="grid gap-1">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs text-slate-500">
+                <label className="text-xs" style={{ color: "var(--muted)" }}>
                   {t("groups.form.scheduleLabel", "Horario")}
                   <span className="text-red-500" aria-hidden="true">
                     {" "}
                     *
                   </span>
                 </label>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-                  onClick={() => speak(formScheduleInstructions)}
-                  aria-label={t(
-                    "groups.tts.form.schedule.aria",
-                    "Escuchar instrucciones del campo horario"
-                  )}
-                >
-                  <span aria-hidden="true">🔊</span>
-                  <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
-                </button>
+                {voiceEnabled && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+                    style={{
+                      borderColor: "var(--border)",
+                      backgroundColor: "var(--surface)",
+                      color: "var(--text)"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "var(--surface)"
+                    }}
+                    onClick={() => speak(formScheduleInstructions)}
+                    aria-label={t(
+                      "groups.tts.form.schedule.aria",
+                      "Escuchar instrucciones del campo horario"
+                    )}
+                  >
+                    <span aria-hidden="true">🔊</span>
+                    <span>{t("groups.tts.helpButton", "¿Qué debo elegir?")}</span>
+                  </button>
+                )}
               </div>
               <select
                 className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -1075,7 +1205,7 @@ export default function Grupos() {
                     horario: e.target.value,
                   }))
                 }
-                onFocus={() => speak(t("groups.form.scheduleLabel", "Horario"))}
+                onFocus={() => voiceEnabled && speak(t("groups.form.scheduleLabel", "Horario"))}
               >
                 <option value="">
                   {t("groups.form.schedulePlaceholder", "Selecciona un horario")}
@@ -1091,26 +1221,44 @@ export default function Grupos() {
             {/* Cupo */}
             <div className="grid gap-1">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-xs text-slate-500">
+                <label className="text-xs" style={{ color: "var(--text)" }}>
                   {t("groups.form.capacityLabel", "Cupo máximo")}
                 </label>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-                  onClick={() => speak(formCapacityInstructions)}
-                  aria-label={t(
-                    "groups.tts.form.capacity.aria",
-                    "Escuchar instrucciones del campo cupo"
-                  )}
-                >
-                  <span aria-hidden="true">🔊</span>
-                  <span>{t("groups.tts.helpButton", "¿Qué debo escribir?")}</span>
-                </button>
+                {voiceEnabled && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium transition"
+                    style={{
+                      borderColor: "var(--border)",
+                      backgroundColor: "var(--surface)",
+                      color: "var(--text)"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "var(--surface)"
+                    }}
+                    onClick={() => speak(formCapacityInstructions)}
+                    aria-label={t(
+                      "groups.tts.form.capacity.aria",
+                      "Escuchar instrucciones del campo cupo"
+                    )}
+                  >
+                    <span aria-hidden="true">🔊</span>
+                    <span>{t("groups.tts.helpButton", "¿Qué debo escribir?")}</span>
+                  </button>
+                )}
               </div>
               <input
                 type="number"
                 min={1}
                 className="h-10 rounded-xl border px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text)"
+                }}
                 value={form.cupo}
                 onChange={(e) =>
                   setForm((f) => ({
@@ -1119,9 +1267,9 @@ export default function Grupos() {
                   }))
                 }
                 placeholder={t("groups.form.capacityPlaceholder", "Ej. 30")}
-                onFocus={() => speak(t("groups.form.capacityLabel", "Cupo máximo"))}
+                onFocus={() => voiceEnabled && speak(t("groups.form.capacityLabel", "Cupo máximo"))}
               />
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px]" style={{ color: "var(--text)" }}>
                 {t(
                   "groups.form.capacityHint",
                   "Si dejas este campo vacío, el sistema usará un cupo de 30 estudiantes."
@@ -1142,7 +1290,7 @@ export default function Grupos() {
             type="submit"
             disabled={saving}
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            onFocus={() => speak(t("groups.form.submit", "Crear grupo"))}
+            onFocus={() => voiceEnabled && speak(t("groups.form.submit", "Crear grupo"))}
           >
             <FiPlus size={16} />
             {saving
@@ -1153,7 +1301,7 @@ export default function Grupos() {
       </form>
 
       {/* ===== Lista ===== */}
-      <div className="rounded-xl border bg-white">
+      <div className="rounded-xl border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
         <div className="flex items-center justify-between px-4 pt-3">
           <h3 className="font-medium text-sm">
             {t("groups.table.title", "Listado de grupos")}
@@ -1161,7 +1309,18 @@ export default function Grupos() {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--surface)",
+                color: "var(--text)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--surface)"
+              }}
               onClick={downloadGruposXLSX}
               aria-label={t("groups.table.downloadAria", "Descargar listado de grupos en Excel")}
             >
@@ -1170,7 +1329,18 @@ export default function Grupos() {
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--surface)",
+                color: "var(--text)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--surface)"
+              }}
               onClick={() => speak(tableSectionInstructions)}
               aria-label={t(
                 "groups.tts.tableSection.aria",
@@ -1185,8 +1355,8 @@ export default function Grupos() {
 
         <div className="overflow-x-auto mt-2">
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left text-slate-600">
+            <thead style={{ backgroundColor: "color-mix(in oklab, var(--surface), white 4%)" }}>
+              <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left" style={{ color: "var(--text)" }}>
                 <th>{subjectColLabel}</th>
                 <th>{careerColLabel}</th>
                 <th>{codeColLabel}</th>
@@ -1202,7 +1372,8 @@ export default function Grupos() {
                 <tr>
                   <td
                     colSpan={8}
-                    className="px-3 py-6 text-center text-slate-500"
+                    className="px-3 py-6 text-center"
+                    style={{ color: "var(--muted)" }}
                   >
                     {t("groups.table.loading")}
                   </td>
@@ -1211,7 +1382,8 @@ export default function Grupos() {
                 <tr>
                   <td
                     colSpan={8}
-                    className="px-3 py-6 text-center text-slate-500"
+                    className="px-3 py-6 text-center"
+                    style={{ color: "var(--muted)" }}
                   >
                     {t("groups.table.empty")}
                   </td>
@@ -1220,95 +1392,146 @@ export default function Grupos() {
                 paged.map((g) => (
                   <tr
                     key={g.id_grupo}
-                    className="[&>td]:px-3 [&>td]:py-2 hover:bg-slate-50/60"
+                    className="[&>td]:px-3 [&>td]:py-2 transition"
+                    style={{ color: "var(--text)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "color-mix(in oklab, var(--surface), white 4%)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent"
+                    }}
                   >
                     {/* Materia */}
                     <td>
-                      <button
-                        type="button"
-                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
-                        onClick={() => speak(describeCell("subject", subjectColLabel, g))}
-                        aria-label={describeCell("subject", subjectColLabel, g)}
-                      >
-                        {getSubjectLabel(g.materia) || "—"}
-                      </button>
+                      {voiceEnabled && (
+                        <button
+                          type="button"
+                          className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                          onClick={() => speak(describeCell("subject", subjectColLabel, g))}
+                          aria-label={describeCell("subject", subjectColLabel, g)}
+                        >
+                          {getSubjectLabel(g.materia) || "—"}
+                        </button>
+                      )}
+                      {!voiceEnabled && (
+                        <span>{getSubjectLabel(g.materia) || "—"}</span>
+                      )}
                     </td>
 
                     {/* Carrera */}
                     <td>
-                      <button
-                        type="button"
-                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
-                        onClick={() => speak(describeCell("career", careerColLabel, g))}
-                        aria-label={describeCell("career", careerColLabel, g)}
-                      >
-                        {(g as any)?.materia
-                          ? getCareerLabel((g as any).materia.carrera || (g as any).materia) ||
-                          (g as any)?.materia?.carrera_nombre
-                          : (g as any)?.materia?.carrera_nombre || "—"}
-                      </button>
+                      {voiceEnabled && (
+                        <button
+                          type="button"
+                          className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                          onClick={() => speak(describeCell("career", careerColLabel, g))}
+                          aria-label={describeCell("career", careerColLabel, g)}
+                        >
+                          {(g as any)?.materia
+                            ? getCareerLabel((g as any).materia.carrera || (g as any).materia) ||
+                            (g as any)?.materia?.carrera_nombre
+                            : (g as any)?.materia?.carrera_nombre || "—"}
+                        </button>
+                      )}
+                      {!voiceEnabled && (
+                        <span>
+                          {(g as any)?.materia
+                            ? getCareerLabel((g as any).materia.carrera || (g as any).materia) ||
+                            (g as any)?.materia?.carrera_nombre
+                            : (g as any)?.materia?.carrera_nombre || "—"}
+                        </span>
+                      )}
                     </td>
 
                     {/* Código de grupo */}
                     <td>
-                      <button
-                        type="button"
-                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
-                        onClick={() => speak(describeCell("code", codeColLabel, g))}
-                        aria-label={describeCell("code", codeColLabel, g)}
-                      >
-                        {g.grupo_codigo}
-                      </button>
+                      {voiceEnabled && (
+                        <button
+                          type="button"
+                          className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                          onClick={() => speak(describeCell("code", codeColLabel, g))}
+                          aria-label={describeCell("code", codeColLabel, g)}
+                        >
+                          {g.grupo_codigo}
+                        </button>
+                      )}
+                      {!voiceEnabled && (
+                        <span>{g.grupo_codigo}</span>
+                      )}
                     </td>
 
                     {/* Docente */}
                     <td>
-                      <button
-                        type="button"
-                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
-                        onClick={() => speak(describeCell("teacher", teacherColLabel, g))}
-                        aria-label={describeCell("teacher", teacherColLabel, g)}
-                      >
-                        {g.docente
-                          ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`
-                          : t("groups.table.noTeacher")}
-                      </button>
+                      {voiceEnabled && (
+                        <button
+                          type="button"
+                          className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                          onClick={() => speak(describeCell("teacher", teacherColLabel, g))}
+                          aria-label={describeCell("teacher", teacherColLabel, g)}
+                        >
+                          {g.docente
+                            ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`
+                            : t("groups.table.noTeacher")}
+                        </button>
+                      )}
+                      {!voiceEnabled && (
+                        <span>
+                          {g.docente
+                            ? `${g.docente.nombre} ${g.docente.ap_paterno ?? ""}`
+                            : t("groups.table.noTeacher")}
+                        </span>
+                      )}
                     </td>
 
                     {/* Modalidad */}
                     <td>
-                      <button
-                        type="button"
-                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
-                        onClick={() => speak(describeCell("modality", modalityColLabel, g))}
-                        aria-label={describeCell("modality", modalityColLabel, g)}
-                      >
-                        {getGenericLabel(g.modalidad) || "—"}
-                      </button>
+                      {voiceEnabled && (
+                        <button
+                          type="button"
+                          className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                          onClick={() => speak(describeCell("modality", modalityColLabel, g))}
+                          aria-label={describeCell("modality", modalityColLabel, g)}
+                        >
+                          {getGenericLabel(g.modalidad) || "—"}
+                        </button>
+                      )}
+                      {!voiceEnabled && (
+                        <span>{getGenericLabel(g.modalidad) || "—"}</span>
+                      )}
                     </td>
 
                     {/* Horario */}
                     <td>
-                      <button
-                        type="button"
-                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
-                        onClick={() => speak(describeCell("schedule", scheduleColLabel, g))}
-                        aria-label={describeCell("schedule", scheduleColLabel, g)}
-                      >
-                        {formatHorario(g.horario)}
-                      </button>
+                      {voiceEnabled && (
+                        <button
+                          type="button"
+                          className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                          onClick={() => speak(describeCell("schedule", scheduleColLabel, g))}
+                          aria-label={describeCell("schedule", scheduleColLabel, g)}
+                        >
+                          {formatHorario(g.horario)}
+                        </button>
+                      )}
+                      {!voiceEnabled && (
+                        <span>{formatHorario(g.horario)}</span>
+                      )}
                     </td>
 
                     {/* Cupo */}
                     <td>
-                      <button
-                        type="button"
-                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
-                        onClick={() => speak(describeCell("capacity", capacityColLabel, g))}
-                        aria-label={describeCell("capacity", capacityColLabel, g)}
-                      >
-                        {g.cupo}
-                      </button>
+                      {voiceEnabled && (
+                        <button
+                          type="button"
+                          className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                          onClick={() => speak(describeCell("capacity", capacityColLabel, g))}
+                          aria-label={describeCell("capacity", capacityColLabel, g)}
+                        >
+                          {g.cupo}
+                        </button>
+                      )}
+                      {!voiceEnabled && (
+                        <span>{g.cupo}</span>
+                      )}
                     </td>
 
                     {/* Botón eliminar */}
@@ -1331,7 +1554,7 @@ export default function Grupos() {
 
         {/* Controles de paginación */}
         <div className="flex items-center justify-between p-3 text-sm">
-          <div className="text-slate-600">{paginationSummary}</div>
+          <div style={{ color: "var(--muted)" }}>{paginationSummary}</div>
           <div className="flex items-center gap-2">
             <button
               className="rounded-md border px-3 py-1 disabled:opacity-50"

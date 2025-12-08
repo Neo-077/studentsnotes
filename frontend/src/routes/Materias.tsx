@@ -478,15 +478,17 @@ export default function Materias() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => speak(pageHelpText)}
-          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-          aria-label={t('subjects.tts.pageHelpAria', 'Escuchar explicación de la pantalla de materias')}
-        >
-          <span aria-hidden="true">🔊</span>
-          <span>{t('subjects.tts.pageHelpButton', 'Explicar pantalla')}</span>
-        </button>
+        {voiceEnabled && (
+          <button
+            type="button"
+            onClick={() => speak(pageHelpText)}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            aria-label={t('subjects.tts.pageHelpAria', 'Escuchar explicación de la pantalla de materias')}
+          >
+            <span aria-hidden="true">🔊</span>
+            <span>{t('subjects.tts.pageHelpButton', 'Explicar pantalla')}</span>
+          </button>
+        )}
       </div>
 
       {/* Formulario crear materia */}
@@ -496,32 +498,36 @@ export default function Materias() {
           <span className="text-xs font-semibold text-slate-700">
             {t('subjects.form.sectionTitle', 'Agregar nueva materia')}
           </span>
-          <button
-            type="button"
-            onClick={() => speak(createSectionHelp)}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            aria-label={t('subjects.tts.createSectionHelpAria', 'Escuchar explicación del apartado para crear materias')}
-          >
-            <span aria-hidden="true">🔊</span>
-            <span>{t('subjects.tts.sectionHelpButton', 'Explicar apartado')}</span>
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(createSectionHelp)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t('subjects.tts.createSectionHelpAria', 'Escuchar explicación del apartado para crear materias')}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t('subjects.tts.sectionHelpButton', 'Explicar apartado')}</span>
+            </button>
+          )}
         </div>
 
         {/* Nombre */}
         <div className="grid gap-1">
           <div className="flex items-center justify-between gap-2">
-            <label className="text-xs text-slate-500" htmlFor="materia-nombre">
+            <label className="text-xs" htmlFor="materia-nombre" style={{ color: "var(--muted)" }}>
               {nameLabel} <span className="text-red-500" aria-hidden="true">*</span>
             </label>
-            <button
-              type="button"
-              onClick={() => speak(nameInstructions)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={fieldHelpAria(nameLabel)}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{fieldHelpButtonLabel}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(nameInstructions)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={fieldHelpAria(nameLabel)}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{fieldHelpButtonLabel}</span>
+              </button>
+            )}
           </div>
           <input
             id="materia-nombre"
@@ -541,15 +547,17 @@ export default function Materias() {
             <label className="text-xs text-slate-500" htmlFor="materia-unidades">
               {unitsLabel} <span className="text-red-500" aria-hidden="true">*</span>
             </label>
-            <button
-              type="button"
-              onClick={() => speak(unitsInstructions)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={fieldHelpAria(unitsLabel)}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{fieldHelpButtonLabel}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(unitsInstructions)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={fieldHelpAria(unitsLabel)}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{fieldHelpButtonLabel}</span>
+              </button>
+            )}
           </div>
           <input
             id="materia-unidades"
@@ -572,15 +580,17 @@ export default function Materias() {
             <label className="text-xs text-slate-500" htmlFor="materia-creditos">
               {creditsLabel} <span className="text-red-500" aria-hidden="true">*</span>
             </label>
-            <button
-              type="button"
-              onClick={() => speak(creditsInstructions)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={fieldHelpAria(creditsLabel)}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{fieldHelpButtonLabel}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(creditsInstructions)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={fieldHelpAria(creditsLabel)}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{fieldHelpButtonLabel}</span>
+              </button>
+            )}
           </div>
           <input
             id="materia-creditos"
@@ -597,12 +607,11 @@ export default function Materias() {
           />
         </div>
 
-        {/* Carrera */}
-        <div className="grid gap-1">
-          <div className="flex items-center justify-between gap-2">
-            <label className="text-xs text-slate-500" htmlFor="materia-carrera">
-              {careerLabel} <span className="text-red-500" aria-hidden="true">*</span>
-            </label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-xs text-slate-500" htmlFor="materia-carrera">
+            {careerLabel} <span className="text-red-500" aria-hidden="true">*</span>
+          </label>
+          {voiceEnabled && (
             <button
               type="button"
               onClick={() => speak(careerInstructions)}
@@ -612,6 +621,26 @@ export default function Materias() {
               <span aria-hidden="true">🔊</span>
               <span>{fieldHelpButtonLabel}</span>
             </button>
+          )}
+        </div>
+
+        {/* Carrera */}
+        <div className="grid gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-slate-500" htmlFor="materia-carrera">
+              {careerLabel} <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(careerInstructions)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={fieldHelpAria(careerLabel)}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{fieldHelpButtonLabel}</span>
+              </button>
+            )}
           </div>
           <select
             id="materia-carrera"
@@ -637,15 +666,17 @@ export default function Materias() {
             <label className="text-xs text-slate-500" htmlFor="materia-semestre">
               {semesterLabel}
             </label>
-            <button
-              type="button"
-              onClick={() => speak(semesterInstructions)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={fieldHelpAria(semesterLabel)}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{fieldHelpButtonLabel}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(semesterInstructions)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={fieldHelpAria(semesterLabel)}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{fieldHelpButtonLabel}</span>
+              </button>
+            )}
           </div>
           <input
             id="materia-semestre"
@@ -674,10 +705,10 @@ export default function Materias() {
       <div className="rounded-2xl border bg-white p-3 shadow-sm">
         {/* Encabezado del apartado con ayuda de voz */}
         <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold">
-              {t('subjects.list.sectionTitle', 'Listado de materias')}
-            </h3>
+          <h3 className="text-sm font-semibold">
+            {t('subjects.list.sectionTitle', 'Listado de materias')}
+          </h3>
+          {voiceEnabled && (
             <button
               type="button"
               onClick={() => speak(listSectionHelp)}
@@ -687,32 +718,32 @@ export default function Materias() {
               <span aria-hidden="true">🔊</span>
               <span>{t('subjects.tts.sectionHelpButton', 'Explicar apartado')}</span>
             </button>
-          </div>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {/* Búsqueda con ícono y ayuda de voz */}
           <div className="flex-1 min-w-0 flex items-center gap-1">
             <div className="relative flex-1 min-w-0">
-              <FiSearch className="absolute left-2 top-2.5 text-slate-400" size={14} />
+              <FiSearch className="absolute left-2 top-2.5" size={14} style={{ color: "var(--muted)" }} />
               <input
                 value={q}
                 onChange={e => setQ(e.target.value)}
                 placeholder={t('subjects.search.placeholder')}
-                className="h-10 w-full rounded-xl border pl-7 pr-3 text-sm box-border"
-                aria-label={t('subjects.search.placeholder')}
-                onFocus={() => speak(t('subjects.search.placeholder'))}
+                className="w-full h-10 rounded-xl border px-3 text-sm pl-8"
               />
             </div>
-            <button
-              type="button"
-              onClick={() => speak(searchHelpText)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              aria-label={t('subjects.tts.searchHelpAria', 'Escuchar instrucciones del cuadro de búsqueda de materias')}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t('subjects.tts.fieldHelpButton', '¿Cómo buscar?')}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(searchHelpText)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                aria-label={t('subjects.tts.searchHelpAria', 'Escuchar instrucciones del cuadro de búsqueda de materias')}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t('subjects.tts.fieldHelpButton', '¿Cómo buscar?')}</span>
+              </button>
+            )}
           </div>
 
           <button
@@ -825,18 +856,19 @@ export default function Materias() {
                     </td>
 
                     {/* Acciones */}
-                    <td className="text-right flex items-center gap-2 justify-end">
-                      {/* Botón de resumen de voz por materia */}
-                      <button
-                        type="button"
-                        onClick={() => speak(materiaSummary(m))}
-                        className="px-2 py-1.5 text-[11px] inline-flex items-center rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100"
-                        aria-label={t('subjects.tts.rowSummaryAria', 'Escuchar resumen de la materia {{name}}', {
-                          name: m.nombre,
-                        })}
-                      >
-                        <span aria-hidden="true">🔊</span>
-                      </button>
+                    <td className="flex items-center gap-1">
+                      {voiceEnabled && (
+                        <button
+                          type="button"
+                          onClick={() => speak(materiaSummary(m))}
+                          className="px-2 py-1.5 text-[11px] inline-flex items-center rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100"
+                          aria-label={t('subjects.tts.rowSummaryAria', 'Escuchar resumen de la materia {{name}}', {
+                            name: m.nombre,
+                          })}
+                        >
+                          <span aria-hidden="true">🔊</span>
+                        </button>
+                      )}
 
                       <button
                         onClick={() => askEdit({ id_materia: m.id_materia, nombre: m.nombre, unidades: m.unidades, creditos: m.creditos } as any)}
@@ -863,102 +895,103 @@ export default function Materias() {
 
       {/* global confirmService used instead of local ConfirmModal */}
 
-      {edit.open && (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
-          onClick={() => setEdit({ open: false })}
-        >
+      {
+        edit.open && (
           <div
-            className="w-full max-w-md rounded-2xl border bg-white shadow-lg"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+            onClick={() => setEdit({ open: false })}
           >
-            <div className="px-4 py-3 border-b">
-              <div className="text-sm font-semibold">
-                {t('subjects.editModal.title')}
+            <div
+              className="w-full max-w-md rounded-2xl border bg-white shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 py-3 border-b">
+                <div className="text-sm font-semibold">
+                  {t('subjects.editModal.title')}
+                </div>
               </div>
-            </div>
-            <div className="px-4 py-4 grid gap-3">
-              <div className="grid gap-1">
-                <label className="text-xs text-slate-600" htmlFor="edit-materia-nombre">
-                  {t('subjects.editModal.nameLabel')}
-                </label>
-                <input
-                  id="edit-materia-nombre"
-                  className="h-10 rounded-xl border px-3 text-sm"
-                  value={edit.nombre ?? ''}
-                  onChange={e => setEdit(s => ({ ...s, nombre: e.target.value }))}
-                  onFocus={() => speak(t('subjects.editModal.nameLabel'))}
-                />
+              <div className="px-4 py-4 grid gap-3">
+                <div className="grid gap-1">
+                  <label className="text-xs text-slate-600" htmlFor="edit-materia-nombre">
+                    {t('subjects.editModal.nameLabel')}
+                  </label>
+                  <input
+                    id="edit-materia-nombre"
+                    className="h-10 rounded-xl border px-3 text-sm"
+                    value={edit.nombre ?? ''}
+                    onChange={e => setEdit(s => ({ ...s, nombre: e.target.value }))}
+                    onFocus={() => speak(t('subjects.editModal.nameLabel'))}
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <label className="text-xs text-slate-600" htmlFor="edit-materia-unidades">
+                    {t('subjects.editModal.unitsLabel')}
+                  </label>
+                  <input
+                    id="edit-materia-unidades"
+                    type="number"
+                    min={1}
+                    max={10}
+                    className="h-10 rounded-xl border px-3 text-sm"
+                    value={edit.unidades ?? ''}
+                    onChange={e => setEdit(s => ({ ...s, unidades: e.target.value }))}
+                    onFocus={() => speak(t('subjects.editModal.unitsLabel'))}
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <label className="text-xs text-slate-600" htmlFor="edit-materia-creditos">
+                    {t('subjects.editModal.creditsLabel')}
+                  </label>
+                  <input
+                    id="edit-materia-creditos"
+                    type="number"
+                    min={1}
+                    max={30}
+                    className="h-10 rounded-xl border px-3 text-sm"
+                    value={edit.creditos ?? ''}
+                    onChange={e => setEdit(s => ({ ...s, creditos: e.target.value }))}
+                    onFocus={() => speak(t('subjects.editModal.creditsLabel'))}
+                  />
+                </div>
               </div>
-              <div className="grid gap-1">
-                <label className="text-xs text-slate-600" htmlFor="edit-materia-unidades">
-                  {t('subjects.editModal.unitsLabel')}
-                </label>
-                <input
-                  id="edit-materia-unidades"
-                  type="number"
-                  min={1}
-                  max={10}
-                  className="h-10 rounded-xl border px-3 text-sm"
-                  value={edit.unidades ?? ''}
-                  onChange={e => setEdit(s => ({ ...s, unidades: e.target.value }))}
-                  onFocus={() => speak(t('subjects.editModal.unitsLabel'))}
-                />
+              <div className="flex items-center justify-end gap-2 px-4 py-3 border-t">
+                <button
+                  className="rounded-md border px-3 py-2 text-sm inline-flex items-center"
+                  onClick={() => setEdit({ open: false })}
+                >
+                  <FiArrowLeft className="mr-2" size={16} />
+                  {t('subjects.editModal.cancel')}
+                </button>
+                <button
+                  className="rounded-md px-3 py-2 text-sm inline-flex items-center"
+                  style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-ctr)' }}
+                  onClick={async () => {
+                    if (!edit.id) return setEdit({ open: false })
+                    try {
+                      const payload: any = {}
+                      if (edit.nombre != null) payload.nombre = norm(edit.nombre)
+                      if (edit.unidades != null) payload.unidades = Number(edit.unidades)
+                      if (edit.creditos != null) payload.creditos = Number(edit.creditos)
+                      // The edit modal itself is the user's confirmation, so call the API directly
+                      // Pass `skipConfirm: true` so the central API wrapper doesn't show another confirm modal
+                      await api.put(`/materias/${edit.id}`, payload, { skipConfirm: true } as any)
+                      const msg = t('subjects.messages.updated')
+                        ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${msg}: ${payload.nombre || ''}` })
+                      setEdit({ open: false })
+                      await load()
+                    } catch (e: any) {
+                      const format = (await import('../lib/errorFormatter')).default
+                      const friendly = format(e, { entity: 'la materia', action: 'update' }) || t('subjects.errors.updateFailed')
+                        ; (await import('../lib/notifyService')).default.notify({ type: 'error', message: friendly })
+                    }
+                  }}
+                >
+                  {t('subjects.editModal.save')}
+                </button>
               </div>
-              <div className="grid gap-1">
-                <label className="text-xs text-slate-600" htmlFor="edit-materia-creditos">
-                  {t('subjects.editModal.creditsLabel')}
-                </label>
-                <input
-                  id="edit-materia-creditos"
-                  type="number"
-                  min={1}
-                  max={30}
-                  className="h-10 rounded-xl border px-3 text-sm"
-                  value={edit.creditos ?? ''}
-                  onChange={e => setEdit(s => ({ ...s, creditos: e.target.value }))}
-                  onFocus={() => speak(t('subjects.editModal.creditsLabel'))}
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 px-4 py-3 border-t">
-              <button
-                className="rounded-md border px-3 py-2 text-sm inline-flex items-center"
-                onClick={() => setEdit({ open: false })}
-              >
-                <FiArrowLeft className="mr-2" size={16} />
-                {t('subjects.editModal.cancel')}
-              </button>
-              <button
-                className="rounded-md px-3 py-2 text-sm inline-flex items-center"
-                style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-ctr)' }}
-                onClick={async () => {
-                  if (!edit.id) return setEdit({ open: false })
-                  try {
-                    const payload: any = {}
-                    if (edit.nombre != null) payload.nombre = norm(edit.nombre)
-                    if (edit.unidades != null) payload.unidades = Number(edit.unidades)
-                    if (edit.creditos != null) payload.creditos = Number(edit.creditos)
-                    // The edit modal itself is the user's confirmation, so call the API directly
-                    // Pass `skipConfirm: true` so the central API wrapper doesn't show another confirm modal
-                    await api.put(`/materias/${edit.id}`, payload, { skipConfirm: true } as any)
-                    const msg = t('subjects.messages.updated')
-                      ; (await import('../lib/notifyService')).default.notify({ type: 'success', message: `${msg}: ${payload.nombre || ''}` })
-                    setEdit({ open: false })
-                    await load()
-                  } catch (e: any) {
-                    const format = (await import('../lib/errorFormatter')).default
-                    const friendly = format(e, { entity: 'la materia', action: 'update' }) || t('subjects.errors.updateFailed')
-                      ; (await import('../lib/notifyService')).default.notify({ type: 'error', message: friendly })
-                  }
-                }}
-              >
-                {t('subjects.editModal.save')}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   )
 }

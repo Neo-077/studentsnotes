@@ -441,18 +441,20 @@ export default function GruposAula() {
               {t("classGroups.filters.sectionTitle", "Búsqueda y filtros de grupos")}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => speak(searchSectionHelp)}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            aria-label={t(
-              "classGroups.filters.sectionHelpAria",
-              "Escuchar explicación del apartado de búsqueda y filtros"
-            )}
-          >
-            <span aria-hidden="true">🔊</span>
-            <span>{t("classGroups.filters.sectionHelpLabel", "¿Cómo usar estos filtros?")}</span>
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(searchSectionHelp)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t(
+                "classGroups.filters.sectionHelpAria",
+                "Escuchar explicación del apartado de búsqueda y filtros"
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("classGroups.filters.sectionHelpLabel", "¿Cómo usar estos filtros?")}</span>
+            </button>
+          )}
         </div>
 
         <div className="grid gap-1 w-40 min-w-0">
@@ -529,18 +531,20 @@ export default function GruposAula() {
           <h3 className="font-semibold">
             {t("classGroups.header.title")}
           </h3>
-          <button
-            type="button"
-            onClick={() => speak(groupsSectionHelp)}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            aria-label={t(
-              "classGroups.header.sectionHelpAria",
-              "Escuchar explicación del listado de grupos"
-            )}
-          >
-            <span aria-hidden="true">🔊</span>
-            <span>{t("classGroups.header.sectionHelpLabel", "¿Qué muestra esta lista?")}</span>
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(groupsSectionHelp)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t(
+                "classGroups.header.sectionHelpAria",
+                "Escuchar explicación del listado de grupos"
+              )}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t("classGroups.header.sectionHelpLabel", "¿Qué muestra esta lista?")}</span>
+            </button>
+          )}
         </div>
         <div className="text-sm text-slate-500">
           {loading
@@ -607,21 +611,23 @@ export default function GruposAula() {
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {/* Botón para escuchar resumen del grupo */}
-                  <button
-                    type="button"
-                    className="rounded-lg border px-3 py-1.5 text-xs inline-flex items-center hover:bg-slate-50"
-                    onClick={() => speak(buildGroupSummary(g))}
-                    aria-label={t(
-                      "classGroups.cards.readSummaryAria",
-                      "Escuchar resumen del grupo {{code}}",
-                      { code: g.grupo_codigo }
-                    )}
-                  >
-                    <span aria-hidden="true">🔊</span>
-                    <span className="ml-1">
-                      {t("classGroups.cards.readSummary", "Escuchar grupo")}
-                    </span>
-                  </button>
+                  {voiceEnabled && (
+                    <button
+                      type="button"
+                      className="rounded-lg border px-3 py-1.5 text-xs inline-flex items-center hover:bg-slate-50"
+                      onClick={() => speak(buildGroupSummary(g))}
+                      aria-label={t(
+                        "classGroups.cards.readSummaryAria",
+                        "Escuchar resumen del grupo {{code}}",
+                        { code: g.grupo_codigo }
+                      )}
+                    >
+                      <span aria-hidden="true">🔊</span>
+                      <span className="ml-1">
+                        {t("classGroups.cards.readSummary", "Escuchar grupo")}
+                      </span>
+                    </button>
+                  )}
 
                   <button
                     className="rounded-lg border px-3 py-1.5 text-xs hover:bg-slate-50 inline-flex items-center"

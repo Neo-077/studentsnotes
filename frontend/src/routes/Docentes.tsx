@@ -924,119 +924,115 @@ export default function Docentes() {
                 </tr>
               ) : dlist.map(d => (
                 <tr key={d.id_docente} className="[&>td]:px-3 [&>td]:py-2">
-                  <td
-                    className="font-mono cursor-pointer"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={describeCell("rfc", rfcColLabel, d)}
-                    onClick={() => speak(describeCell("rfc", rfcColLabel, d))}
-                    onFocus={() => speak(describeCell("rfc", rfcColLabel, d))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        speak(describeCell("rfc", rfcColLabel, d))
-                      }
-                    }}
-                  >
-                    {d.rfc}
+                  <td>
+                    {voiceEnabled && (
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("rfc", rfcColLabel, d))}
+                        aria-label={describeCell("rfc", rfcColLabel, d)}
+                      >
+                        {d.rfc}
+                      </button>
+                    )}
+                    {!voiceEnabled && (
+                      <span className="font-mono">{d.rfc}</span>
+                    )}
                   </td>
 
-                  <td
-                    className="cursor-pointer"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={describeCell("nombre", firstNameColLabel, d)}
-                    onClick={() => speak(describeCell("nombre", firstNameColLabel, d))}
-                    onFocus={() => speak(describeCell("nombre", firstNameColLabel, d))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        speak(describeCell("nombre", firstNameColLabel, d))
-                      }
-                    }}
-                  >
-                    {d.nombre}
+                  <td>
+                    {voiceEnabled && (
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("nombre", firstNameColLabel, d))}
+                        aria-label={describeCell("nombre", firstNameColLabel, d)}
+                      >
+                        {d.nombre}
+                      </button>
+                    )}
+                    {!voiceEnabled && (
+                      <span>{d.nombre}</span>
+                    )}
                   </td>
 
-                  <td
-                    className="cursor-pointer"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={describeCell("ap_paterno", lastName1ColLabel, d)}
-                    onClick={() => speak(describeCell("ap_paterno", lastName1ColLabel, d))}
-                    onFocus={() => speak(describeCell("ap_paterno", lastName1ColLabel, d))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        speak(describeCell("ap_paterno", lastName1ColLabel, d))
-                      }
-                    }}
-                  >
-                    {d.ap_paterno ?? '—'}
+                  <td>
+                    {voiceEnabled && (
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("ap_paterno", lastName1ColLabel, d))}
+                        aria-label={describeCell("ap_paterno", lastName1ColLabel, d)}
+                      >
+                        {d.ap_paterno ?? '—'}
+                      </button>
+                    )}
+                    {!voiceEnabled && (
+                      <span>{d.ap_paterno ?? '—'}</span>
+                    )}
                   </td>
 
-                  <td
-                    className="cursor-pointer"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={describeCell("ap_materno", lastName2ColLabel, d)}
-                    onClick={() => speak(describeCell("ap_materno", lastName2ColLabel, d))}
-                    onFocus={() => speak(describeCell("ap_materno", lastName2ColLabel, d))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        speak(describeCell("ap_materno", lastName2ColLabel, d))
-                      }
-                    }}
-                  >
-                    {d.ap_materno ?? '—'}
+                  <td>
+                    {voiceEnabled && (
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("ap_materno", lastName2ColLabel, d))}
+                        aria-label={describeCell("ap_materno", lastName2ColLabel, d)}
+                      >
+                        {d.ap_materno ?? '—'}
+                      </button>
+                    )}
+                    {!voiceEnabled && (
+                      <span>{d.ap_materno ?? '—'}</span>
+                    )}
                   </td>
 
-                  <td
-                    className="cursor-pointer"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={describeCell("correo", emailColLabel, d)}
-                    onClick={() => speak(describeCell("correo", emailColLabel, d))}
-                    onFocus={() => speak(describeCell("correo", emailColLabel, d))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        speak(describeCell("correo", emailColLabel, d))
-                      }
-                    }}
-                  >
-                    {d.correo}
+                  <td>
+                    {voiceEnabled && (
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("correo", emailColLabel, d))}
+                        aria-label={describeCell("correo", emailColLabel, d)}
+                      >
+                        {d.correo}
+                      </button>
+                    )}
+                    {!voiceEnabled && (
+                      <span>{d.correo}</span>
+                    )}
                   </td>
 
-                  <td
-                    className="cursor-pointer"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={describeCell("genero", genderColLabel, d)}
-                    onClick={() => speak(describeCell("genero", genderColLabel, d))}
-                    onFocus={() => speak(describeCell("genero", genderColLabel, d))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        speak(describeCell("genero", genderColLabel, d))
-                      }
-                    }}
-                  >
-                    {getGenderLabel(generos.find(g => g.id_genero === d.id_genero)) || '—'}
+                  <td>
+                    {voiceEnabled && (
+                      <button
+                        type="button"
+                        className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer"
+                        onClick={() => speak(describeCell("genero", genderColLabel, d))}
+                        aria-label={describeCell("genero", genderColLabel, d)}
+                      >
+                        {getGenderLabel(generos.find(g => g.id_genero === d.id_genero)) || '—'}
+                      </button>
+                    )}
+                    {!voiceEnabled && (
+                      <span>{getGenderLabel(generos.find(g => g.id_genero === d.id_genero)) || '—'}</span>
+                    )}
                   </td>
                   <td className="text-right flex items-center gap-2 justify-end">
                     {/* Botón de resumen de voz por docente */}
-                    <button
-                      type="button"
-                      onClick={() => speak(docenteSummary(d))}
-                      className="px-2 py-1.5 text-[11px] inline-flex items-center rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100"
-                      aria-label={t('teachers.tts.rowSummaryAria', 'Escuchar resumen del docente {{name}}', {
-                        name: d.nombre,
-                      })}
-                    >
-                      <span aria-hidden="true">🔊</span>
-                    </button>
+                    {voiceEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => speak(docenteSummary(d))}
+                        className="px-2 py-1.5 text-[11px] inline-flex items-center rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100"
+                        aria-label={t('teachers.tts.rowSummaryAria', 'Escuchar resumen del docente {{name}}', {
+                          name: d.nombre,
+                        })}
+                      >
+                        <span aria-hidden="true">🔊</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => askEdit(d)}

@@ -6,11 +6,13 @@ import { TTS } from "../lib/tts"
 // Subselectores para reducir re-renders (cada grupo independiente)
 const useFontSize = () =>
   useAccessibility(s => ({ fontSize: s.fontSize, setFontSize: s.setFontSize }))
+
 const useContrast = () =>
   useAccessibility(s => ({
     contrastMode: s.contrastMode,
     setContrastMode: s.setContrastMode
   }))
+
 const useFocusBigPointer = () =>
   useAccessibility(s => ({
     focusMode: s.focusMode,
@@ -18,6 +20,7 @@ const useFocusBigPointer = () =>
     toggleFocusMode: s.toggleFocusMode,
     toggleBigPointer: s.toggleBigPointer
   }))
+
 const useReadingMask = () =>
   useAccessibility(s => ({
     readingMaskEnabled: s.readingMaskEnabled,
@@ -29,6 +32,7 @@ const useReadingMask = () =>
     setReadingMaskOpacity: s.setReadingMaskOpacity,
     setReadingMaskColor: s.setReadingMaskColor
   }))
+
 const useReadingGuide = () =>
   useAccessibility(s => ({
     readingGuideEnabled: s.readingGuideEnabled,
@@ -40,6 +44,7 @@ const useReadingGuide = () =>
     setReadingGuideOpacity: s.setReadingGuideOpacity,
     setReadingGuideThickness: s.setReadingGuideThickness
   }))
+
 const useCustomColors = () =>
   useAccessibility(s => ({
     customColorsEnabled: s.customColorsEnabled,
@@ -83,15 +88,81 @@ type Props = {
   inline?: boolean // render as inline panel (no popover)
 }
 
+// Toggle GENÉRICO (usa variables de tema, puede adaptarse al sidebar)
+const Toggle: React.FC<{
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+  useSidebarColors?: boolean
+}> = ({ checked, onChange, label, useSidebarColors = false }) => {
+  const bgColor = useSidebarColors ? "var(--sidebar-bg)" : "var(--surface)"
+  const textColor = useSidebarColors ? "var(--sidebar-fg)" : "var(--text)"
+  const borderColor = useSidebarColors
+    ? "color-mix(in oklab, var(--sidebar-fg), transparent 70%)"
+    : "var(--border)"
+
+  const rowStyle: React.CSSProperties = {
+    background: checked
+      ? useSidebarColors
+        ? "color-mix(in oklab, var(--sidebar-fg), transparent 85%)"
+        : "color-mix(in oklab, var(--surface), var(--bg) 6%)"
+      : useSidebarColors
+        ? "color-mix(in oklab, var(--sidebar-bg), black 3%)"
+        : "color-mix(in oklab, var(--surface), black 3%)",
+    borderColor: borderColor,
+    color: textColor
+  }
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="toggle-btn group flex items-center w-full text-xs px-2 py-1 rounded-lg border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+      style={rowStyle}
+    >
+      <span
+        className="text-left font-medium select-none flex-1 min-w-0 truncate"
+        style={{ color: textColor }}
+      >
+        {label}
+      </span>
+      <span
+        className={[
+          "relative inline-flex items-center justify-center h-4 w-9 rounded-full flex-none",
+          checked
+            ? "bg-[color-mix(in_oklab,var(--primary),transparent_55%)]"
+            : "bg-[color-mix(in_oklab,var(--muted),transparent_70%)]"
+        ].join(" ")}
+        aria-hidden="true"
+      >
+        <span
+          className={[
+            "absolute left-0 top-0 h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+            checked ? "translate-x-5" : "translate-x-0"
+          ].join(" ")}
+          style={{
+            border:
+              "1px solid color-mix(in oklab, var(--primary), transparent 55%)"
+          }}
+        />
+        <span className="text-[0.6rem] uppercase tracking-wide opacity-70" style={{ color: `color-mix(in oklab, ${textColor}, transparent 30%)` }}>
+          {checked ? "ON" : "OFF"}
+        </span>
+      </span>
+    </button>
+  )
+}
+
 function AccessibilityMenuBase({ inline = false }: Props) {
   const [expanded, setExpanded] = useState<boolean>(false)
-  const [showAdvancedColors, setShowAdvancedColors] = useState<boolean>(false)
   const [showColorBlindOptions, setShowColorBlindOptions] = useState<boolean>(false)
 
   const { fontSize, setFontSize } = useFontSize()
   const { contrastMode, setContrastMode } = useContrast()
-  const { focusMode, bigPointer, toggleFocusMode, toggleBigPointer } =
-    useFocusBigPointer()
+  const { bigPointer, toggleBigPointer } = useFocusBigPointer()
+
   const {
     readingMaskEnabled,
     readingMaskHeight,
@@ -102,6 +173,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
     setReadingMaskOpacity,
     setReadingMaskColor
   } = useReadingMask()
+
   const {
     readingGuideEnabled,
     readingGuideColor,
@@ -112,13 +184,9 @@ function AccessibilityMenuBase({ inline = false }: Props) {
     setReadingGuideOpacity,
     setReadingGuideThickness
   } = useReadingGuide()
+
   const {
     customColorsEnabled,
-    customBgColor,
-    customTextColor,
-    customPrimaryColor,
-    customSidebarBgColor,
-    customSidebarFgColor,
     setCustomColorsEnabled,
     setCustomBgColor,
     setCustomTextColor,
@@ -127,7 +195,6 @@ function AccessibilityMenuBase({ inline = false }: Props) {
     setCustomSidebarFgColor
   } = useCustomColors()
 
-  // ✅ Hook para fuente disléxica en el tope (no dentro del condicional)
   const { dyslexicFont, setDyslexicFont } = useAccessibility(s => ({
     dyslexicFont: s.dyslexicFont,
     setDyslexicFont: s.setDyslexicFont
@@ -136,7 +203,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
   const { pointerSize, setPointerSize, pointerColor, setPointerColor } = usePointer()
   const { t, i18n } = useTranslation()
 
-  // === Paletas para daltonismo (usa los setters ya existentes de colores) ===
+  // === Paletas para daltonismo ===
   const applyDaltonismPalette = (
     preset: "protanopia" | "deuteranopia" | "tritanopia" = "protanopia"
   ) => {
@@ -157,89 +224,14 @@ function AccessibilityMenuBase({ inline = false }: Props) {
     }
   }
 
-  // Helper para estilo de h2 en el panel
-  const getH2Style = (): React.CSSProperties => {
-    if (customColorsEnabled) {
-      return { color: customSidebarFgColor }
-    }
-    if (contrastMode === "default") {
-      return { color: "#1E3452" }
-    }
-    return { color: "var(--text)" }
+  const handleContrastChange = (mode: "default" | "dark" | "high") => {
+    setContrastMode(mode)
+    // el store actualiza las CSS vars globales
   }
 
-  // Componente Toggle reutilizable
-  const Toggle = ({
-    checked,
-    onChange,
-    label
-  }: {
-    checked: boolean
-    onChange: (v: boolean) => void
-    label: string
-  }) => {
-    const rowStyle: React.CSSProperties = customColorsEnabled
-      ? {
-        background: customSidebarBgColor,
-        borderColor: customSidebarFgColor,
-        color: customSidebarFgColor
-      }
-      : checked
-        ? {
-          background: "color-mix(in oklab, var(--surface), var(--bg) 6%)",
-          borderColor: "var(--border)",
-          color: "var(--text)"
-        }
-        : {
-          background: "color-mix(in oklab, var(--surface), black 3%)",
-          borderColor: "var(--border)",
-          color: "var(--text)"
-        }
-
-    return (
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className="toggle-btn group flex items-center w-full text-xs px-2 py-1 rounded-lg border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-        style={rowStyle}
-      >
-        <span
-          className="text-left font-medium select-none flex-1 min-w-0 truncate"
-          style={{ color: customColorsEnabled ? customSidebarFgColor : "var(--text)" }}
-        >
-          {label}
-        </span>
-        <span
-          className={[
-            "relative inline-flex items-center justify-center h-4 w-9 rounded-full flex-none",
-            checked
-              ? customColorsEnabled
-                ? `bg-[${customPrimaryColor}]`
-                : "bg-[color-mix(in_oklab,var(--primary),transparent_55%)]"
-              : "bg-[color-mix(in_oklab,var(--muted),transparent_70%)]"
-          ].join(" ")}
-          style={checked && customColorsEnabled ? { backgroundColor: "#63C1CA" } : undefined}
-          aria-hidden="true"
-        >
-          <span
-            className={[
-              "absolute left-0 top-0 h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-              checked ? "translate-x-5" : "translate-x-0"
-            ].join(" ")}
-            style={{
-              border:
-                "1px solid color-mix(in oklab, var(--primary), transparent 55%)"
-            }}
-          />
-          <span className="text-[0.6rem] uppercase tracking-wide opacity-70 text-[color-mix(in_oklab,var(--text),transparent_30%)]">
-            {checked ? "ON" : "OFF"}
-          </span>
-        </span>
-      </button>
-    )
-  }
+  const getH2Style = (): React.CSSProperties => ({
+    color: panelText
+  })
 
   const InteractiveHighlightToggle = () => {
     const { interactiveHighlight, setInteractiveHighlight } = useInteractiveHighlight()
@@ -248,6 +240,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
         checked={interactiveHighlight}
         onChange={setInteractiveHighlight}
         label={t("nav.accessibility.highlightInteractive")}
+        useSidebarColors={isInSidebar}
       />
     )
   }
@@ -266,88 +259,82 @@ function AccessibilityMenuBase({ inline = false }: Props) {
           checked={voiceEnabled}
           onChange={onToggle}
           label={t("nav.accessibility.voiceEnable")}
+          useSidebarColors={isInSidebar}
         />
-        <p className="text-xs opacity-70 pl-2">{t("nav.accessibility.voiceHint")}</p>
+        <p className="text-xs opacity-70 pl-2" style={{ color: panelText }}>
+          {t("nav.accessibility.voiceHint")}
+        </p>
       </div>
     )
   }
+
+  // Cuando está inline (dentro del sidebar), usar variables del sidebar para consistencia
+  const isInSidebar = inline
+  const panelBg = isInSidebar ? "var(--sidebar-bg)" : "var(--card)"
+  const panelText = isInSidebar ? "var(--sidebar-fg)" : "var(--text)"
+  const panelBorder = isInSidebar
+    ? "color-mix(in oklab, var(--sidebar-fg), transparent 70%)"
+    : "var(--border)"
+  const panelSurface = isInSidebar
+    ? "color-mix(in oklab, var(--sidebar-fg), transparent 85%)"
+    : "var(--surface)"
+
+  // Helper para obtener estilos de botón consistentes
+  const getButtonStyle = (active: boolean = false): React.CSSProperties => ({
+    borderColor: panelBorder,
+    color: panelText,
+    background: active
+      ? isInSidebar
+        ? "color-mix(in oklab, var(--sidebar-fg), transparent 80%)"
+        : "color-mix(in oklab, var(--surface), white 4%)"
+      : isInSidebar
+        ? "color-mix(in oklab, var(--sidebar-bg), black 3%)"
+        : "color-mix(in oklab, var(--surface), black 3%)",
+  })
 
   const Panel = (
     <div
       role="region"
       aria-label="Configuración de accesibilidad"
-      className={`${expanded ? "space-y-3" : ""} accessibility-panel`}
-      style={
-        customColorsEnabled
-          ? {
-            background: customSidebarBgColor,
-            color: customSidebarFgColor,
-            overflow: "hidden"
-          }
-          : contrastMode === "default"
-            ? {
-              background: "#FFFFFF",
-              color: "#1E3452",
-              overflow: "hidden"
-            }
-            : {
-              background: "var(--card)",
-              color: "var(--text)",
-              overflow: "hidden"
-            }
-      }
+      className={`${expanded ? "space-y-3" : ""} accessibility-panel border rounded-md`}
+      style={{
+        background: panelBg,
+        color: panelText,
+        borderColor: panelBorder,
+        overflow: "hidden"
+      }}
     >
-      {/* Encabezado compacto con toggle */}
-      <div className="flex items-center justify-between">
-        <h2
-          className="text-sm font-semibold"
-          style={
-            customColorsEnabled
-              ? { color: customSidebarFgColor }
-              : contrastMode === "default" ? { color: "#1E3452" } : { color: "var(--text)" }
-          }
-        >
+      {/* Encabezado */}
+      <div
+        className="flex items-center justify-between px-3 py-2 border-b"
+        style={{ borderColor: panelBorder }}
+      >
+        <h2 className="text-sm font-semibold" style={{ color: panelText }}>
           {t("nav.accessibility.title")}
         </h2>
         <button
           type="button"
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => setExpanded(prev => !prev)}
           className="px-2 py-1 text-xs border rounded"
-          style={
-            customColorsEnabled
-              ? {
-                borderColor: customSidebarFgColor,
-                color: customSidebarFgColor,
-                background: customSidebarBgColor,
-                opacity: 0.8
-              }
-              : contrastMode === "default"
-                ? {
-                  borderColor: "#94A3B8",
-                  color: "#1E3452",
-                  background: "#E2E8F0"
-                }
-                : {
-                  borderColor: "var(--border)",
-                  color: "var(--text)",
-                  background: "var(--surface)"
-                }
-          }
+          style={{
+            borderColor: panelBorder,
+            background: panelSurface,
+            color: panelText
+          }}
           aria-expanded={expanded}
-          aria-label={expanded ? "Contraer opciones" : "Expandir opciones"}
         >
           {expanded ? t("nav.accessibility.hide") : t("nav.accessibility.show")}
         </button>
       </div>
 
       {!expanded && (
-        <p className="mt-1 text-[0.72rem] opacity-70">
+        <p className="mt-1 text-[0.72rem] px-3 pb-2 opacity-70" style={{ color: panelText }}>
           {t("nav.accessibility.hintShow")}
         </p>
       )}
 
       {expanded && (
-        <>
+        <div className="px-3 py-2 space-y-3">
           {/* Herramientas de lectura */}
           <section aria-labelledby="acc-lectura" className="mb-3">
             <h2
@@ -357,12 +344,14 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             >
               {t("nav.accessibility.readingTools")}
             </h2>
+
             {/* Máscara de lectura */}
             <div className="mt-2 space-y-2">
               <Toggle
                 checked={readingMaskEnabled}
                 onChange={setReadingMaskEnabled}
                 label={t("nav.accessibility.readingMask")}
+                useSidebarColors={isInSidebar}
               />
               {readingMaskEnabled && (
                 <div className="grid gap-2 pl-2">
@@ -400,7 +389,9 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                         setReadingMaskOpacity(Number(e.target.value))
                       }
                       className="flex-1 min-w-0"
-                      aria-label={`${t("nav.accessibility.opacity")} ${t("nav.accessibility.readingMask")}`}
+                      aria-label={`${t("nav.accessibility.opacity")} ${t(
+                        "nav.accessibility.readingMask"
+                      )}`}
                     />
                     <span className="tabular-nums w-12 text-right shrink-0">
                       {Math.round(readingMaskOpacity * 100)}%
@@ -426,9 +417,11 @@ function AccessibilityMenuBase({ inline = false }: Props) {
               )}
             </div>
 
-            {/* Text-to-speech controls */}
+            {/* Lectura en voz */}
             <div className="mt-3">
-              <h3 className="text-xs font-medium mb-1">{t("nav.accessibility.voiceTitle")}</h3>
+              <h3 className="text-xs font-medium mb-1">
+                {t("nav.accessibility.voiceTitle")}
+              </h3>
               <VoiceControls />
             </div>
 
@@ -438,6 +431,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                 checked={readingGuideEnabled}
                 onChange={setReadingGuideEnabled}
                 label={t("nav.accessibility.readingGuide")}
+                useSidebarColors={isInSidebar}
               />
               {readingGuideEnabled && (
                 <div className="grid gap-2 pl-2">
@@ -462,7 +456,9 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                     </span>
                   </label>
                   <label className="flex items-center gap-2 text-xs">
-                    <span className="w-16 shrink-0">{t("nav.accessibility.opacity")}</span>
+                    <span className="w-16 shrink-0">
+                      {t("nav.accessibility.opacity")}
+                    </span>
                     <input
                       type="range"
                       min={0}
@@ -473,7 +469,9 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                         setReadingGuideOpacity(Number(e.target.value))
                       }
                       className="flex-1 min-w-0"
-                      aria-label={`${t("nav.accessibility.opacity")} ${t("nav.accessibility.readingGuide")}`}
+                      aria-label={`${t("nav.accessibility.opacity")} ${t(
+                        "nav.accessibility.readingGuide"
+                      )}`}
                     />
                     <span className="tabular-nums w-12 text-right shrink-0">
                       {Math.round(readingGuideOpacity * 100)}%
@@ -514,21 +512,12 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                 <button
                   key={size}
                   type="button"
-                  className={`px-2 py-1 border rounded text-xs ${fontSize === size ? "bg-slate-200 dark:bg-slate-700" : ""
-                    }`}
-                  style={
-                    contrastMode === "default"
-                      ? {
-                        borderColor:
-                          fontSize === size ? "#64748b" : "#CBD5E1",
-                        color: "#1E3452",
-                        background:
-                          fontSize === size ? "#CBD5E1" : "#F8FAFC",
-                        fontWeight: fontSize === size ? "600" : "400"
-                      }
-                      : undefined
-                  }
+                  className="px-2 py-1 border rounded text-xs"
                   onClick={() => setFontSize(size)}
+                  style={{
+                    ...getButtonStyle(fontSize === size),
+                    fontWeight: fontSize === size ? 600 : 400
+                  }}
                 >
                   {size === "medium" && "A"}
                   {size === "large" && "A+"}
@@ -549,22 +538,6 @@ function AccessibilityMenuBase({ inline = false }: Props) {
             <div className="flex gap-2 mt-1 flex-wrap">
               {(["default", "dark", "high"] as const).map(m => {
                 const active = contrastMode === m
-                const style =
-                  contrastMode === "default"
-                    ? {
-                      borderColor: active ? "#64748b" : "#CBD5E1",
-                      color: "#1E3452",
-                      background: active ? "#CBD5E1" : "#F8FAFC",
-                      fontWeight: active ? ("600" as const) : ("400" as const)
-                    }
-                    : {
-                      borderColor: "var(--border)",
-                      color: "var(--text)",
-                      background: active
-                        ? "color-mix(in oklab, var(--surface), white 4%)"
-                        : "color-mix(in oklab, var(--surface), black 3%)",
-                      fontWeight: active ? ("600" as const) : ("400" as const)
-                    }
                 const label =
                   m === "default"
                     ? t("nav.accessibility.contrastNormal")
@@ -575,10 +548,12 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                   <button
                     key={m}
                     type="button"
-                    className={`px-2 py-1 border rounded text-xs ${active ? "bg-slate-200 dark:bg-slate-700" : ""
-                      }`}
-                    style={style}
-                    onClick={() => setContrastMode(m)}
+                    className="px-2 py-1 border rounded text-xs"
+                    style={{
+                      ...getButtonStyle(active),
+                      fontWeight: active ? 600 : 400
+                    }}
+                    onClick={() => handleContrastChange(m)}
                   >
                     {label}
                   </button>
@@ -600,19 +575,15 @@ function AccessibilityMenuBase({ inline = false }: Props) {
               <button
                 type="button"
                 className="px-2 py-1 border rounded text-[0.65rem] w-full text-left shrink-0"
-                style={
-                  contrastMode === "default"
-                    ? {
-                      borderColor: "#94A3B8",
-                      color: "#1E3452",
-                      background: "#E2E8F0"
-                    }
-                    : undefined
+                style={getButtonStyle()}
+                onClick={() =>
+                  setShowColorBlindOptions(prev => !prev)
                 }
-                onClick={() => setShowColorBlindOptions(s => !s)}
                 aria-expanded={showColorBlindOptions}
               >
-                {showColorBlindOptions ? "▼ Opciones" : "► Seleccionar paleta"}
+                {showColorBlindOptions
+                  ? "▼ Opciones"
+                  : "► Seleccionar paleta"}
               </button>
 
               {showColorBlindOptions && (
@@ -621,99 +592,80 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                     type="button"
                     onClick={() => applyDaltonismPalette("protanopia")}
                     className="w-full px-2.5 py-2 border rounded text-xs text-left transition hover:shadow-sm"
-                    style={
-                      contrastMode === "default"
-                        ? {
-                          borderColor: "#0072E3",
-                          color: "#003D7A",
-                          background: "#E3F0FF",
-                          fontWeight: customColorsEnabled && customPrimaryColor === "#0072E3" ? "600" : "400"
-                        }
-                        : {
-                          background: "var(--surface)",
-                          color: "var(--text)",
-                          borderColor: "#0072E3",
-                          fontWeight: customColorsEnabled && customPrimaryColor === "#0072E3" ? "600" : "400"
-                        }
-                    }
+                    style={{
+                      borderColor: "#0072E3",
+                      color: panelText,
+                      background: isInSidebar ? panelSurface : "var(--surface)",
+                      fontWeight: customColorsEnabled ? 600 : 400
+                    }}
                   >
-                    <span className="font-semibold block mb-0.5">🔵 Protanopía</span>
+                    <span className="font-semibold block mb-0.5">
+                      🔵 Protanopía
+                    </span>
                     <span className="text-[0.6rem] opacity-75">
-                      {t("nav.accessibility.colorBlindRG", "Daltonismo rojo-verde - Visión azul/amarillo")}
+                      {t(
+                        "nav.accessibility.colorBlindRG",
+                        "Daltonismo rojo-verde - Visión azul/amarillo"
+                      )}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => applyDaltonismPalette("deuteranopia")}
                     className="w-full px-2.5 py-2 border rounded text-xs text-left transition hover:shadow-sm"
-                    style={
-                      contrastMode === "default"
-                        ? {
-                          borderColor: "#0072E3",
-                          color: "#003D7A",
-                          background: "#E3F0FF",
-                          fontWeight: customColorsEnabled && customPrimaryColor === "#0072E3" ? "600" : "400"
-                        }
-                        : {
-                          background: "var(--surface)",
-                          color: "var(--text)",
-                          borderColor: "#0072E3",
-                          fontWeight: customColorsEnabled && customPrimaryColor === "#0072E3" ? "600" : "400"
-                        }
-                    }
+                    style={{
+                      borderColor: "#0072E3",
+                      color: panelText,
+                      background: isInSidebar ? panelSurface : "var(--surface)",
+                      fontWeight: customColorsEnabled ? 600 : 400
+                    }}
                   >
-                    <span className="font-semibold block mb-0.5">🔵 Deuteranopía</span>
+                    <span className="font-semibold block mb-0.5">
+                      🔵 Deuteranopía
+                    </span>
                     <span className="text-[0.6rem] opacity-75">
-                      {t("nav.accessibility.colorBlindGreen", "Daltonismo rojo-verde - Insensibilidad al verde")}
+                      {t(
+                        "nav.accessibility.colorBlindGreen",
+                        "Daltonismo rojo-verde - Insensibilidad al verde"
+                      )}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => applyDaltonismPalette("tritanopia")}
                     className="w-full px-2.5 py-2 border rounded text-xs text-left transition hover:shadow-sm"
-                    style={
-                      contrastMode === "default"
-                        ? {
-                          borderColor: "#E60000",
-                          color: "#8B0000",
-                          background: "#FFE3E3",
-                          fontWeight: customColorsEnabled && customPrimaryColor === "#E60000" ? "600" : "400"
-                        }
-                        : {
-                          background: "var(--surface)",
-                          color: "var(--text)",
-                          borderColor: "#E60000",
-                          fontWeight: customColorsEnabled && customPrimaryColor === "#E60000" ? "600" : "400"
-                        }
-                    }
+                    style={{
+                      borderColor: "#E60000",
+                      color: panelText,
+                      background: isInSidebar ? panelSurface : "var(--surface)",
+                      fontWeight: customColorsEnabled ? 600 : 400
+                    }}
                   >
-                    <span className="font-semibold block mb-0.5">🔴 Tritanopía</span>
+                    <span className="font-semibold block mb-0.5">
+                      🔴 Tritanopía
+                    </span>
                     <span className="text-[0.6rem] opacity-75">
-                      {t("nav.accessibility.colorBlindBY", "Daltonismo azul-amarillo")}
+                      {t(
+                        "nav.accessibility.colorBlindBY",
+                        "Daltonismo azul-amarillo"
+                      )}
                     </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setCustomColorsEnabled(false)}
                     className="w-full px-2.5 py-2 border rounded text-xs text-left transition hover:shadow-sm"
-                    style={
-                      contrastMode === "default"
-                        ? {
-                          borderColor: "#94A3B8",
-                          color: "#4B5563",
-                          background: "#F1F5F9",
-                          fontWeight: !customColorsEnabled ? "600" : "400"
-                        }
-                        : {
-                          background: "var(--surface)",
-                          color: "var(--text)",
-                          borderColor: "var(--border)",
-                          fontWeight: !customColorsEnabled ? "600" : "400"
-                        }
-                    }
+                    style={{
+                      ...getButtonStyle(!customColorsEnabled),
+                      fontWeight: !customColorsEnabled ? 600 : 400
+                    }}
                   >
-                    <span className="font-semibold block mb-0.5">✕ Deshabilitado</span>
-                    <span className="text-[0.6rem] opacity-75">Usar colores normales</span>
+                    <span className="font-semibold block mb-0.5">
+                      ✕ Deshabilitado
+                    </span>
+                    <span className="text-[0.6rem] opacity-75">
+                      Usar colores normales
+                    </span>
                   </button>
                 </div>
               )}
@@ -734,56 +686,74 @@ function AccessibilityMenuBase({ inline = false }: Props) {
               checked={bigPointer}
               onChange={() => toggleBigPointer()}
               label={t("nav.accessibility.bigPointer")}
+              useSidebarColors={isInSidebar}
             />
             {bigPointer && (
-              <div className="pl-2">
-                <label className="flex items-center gap-3 text-xs">
-                  <input
-                    type="range"
-                    min={12}
-                    max={120}
-                    step={2}
-                    value={pointerSize}
-                    onChange={e => setPointerSize(Number(e.target.value))}
-                    className="accessibility-range flex-1 min-w-0"
-                    aria-label="Tamaño del puntero"
-                  />
-                  <span className="tabular-nums w-12 text-right shrink-0">
-                    {pointerSize}
-                  </span>
-                </label>
-              </div>
-            )}
-            {bigPointer && (
-              <div className="mt-2 pl-2">
-                <span className="text-xs block mb-1">Puntero</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className={`p-1 border rounded ${pointerColor === 'white' ? 'ring-2 ring-offset-1' : ''}`}
-                    onClick={() => setPointerColor('white')}
-                    aria-pressed={pointerColor === 'white'}
-                    title="Blanco"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
-                      <path d="M2 2 L14 12 L10 14 L12 20 L8 22 L6 16 L2 2" fill="#ffffff" stroke="#000" strokeWidth="0" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    className={`p-1 border rounded ${pointerColor === 'black' ? 'ring-2 ring-offset-1' : ''}`}
-                    onClick={() => setPointerColor('black')}
-                    aria-pressed={pointerColor === 'black'}
-                    title="Negro"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
-                      <path d="M2 2 L14 12 L10 14 L12 20 L8 22 L6 16 L2 2" fill="#000000" stroke="#fff" strokeWidth="0" />
-                    </svg>
-                  </button>
+              <>
+                <div className="pl-2">
+                  <label className="flex items-center gap-3 text-xs">
+                    <input
+                      type="range"
+                      min={12}
+                      max={120}
+                      step={2}
+                      value={pointerSize}
+                      onChange={e =>
+                        setPointerSize(Number(e.target.value))
+                      }
+                      className="accessibility-range flex-1 min-w-0"
+                      aria-label="Tamaño del puntero"
+                    />
+                    <span className="tabular-nums w-12 text-right shrink-0">
+                      {pointerSize}
+                    </span>
+                  </label>
                 </div>
-              </div>
+                <div className="mt-2 pl-2">
+                  <span className="text-xs block mb-1">Puntero</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className={`p-1 border rounded ${pointerColor === "white"
+                        ? "ring-2 ring-offset-1"
+                        : ""
+                        }`}
+                      onClick={() => setPointerColor("white")}
+                      aria-pressed={pointerColor === "white"}
+                      title="Blanco"
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path d="M2 2 L14 12 L10 14 L12 20 L8 22 L6 16 L2 2" fill="#ffffff" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className={`p-1 border rounded ${pointerColor === "black"
+                        ? "ring-2 ring-offset-1"
+                        : ""
+                        }`}
+                      onClick={() => setPointerColor("black")}
+                      aria-pressed={pointerColor === "black"}
+                      title="Negro"
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <path d="M2 2 L14 12 L10 14 L12 20 L8 22 L6 16 L2 2" fill="#000000" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
-            {/* Highlight interactive elements */}
             <InteractiveHighlightToggle />
           </section>
 
@@ -800,6 +770,7 @@ function AccessibilityMenuBase({ inline = false }: Props) {
               checked={dyslexicFont}
               onChange={setDyslexicFont}
               label={t("nav.accessibility.dyslexicFontEnable")}
+              useSidebarColors={isInSidebar}
             />
           </section>
 
@@ -822,31 +793,27 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                     onClick={() => {
                       i18n.changeLanguage(l)
                       try {
-                        const raw = localStorage.getItem('studentsnotes-accessibility')
-                        const parsed = raw ? JSON.parse(raw) : {}
+                        const raw =
+                          localStorage.getItem(
+                            "studentsnotes-accessibility"
+                          ) || "{}"
+                        const parsed = JSON.parse(raw)
                         parsed.language = l
-                        localStorage.setItem('studentsnotes-accessibility', JSON.stringify(parsed))
-                      } catch { }
+                        localStorage.setItem(
+                          "studentsnotes-accessibility",
+                          JSON.stringify(parsed)
+                        )
+                      } catch {
+                        // ignore
+                      }
                     }}
                     className={[
                       "px-2 py-1 border rounded text-xs transition",
                       active ? "font-semibold" : "opacity-80"
                     ].join(" ")}
-                    style={
-                      contrastMode === "default"
-                        ? {
-                          borderColor: active ? "#64748b" : "#CBD5E1",
-                          background: active ? "#CBD5E1" : "#F8FAFC",
-                          color: "#1E3452"
-                        }
-                        : {
-                          borderColor: "var(--border)",
-                          background: active
-                            ? "color-mix(in oklab, var(--surface), white 4%)"
-                            : "color-mix(in oklab, var(--surface), black 3%)",
-                          color: "var(--text)"
-                        }
-                    }
+                    style={{
+                      ...getButtonStyle(active)
+                    }}
                     aria-pressed={active}
                   >
                     {l.toUpperCase()}
@@ -863,7 +830,6 @@ function AccessibilityMenuBase({ inline = false }: Props) {
               onClick={() => {
                 try {
                   const store = useAccessibility.getState()
-
                   store.setCustomColorsEnabled(false)
                   store.setContrastMode("default")
                   store.setVoiceEnabled(false)
@@ -872,28 +838,28 @@ function AccessibilityMenuBase({ inline = false }: Props) {
                   store.setFontSize("medium")
                   store.setInteractiveHighlight(false)
                   store.setDyslexicFont(false)
-
                   if (store.bigPointer) store.toggleBigPointer()
                   if (store.focusMode) store.toggleFocusMode()
-
-                  localStorage.removeItem('studentsnotes-accessibility')
-                  localStorage.removeItem('sn_high_contrast')
-                } catch { }
+                  localStorage.removeItem("studentsnotes-accessibility")
+                  localStorage.removeItem("sn_high_contrast")
+                } catch {
+                  // ignore
+                }
                 window.location.reload()
               }}
-              className="text-[0.82rem] px-3 py-1 rounded-md border transition bg-transparent"
-              title={"Reestablecer accesibilidad"}
+              className="text-[0.82rem] px-3 py-1 rounded-md border transition"
+              style={getButtonStyle()}
+              title="Reestablecer accesibilidad"
             >
               Reestablecer accesibilidad
             </button>
           </div>
-        </>
+        </div>
       )}
     </div>
   )
 
-  if (inline) return Panel
-
+  // Popover vs inline
   const detailsRef = useRef<HTMLDetailsElement | null>(null)
   const [open, setOpen] = useState<boolean>(false)
 
@@ -926,30 +892,24 @@ function AccessibilityMenuBase({ inline = false }: Props) {
     }
   }, [open])
 
+  if (inline) return Panel
+
   return (
     <div className="relative">
       <details
         className="inline-block"
         ref={detailsRef}
-        onToggle={() => setOpen(detailsRef.current ? !!detailsRef.current.open : false)}
+        onToggle={() =>
+          setOpen(detailsRef.current ? !!detailsRef.current.open : false)
+        }
       >
         <summary
           className="cursor-pointer px-2 py-1 text-sm border rounded"
-          style={
-            customColorsEnabled
-              ? {
-                borderColor: customTextColor,
-                color: customTextColor,
-                background: customBgColor,
-              }
-              : contrastMode === "default"
-                ? {
-                  borderColor: "#94A3B8",
-                  color: "#1E3452",
-                  background: "#E2E8F0"
-                }
-                : undefined
-          }
+          style={{
+            borderColor: "var(--border)",
+            background: "var(--surface)",
+            color: "var(--text)"
+          }}
           aria-label="Abrir ajustes de accesibilidad"
           aria-expanded={open}
         >
@@ -957,28 +917,12 @@ function AccessibilityMenuBase({ inline = false }: Props) {
         </summary>
         <div
           className="absolute right-0 mt-2 w-72 rounded shadow-lg p-3 z-50"
-          style={
-            customColorsEnabled
-              ? {
-                background: customBgColor,
-                borderColor: customTextColor,
-                border: `1px solid ${customTextColor}`,
-                color: customTextColor
-              }
-              : contrastMode === "default"
-                ? {
-                  background: "#FFFFFF",
-                  borderColor: "#D9E0E6",
-                  border: "1px solid #D9E0E6",
-                  color: "#1E3452"
-                }
-                : {
-                  background: "var(--card)",
-                  borderColor: "var(--border)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text)"
-                }
-          }
+          style={{
+            background: "var(--card)",
+            borderColor: "var(--border)",
+            border: "1px solid var(--border)",
+            color: "var(--text)"
+          }}
           role="dialog"
           aria-label="Configuración de accesibilidad"
         >

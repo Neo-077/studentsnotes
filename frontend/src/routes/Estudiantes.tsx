@@ -462,15 +462,17 @@ export default function Estudiantes() {
 
         <div className="flex items-center gap-2">
           {/* Explicación general de la pantalla */}
-          <button
-            type="button"
-            onClick={() => speak(pageHelpText)}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            aria-label={t('students.tts.pageHelpAria', 'Escuchar explicación de la pantalla de alumnos')}
-          >
-            <span aria-hidden="true">🔊</span>
-            <span>{t('students.tts.pageHelpButton', 'Explicar pantalla')}</span>
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(pageHelpText)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label={t('students.tts.pageHelpAria', 'Escuchar explicación de la pantalla de alumnos')}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t('students.tts.pageHelpButton', 'Explicar pantalla')}</span>
+            </button>
+          )}
 
           {/* Botón para descargar lista actual */}
           <button
@@ -513,7 +515,7 @@ export default function Estudiantes() {
         {/* Búsqueda con voz */}
         <div className="flex-1 min-w-80 flex items-center gap-1">
           <div className="relative flex-1 min-w-0">
-            <FiSearch className="absolute left-2 top-2.5 text-slate-400" size={14} />
+            <FiSearch className="absolute left-2 top-2.5" size={14} style={{ color: "var(--muted)" }} />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -523,15 +525,17 @@ export default function Estudiantes() {
               onFocus={() => speak(t('students.searchPlaceholder'))}
             />
           </div>
-          <button
-            type="button"
-            onClick={() => speak(searchHelpText)}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 flex-shrink-0"
-            aria-label={t('students.tts.searchHelpAria', 'Escuchar instrucciones del cuadro de búsqueda de alumnos')}
-          >
-            <span aria-hidden="true">🔊</span>
-            <span>{t('students.tts.fieldHelpButton', '¿Cómo buscar?')}</span>
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(searchHelpText)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 flex-shrink-0"
+              aria-label={t('students.tts.searchHelpAria', 'Escuchar instrucciones del cuadro de búsqueda de alumnos')}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t('students.tts.fieldHelpButton', '¿Cómo buscar?')}</span>
+            </button>
+          )}
         </div>
 
         {role === 'admin' && (
@@ -548,15 +552,17 @@ export default function Estudiantes() {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={() => speak(careersFilterHelpText)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 flex-shrink-0"
-              aria-label={t('students.tts.careerFilterHelpAria', 'Escuchar explicación del filtro de carrera')}
-            >
-              <span aria-hidden="true">🔊</span>
-              <span>{t('students.tts.fieldHelpButton', 'Ayuda')}</span>
-            </button>
+            {voiceEnabled && (
+              <button
+                type="button"
+                onClick={() => speak(careersFilterHelpText)}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 flex-shrink-0"
+                aria-label={t('students.tts.careerFilterHelpAria', 'Escuchar explicación del filtro de carrera')}
+              >
+                <span aria-hidden="true">🔊</span>
+                <span>{t('students.tts.fieldHelpButton', 'Ayuda')}</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -571,15 +577,17 @@ export default function Estudiantes() {
             <option value="dropped">{t('students.status.inactive')}</option>
             <option value="all">{t('classGroups.filters.termAll')}</option>
           </select>
-          <button
-            type="button"
-            onClick={() => speak(filterStatusHelpText)}
-            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 flex-shrink-0"
-            aria-label={t('students.tts.statusFilterHelpAria', 'Escuchar explicación del filtro de estatus de alumnos')}
-          >
-            <span aria-hidden="true">🔊</span>
-            <span>{t('students.tts.fieldHelpButton', 'Ayuda')}</span>
-          </button>
+          {voiceEnabled && (
+            <button
+              type="button"
+              onClick={() => speak(filterStatusHelpText)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 flex-shrink-0"
+              aria-label={t('students.tts.statusFilterHelpAria', 'Escuchar explicación del filtro de estatus de alumnos')}
+            >
+              <span aria-hidden="true">🔊</span>
+              <span>{t('students.tts.fieldHelpButton', 'Ayuda')}</span>
+            </button>
+          )}
         </div>
 
         <button
@@ -736,16 +744,18 @@ export default function Estudiantes() {
                       {role === 'admin' && (
                         <td className="flex items-center gap-2 justify-end">
                           {/* Resumen de voz del alumno */}
-                          <button
-                            type="button"
-                            onClick={() => speak(studentSummary(r))}
-                            className="px-2 py-1.5 text-[11px] inline-flex items-center rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100"
-                            aria-label={t('students.tts.rowSummaryAria', 'Escuchar resumen del alumno {{name}}', {
-                              name: r.nombre,
-                            })}
-                          >
-                            <span aria-hidden="true">🔊</span>
-                          </button>
+                          {voiceEnabled && (
+                            <button
+                              type="button"
+                              onClick={() => speak(studentSummary(r))}
+                              className="px-2 py-1.5 text-[11px] inline-flex items-center rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100"
+                              aria-label={t('students.tts.rowSummaryAria', 'Escuchar resumen del alumno {{name}}', {
+                                name: r.nombre,
+                              })}
+                            >
+                              <span aria-hidden="true">🔊</span>
+                            </button>
+                          )}
 
                           {r.activo ? (
                             <button
@@ -758,7 +768,7 @@ export default function Estudiantes() {
                               {t('students.actions.drop')}
                             </button>
                           ) : (
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs" style={{ color: "var(--muted)" }}>
                               {t('students.labels.dropped')}
                             </span>
                           )}
@@ -773,7 +783,7 @@ export default function Estudiantes() {
         </div>
 
         <div className="flex items-center justify-between px-3 py-2">
-          <div className="text-xs text-slate-500">
+          <div className="text-xs" style={{ color: "var(--muted)" }}>
             {t('students.footer.total', { count: totalForPagination })}
           </div>
           <div className="flex items-center gap-2">

@@ -94,9 +94,6 @@ export default function PieChartPage({
 
   return (
     <div className="w-full h-full">
-      <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300 mb-4">
-        {t("classGroupDetail.charts.pieTitle")}
-      </h3>
       <ResponsiveContainer width="100%" height={350}>
         <PieChart>
           <Pie
